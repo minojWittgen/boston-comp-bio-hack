@@ -13,7 +13,7 @@ from research_app.report_ui import show_report
 from research_app.site_pages import EXPERIENCES, PAGES, introduction, references
 from research_app.tutorials import tutorial
 
-st.set_page_config(page_title="Cross-context · Follow the evidence", page_icon="◈", layout="wide")
+st.set_page_config(page_title="CoMEA · Follow the evidence", page_icon="◈", layout="wide")
 st.markdown("""<style>
 .block-container {max-width: 1150px; padding-top: 4rem;}
 h1 {font-family: Georgia, serif; font-weight: 500 !important; letter-spacing: -1px;}
@@ -94,7 +94,7 @@ def submit(prompt):
 
 
 st.markdown('<div class="eyebrow">Boston computational biology hackathon</div>', unsafe_allow_html=True)
-page = st.radio("Explore Cross-context", list(PAGES), format_func=PAGES.get, horizontal=True, key="page")
+page = st.radio("Explore CoMEA", list(PAGES), format_func=PAGES.get, horizontal=True, key="page")
 if page == "research":
     st.title("Research workspace")
     st.write("Explore an example, ask a biological question, or use these tools inside Claude. Follow each answer back to its sources.")
@@ -104,7 +104,7 @@ else:
     experience = None
 
 with st.sidebar:
-    st.markdown("### ◈ Cross-context")
+    st.markdown("### ◈ CoMEA")
     st.caption("EVIDENCE ACROSS BIOLOGICAL CONTEXTS")
     st.divider()
     st.write("A finding. A comparison. A clearer next question.")
@@ -165,17 +165,17 @@ if experience == "Try the tutorial":
     show_report(state)
 
 elif experience == "Connect through MCP":
-    st.subheader("Use Cross-context inside Claude")
+    st.subheader("Use CoMEA inside Claude")
     st.write("MCP lets Claude use our research tools from your conversation. Claude helps define what evidence your question needs; our tools search sources and explain which comparisons are possible. You do not need a separate Anthropic API key for this path.")
     endpoint = setting("XCTX_MCP_URL", "https://minoj--xctx-research-api.modal.run/mcp/")
     st.markdown("**Claude Code · terminal**")
     st.code(f"claude mcp add --transport http cross-context-biology {endpoint}\nclaude mcp get cross-context-biology", language="bash")
     st.caption("Then open Claude Code and use /mcp to inspect the connection. This repository also includes .mcp.json; approve its connector when Claude Code asks.")
     st.markdown("**Claude app · Desktop or web**")
-    st.write("Open Customize → Connectors → Add custom connector. Name it Cross-context biology, paste the URL below, then enable it in your conversation. No authentication or API key is required by this server. Organization accounts may need an owner to add it.")
+    st.write("Open Customize → Connectors → Add custom connector. Name it CoMEA, paste the URL below, then enable it in your conversation. No authentication or API key is required by this server. Organization accounts may need an owner to add it.")
     st.code(endpoint, language=None)
     st.markdown("**Try this first**")
-    st.code("Use Cross-context biology to run the synthetic cross-context-conflict tutorial. Call start_investigation, then get_investigation. Explain what the examples show in cells, animal models and patients, and why the measurements disagree.", language=None)
+    st.code("Use CoMEA (the cross-context-biology MCP tools) to run the synthetic cross-context-conflict tutorial. Call start_investigation, then get_investigation. Explain what the examples show in cells, animal models and patients, and why the measurements disagree.", language=None)
     st.markdown("**Then investigate your question**")
     st.write("Tell Claude what you want to compare and ask it to review the research scope with you before starting. The report explains findings from the retrieved sources, differences between contexts, uncertainties and next steps. Comparing individual study measurements is a separate check that needs those measurements and their context. The tools are start_investigation and get_investigation.")
     st.caption("Your Claude plan or client model charges still apply. Public live investigations have a limited hosting allowance; the tutorial works without live collection. The website chat is an optional alternative.")

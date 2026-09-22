@@ -1,4 +1,10 @@
-# Boston Computational Biology Hackathon — Team Workspace
+# CoMEA
+
+**Co**ntext-aware **M**ulti-modal & Multi-species **E**vidence **A**ssessment
+
+Created by **Minwoo Jung, Jaeeun Park, and Priya Mandala**.
+
+Boston Computational Biology Hackathon — Team Workspace.
 
 Research chat, API and MCP for the team's cross-context investigation coordinator.
 Scientific behavior comes from [`coordinator/`](coordinator/README.md), integrated from

@@ -1,4 +1,4 @@
-# Use Cross-context directly inside Claude
+# Use CoMEA directly inside Claude
 
 Our MCP server is hosted on Modal. Claude Code, a terminal MCP client, or the Claude
 app can call it directly. The website is an optional tutorial/chat interface.
@@ -25,7 +25,7 @@ Other terminal clients can use the same Streamable HTTP URL with authentication 
 ## Claude app / Desktop / web
 
 1. Open **Customize → Connectors → Add custom connector**.
-2. Name it **Cross-context biology** and enter:
+2. Name it **CoMEA** and enter:
 
    ```text
    https://minoj--xctx-research-api.modal.run/mcp/
@@ -42,7 +42,7 @@ Availability also depends on your client's account and organization settings.
 
 Paste this into Claude:
 
-> Use Cross-context biology to run the synthetic cross-context-conflict tutorial.
+> Use CoMEA (the cross-context-biology MCP tools) to run the synthetic cross-context-conflict tutorial.
 > Call start_investigation, then get_investigation, and explain why a complete
 > investigation can have conflicting evidence.
 
