@@ -81,6 +81,7 @@ class CorpusPipelineProvider:
         with _patched(S, "http", self.replay):
             pkg = P.build_package(symbol, disease, mode, run_id, cache)   # real pipeline
             IV.enrich_invitro(pkg, mode, cache)                            # real in-vitro enrichment
+            _add_hpa_pathology(pkg, mode, cache, S, R)                     # patient/disease context
             R.annotate_package(pkg)                                        # real §6 annotation
         # same validation the coordinator's own providers apply (imported, not re-implemented)
         try:
@@ -90,6 +91,29 @@ class CorpusPipelineProvider:
             pass
         self.packages[symbol] = pkg
         return pkg
+
+
+def _add_hpa_pathology(pkg, mode, cache, S, R):
+    """Replicate `app.build_one`'s patient/disease step, which is in app.py, not build_package.
+
+    Without this the benchmark package simply has no `hpa_pathology` key, while a real
+    eval-mode package carries it as `skipped`. The coordinator treats it as an optional
+    background source (`coordinator/evidence.py:_OPTIONAL_SOURCES`), so its absence is silent —
+    but it is the only *patient*-context source the pipeline emits, and the benchmark should
+    hand the coordinator the same package shape the product does. In eval mode this always
+    resolves to `skipped` (`leaks_answers: True`), so no recorded response is needed.
+    """
+    ensg = (pkg["gene"].get("data") or {}).get("ensembl_primary")
+    if mode == "eval" and not R.eval_allows("hpa_pathology"):
+        rp = S.result("hpa_pathology", "skipped", {}, error=f"disabled in {mode} mode")
+    elif not ensg:
+        rp = S.result("hpa_pathology", "skipped", {}, error="no ensembl id")
+    else:
+        rp = cache.fetch("hpa_pathology", {"ensg": ensg}, lambda: S.hpa_pathology(ensg))
+    pkg["sources"]["hpa_pathology"] = rp
+    if rp["status"] != "ok":
+        pkg["missing"].append({"source": "hpa_pathology", "sub": None,
+                               "status": rp["status"], "reason": rp.get("error")})
 
 
 @contextlib.contextmanager

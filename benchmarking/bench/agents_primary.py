@@ -87,9 +87,12 @@ class GeneralAgent:
         return envelope(manifest, self.system, status, answer, tools, usage, err)
 
 
-def envelope(manifest, system, status, ans, tools: CorpusTools, usage: Usage, err):
+def envelope(manifest, system, status, ans, tools: CorpusTools, usage: Usage, err, limitations=None):
     if status != "completed" or ans is None:
-        ans = {"comparisons": [], "limitations": [], "unresolved": [f"EXECUTION {status}: {err or 'no report submitted'}"], "report_markdown": ""}
+        # limitations known before the failure (e.g. an unroutable request shape) are still reported;
+        # without them a failed run shows only a raw exception repr and cannot be read by a reviewer.
+        ans = {"comparisons": [], "limitations": list(limitations or []),
+               "unresolved": [f"EXECUTION {status}: {err or 'no report submitted'}"], "report_markdown": ""}
     return {"case_id": manifest["case_id"], "system": system, "execution_status": status,
             "comparisons": ans["comparisons"], "limitations": ans["limitations"], "unresolved": ans["unresolved"],
             "report_markdown": ans["report_markdown"],

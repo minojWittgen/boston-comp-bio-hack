@@ -79,7 +79,7 @@ class IntegratedSystemAdapter:
         usage = Usage(model, manifest["limits"]); tools = CorpusTools(manifest, case_dir, usage)
         internal = {"stages": [], "versions": {"repo": _git_rev(REPO_ROOT), "data_pipeline": _git_rev(REPO_ROOT / "data_pipeline"), "coordinator": _git_rev(REPO_ROOT / "coordinator")},
                     "fake_llm": os.environ.get("XCTX_FAKE_LLM") == "1"}
-        status, err, ans, client = "no_answer", None, None, None
+        status, err, ans, client, limitations = "no_answer", None, None, None, []
         try:
             from coordinator.engine import Coordinator
             from coordinator.models import InvestigationRequest, Submission, PathwayDefinition
@@ -92,7 +92,7 @@ class IntegratedSystemAdapter:
             client = UsageClient(usage, inner=FakeAnthropic() if internal["fake_llm"] else None)
             task = (case_dir / manifest["task_file"]).read_text()
             ents = manifest.get("entities", {}); genes = ents.get("genes", [])
-            pathway, limitations = None, []
+            pathway = None
             pw_files = [f for f in manifest["permitted_files"] if f.startswith("pathways/")]
             if len(pw_files) == 1:
                 import json as _j; pw = _j.loads(tools.read_file(pw_files[0])["content"])
@@ -130,7 +130,7 @@ class IntegratedSystemAdapter:
         except Exception as e:  # noqa: BLE001
             status, err = "error", repr(e)[:500]
         internal["model_inventory"] = list(client.model_inventory) if client is not None else []
-        out = envelope(manifest, self.system, status, ans, tools, usage, err)
+        out = envelope(manifest, self.system, status, ans, tools, usage, err, limitations)
         out["_system_internal"].update(internal)
         return out
 

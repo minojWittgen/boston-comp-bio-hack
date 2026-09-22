@@ -18,7 +18,8 @@ experiments — adopted as principles, not reproduced.
 `coordinator/` is modified; the adapter only wires them to the frozen corpus.
 
 ```
-task.md + corpus/ ─► DATA PIPELINE   real package.build_package → invitro.enrich_invitro → registry.annotate_package
+task.md + corpus/ ─► DATA PIPELINE   real package.build_package → invitro.enrich_invitro → hpa_pathology
+                                      → registry.annotate_package  (the same chain app.build_one runs)
                      (bench/integration/pipeline_provider.py: sources.http replayed from corpus/api/index.json
                       — recorded native responses for every request the pipeline makes in eval mode; 0 unrecorded)
                   ─► EXTRACTION       bench/integration/extractor.py: one model call per study reads methods.md into
@@ -89,6 +90,8 @@ pip install -r bench/requirements.txt
 export ANTHROPIC_API_KEY=...  XCTX_MODEL=claude-sonnet-4-5
 export XCTX_PIPELINE=/path/to/data_pipeline/evidence_pipeline     # default: ../data_pipeline/evidence_pipeline
 export XCTX_REPO_ROOT=/path/to/repo                                # default: ../ (must contain coordinator/)
+# Both defaults resolve inside this repository — `data_pipeline/` and `coordinator/` are siblings
+# of `benchmarking/` on main, so neither variable needs setting for an in-repo run.
 
 python bench/gen_primary.py                 # corpus for p00..p04 (synthetic, labelled) incl. recorded API responses
 python validate.py
