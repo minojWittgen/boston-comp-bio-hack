@@ -92,6 +92,8 @@ It provides Markdown and full-evidence downloads. No contract JSON editor is nee
 Read the [frontend/backend integration guide](docs/frontend-integration.md),
 [chat contract guide](docs/chat-and-contract.md), and
 [team coordinator handoff](coordinator/README.md).
+The [September 22 demo handoff](docs/demo-handoff-2026-09-22.md) records the fixes,
+exact live checks, known limits, and commands to reproduce this deployment.
 
 ## Deploy the integrated frontend and backend on Modal
 
@@ -103,7 +105,7 @@ uses visitor credentials; MCP uses the connected assistant's model. Former secre
 can remain in the workspace, but this deployment does not attach them.
 
 ```bash
-.venv/bin/modal deploy modal_app.py
+.venv/bin/modal deploy --strategy recreate modal_app.py
 ```
 
 The integrated app is **`xctx-research`**, with `api` (canonical HTTP + chat/MCP),
@@ -111,6 +113,10 @@ The integrated app is **`xctx-research`**, with `api` (canonical HTTP + chat/MCP
 The frontend finds this deployment's API automatically. The MCP URL is the printed API
 URL plus `/mcp/`. Cloud calls preserve worker IDs and the team's polling reconciliation.
 Finished artifacts also go to `xctx-investigation-artifacts`.
+
+`recreate` restarts existing containers. Wait for running investigations to finish
+before deployment; active website sessions must reload. This prevents an old Streamlit
+WebSocket from blocking replacement while the website is capped at one container.
 
 The separate `coordinator/modal_app.py` remains the team's standalone HTTP deployment.
 Use the root `modal_app.py` for this combined chat/MCP frontend. Both run the same engine.

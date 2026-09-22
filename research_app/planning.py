@@ -34,7 +34,7 @@ class PlanningCredentials:
 def plan_with_credentials(request, credentials):
     if credentials is None:
         raise ModelSetupError("Add your Anthropic API key and model ID in Model settings. There is no shared model key.")
-    from anthropic import Anthropic, AuthenticationError, RateLimitError
+    from anthropic import Anthropic, AuthenticationError, RateLimitError, NotFoundError, PermissionDeniedError, APITimeoutError
     try:
         # Explicit client injection bypasses every shared-key/model environment fallback.
         # Keep the destination fixed: a deployment URL override must not receive visitor keys.
@@ -43,8 +43,14 @@ def plan_with_credentials(request, credentials):
             return ClaudePlanner(model=credentials.model, client=client).plan(request)
     except AuthenticationError:
         raise ModelSetupError("Anthropic rejected your API key. Check Model settings.") from None
+    except NotFoundError:
+        raise ModelSetupError("Anthropic could not find or grant access to that model. Use an exact model ID available to your API account.") from None
+    except PermissionDeniedError:
+        raise ModelSetupError("Your Anthropic key does not have permission to use this model. Check its account and workspace permissions.") from None
     except RateLimitError:
         raise ModelSetupError("Your Anthropic account reached a rate or usage limit. Check your account and try later.") from None
+    except APITimeoutError:
+        raise ModelSetupError("Anthropic did not finish planning within 60 seconds. No investigation was started. Try a narrower question.") from None
     except PlanningError:
         raise  # Canonical planner messages contain no provider response bodies.
     except Exception:

@@ -38,6 +38,14 @@ If species is unspecified, use unknown and record the ambiguity in assumptions. 
 unanswered biological conditions as mandatory requirements; a later evaluator must
 report missing observations or prerequisites as gaps, never assume them satisfied.
 
+The entity field is a stable reference to a queried target, not a descriptive label.
+Every requirement.entity must exactly match an entry in the returned genes list or
+the explicitly supplied pathway ID. Keep that same queried symbol across species;
+species belongs in the separate species field. Never substitute a mouse ortholog name,
+add an alias, or append explanatory text to entity. Put proposed ortholog identities
+only in assumptions as unverified mappings requiring evidence; they do not establish
+cross-species comparability. Do not add those proposed identities to the gene scope.
+
 Choose endpoints that express what must actually be measured. DNA variation, RNA
 abundance, protein abundance, protein activity, cellular phenotype, and clinical outcome
 are different measurements. RNA increase alone does not establish protein activity.

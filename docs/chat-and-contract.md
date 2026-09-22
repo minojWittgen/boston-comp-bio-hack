@@ -15,7 +15,15 @@ intake model or scientific schema is maintained by the frontend.
 Include both model headers; missing settings return HTTP 422 before creating a job.
 No shared environment model key is used. Provider errors are sanitized, and credentials
 are never part of a Submission, RunState, worker argument, report or download.
-The frontend keeps the key in session memory and provides a clear-key button.
+The frontend keeps the key and model in session memory across tutorial/chat/MCP view
+switches and provides a clear-key button. A new browser session starts without a key;
+reloads and server restarts can end the session. The editable demo model default is
+`claude-opus-5-5`, verified through the supplied demo account's model listing. There is
+no automatic model fallback. Planning uses `tool_choice: auto` because some current
+models reject forced tool choice. Strict tool inputs constrain the response shape, and
+the coordinator still requires exactly one complete, validated research-plan tool result
+before collection. Provider refusals stop the request and are shown explicitly; there
+is no automatic retry, prompt change, or model switch.
 Allow up to 90 seconds for the planning request. The response is HTTP 202:
 
 ```json
@@ -25,6 +33,11 @@ Allow up to 90 seconds for the planning request. The response is HTTP 202:
 Poll the status URL at least three seconds apart. Inspect `status` separately from
 `assessment.conclusion`. `report` contains the team's Markdown result; it is also
 available from `GET /investigations/{run_id}/report`.
+
+Live pipeline records remain **background references**, not the synthetic observations
+that populate the tutorial. A live `partial / not_assessable` result with references
+means collection returned data but the requested empirical comparison lacks observations.
+The UI shows retrieved reference/observation counts separately from criteria met.
 
 ## Clarifying a question
 

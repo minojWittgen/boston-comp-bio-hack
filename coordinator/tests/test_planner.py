@@ -54,7 +54,9 @@ def test_explicit_plan_preserves_all_axes_without_provider(monkeypatch):
     assert not hasattr(plan, "criteria_met")
 
 
-def test_model_uses_one_forced_schema_call_and_preserves_explicit_scope():
+def test_model_uses_one_schema_call_without_forcing_tools_and_preserves_explicit_scope():
+    from anthropic import transform_schema
+
     request = InvestigationRequest(**request_payload())
     expected = ExplicitPlanner().plan(request)
     planner, client = model_planner(expected.model_dump())
@@ -63,10 +65,20 @@ def test_model_uses_one_forced_schema_call_and_preserves_explicit_scope():
     assert len(client.calls) == 1
     call = client.calls[0]
     assert call["model"] == "configured-test-model"
-    assert call["tools"][0]["input_schema"] == ResearchPlan.model_json_schema()
-    assert call["tool_choice"] == {"type": "tool", "name": "submit_research_plan", "disable_parallel_tool_use": True}
+    assert call["tools"][0]["input_schema"] == transform_schema(ResearchPlan)
+    assert call["tools"][0]["strict"] is True
+    assert call["tool_choice"] == {"type": "auto", "disable_parallel_tool_use": True}
     assert call["max_tokens"] == 6000
     assert json.loads(call["messages"][0]["content"])["request"] == request.model_dump()
+
+
+def test_model_cannot_substitute_an_ortholog_alias_for_a_queried_target():
+    payload = request_payload()
+    payload['requirements'][1]['entity'] = 'Erbb1 (mouse counterpart of EGFR)'
+    planner, client = model_planner(payload)
+    with pytest.raises(PlanningError, match='undeclared gene or pathway'):
+        planner.plan(InvestigationRequest(question=payload['question']))
+    assert len(client.calls) == 1
 
 
 @pytest.mark.parametrize("field,value", [
@@ -150,7 +162,7 @@ def test_malformed_model_plan_rejected(payload):
 
 
 @pytest.mark.parametrize("stop_reason,blocks", [
-    ("max_tokens", None), ("end_turn", []), ("tool_use", []),
+    ("max_tokens", None), ("refusal", []), ("end_turn", []), ("tool_use", []),
     ("tool_use", [SimpleNamespace(type="tool_use", name="other", input={})]),
     ("tool_use", [SimpleNamespace(type="tool_use", name="submit_research_plan", input={})] * 2),
 ])
