@@ -55,7 +55,7 @@ def test_cell_line_sources_keep_mixed_modality_and_fitness_as_background():
     raw = package()
     raw['sources']['hpa_cell_lines'] = source('hpa_cell_lines', {'rna_summary': 'detected', 'protein_location': ['nucleus']})
     raw['sources']['opentargets_depmap'] = source('opentargets_depmap', {'essentiality': [{'cellLine': 'example', 'score': -0.7}]})
-    raw['sources']['hpa_pathology'] = source('hpa_pathology', {'cancer_expression': {'breast cancer': 'example cohort summary'}})
+    raw['sources']['hpa_pathology'] = source('hpa_pathology', {'disease_involvement': ['breast cancer'], 'cancer_rna_specificity': 'Low cancer specificity', 'has_cancer_rna': True, 'has_disease_annotation': True})
     bundle = adapt_packages([raw])
     records = {r.source: r for r in bundle.records}
     assert not bundle.gaps

@@ -11,7 +11,9 @@ import os
 from pathlib import Path
 from typing import Callable
 
-CACHE_VERSION = "v1"
+# v2: HPA fetchers now return not_found for identifier-only rows and carry
+# has_* availability flags; bump invalidates pre-fix entries so they are re-fetched.
+CACHE_VERSION = "v2"
 CACHEABLE = {"ok", "not_found"}
 
 

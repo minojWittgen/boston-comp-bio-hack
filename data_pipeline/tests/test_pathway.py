@@ -121,6 +121,18 @@ def test_independent_sources_dedupes_shared_providers():
     assert out["providers"]["GTEx"] == ["opentargets_association", "gtex"]
 
 
+def test_cache_version_bump_invalidates_legacy_entries(tmp_path, monkeypatch):
+    """A pre-fix cached entry (old CACHE_VERSION) is not served after the bump (issue 1)."""
+    q = {"ensg": "ENSG1"}
+    legacy = S.result("hpa_pathology", "ok", q, data={})  # old empty-ok, no has_cancer_rna
+    monkeypatch.setattr(C, "CACHE_VERSION", "v1")
+    c = C.JsonCache(tmp_path)
+    c.put("hpa_pathology", q, legacy)
+    assert c.get("hpa_pathology", q) is not None          # served under v1
+    monkeypatch.setattr(C, "CACHE_VERSION", "v2")
+    assert c.get("hpa_pathology", q) is None               # miss after bump -> re-fetch
+
+
 def test_hpa_pathology_identifier_only_is_not_found(monkeypatch):
     """A matching gene row with no disease/cancer fields is not evidence (issue 2)."""
     monkeypatch.setattr(S, "http", lambda m, u, **k: [
