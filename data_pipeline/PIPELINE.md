@@ -9,28 +9,22 @@ judgments and no scores** (v3 §9): every field is a retrieved fact or an explic
 | Input | Command | Output |
 |-------|---------|--------|
 | **Gene** | `modal run app.py::main --genes MLH1,MSH2 --disease "colorectal cancer"` | per-gene evidence package |
-| **Pathway** | `modal run app.py::pathway --reactome-id R-HSA-5358508` | pathway details only — members, description, defining PMIDs, hierarchy, GO, mouse inference (fast, no gene fan-out) |
-| **Pathway (+members)** | `… --members-evidence` | + per-member gene evidence rollup by species/context (heavier) |
+| **Pathway** | `modal run app.py::pathway --reactome-id R-HSA-5358508` | pathway-level info — members, description, defining PMIDs, hierarchy, GO, mouse inference |
+
+> Optional: `--members-evidence` also fans out per-member gene evidence and aggregates
+> it by context (heavier; rarely needed — the default pathway view stays gene-fan-out-free).
 
 ## Flow
 
 ```mermaid
 flowchart TD
-    G([gene input]) --> ONE
-    RID([pathway id input]) --> RES["resolve_pathway<br/>participants + shared_participant flag"]
-    RES --> FAN
+    G([gene input]) --> ONE["build_one<br/>build_package (orthology · IMPC · GTEx · Open Targets · PubMed)<br/>+ enrich_invitro (HPA · DepMap) + HPA pathology"]
+    ONE --> GPKG([gene package JSON])
 
-    subgraph FAN ["per gene: build_one"]
-        ONE["build_package<br/>background: orthology · IMPC · GTEx · Open Targets · PubMed"]
-        ONE --> IV["enrich_invitro<br/>+ HPA cell lines + DepMap"]
-    end
-
-    RES -->|fan out over participants| FAN
-    FAN -->|gene input| GPKG([gene package JSON])
-    FAN -->|pathway input| AGG["aggregate_pathway<br/>counts only, grouped by context"]
-    RES -.->|inferred, labeled| MOUSE["infer_mouse_pathway<br/>Reactome mouse (isInferred=true)"]
-    MOUSE --> AGG
-    AGG --> PPKG([pathway package JSON])
+    RID([pathway id input]) --> PW["resolve_pathway (participants + shared_participant)<br/>+ pathway_details (description · defining PMIDs · hierarchy · GO)<br/>+ infer_mouse_pathway (labeled)"]
+    PW --> PPKG([pathway package JSON — pathway-level info, no gene fan-out])
+    PW -.->|optional: --members-evidence| FAN["fan out build_one over members →<br/>aggregate_pathway (counts by context, no scores)"]
+    FAN -.-> PPKG
 ```
 
 ## Evidence organized by context — mirrors the v3 §1/§2 boxes
@@ -90,8 +84,10 @@ its §6 evidence dimensions (role, origin, measured/inferred, species, context, 
 dependencies).
 
 ## Verified (2026-09-22)
-Live on Modal — **gene input** (`MLH1`): in-vitro/in-vivo/human-reference evidence built.
-**Pathway input** (`R-HSA-5358508`): 15 participants built in one pass; in-vitro (HPA +
-DepMap, 7 essential), in-vivo (14 mouse one2one, IMPC 5/5 phenotyped, mouse inference
-labeled), human reference (GTEx), patients = HPA cohort-level (individual variation still
-gap); 9 shared / 6 exclusive. `pytest`: 22 passed.
+Live on Modal — **gene input** (`MLH1`): in-vitro / in-vivo / human-reference evidence
+built (PubMed PMIDs surfaced as provenance). **Pathway input** (`R-HSA-5358508`, default):
+pathway-level info — 15 participants, description, 7 defining PMIDs, hierarchy
+(`Mismatch Repair > DNA Repair`), GO, mouse inference — no gene fan-out. With
+`--members-evidence`: in-vitro (HPA + DepMap, 7 essential), in-vivo (14 mouse one2one,
+IMPC 5/5), human reference (GTEx), patients HPA cohort-level; 9 shared / 6 exclusive.
+`pytest`: 29 passed.
