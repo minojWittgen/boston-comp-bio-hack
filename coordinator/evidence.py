@@ -109,6 +109,8 @@ _SPECIES = {
     "macaca_mulatta": "macaca_mulatta",
 }
 _SOURCES = ("ensembl_orthology", "gtex", "impc", "opentargets", "pubmed")
+# Optional background sources: interpreted when present, but not required (no gap if absent).
+_OPTIONAL_SOURCES = frozenset({"hpa_cell_lines", "opentargets_depmap", "hpa_pathology"})
 _LIMITS = {
     "mygene": "Identifier normalization is not an experimental observation.",
     "ensembl_orthology": "Sequence orthology does not measure expression or conserved pathway activity.",
@@ -116,6 +118,9 @@ _LIMITS = {
     "impc": "Descriptive mouse knockout phenotypes; no transcriptomic program, treatment efficacy, or patient data.",
     "opentargets": "Gene-level association scores; not source-level evidence, disease-filtered results, or causal proof.",
     "pubmed": "Search counts and identifiers only; article contents and experimental evidence were not retrieved.",
+    "hpa_cell_lines": "Cell-line RNA/protein summaries; in-vitro background, not per-replicate variation.",
+    "opentargets_depmap": "CRISPR fitness dependency across cancer cell lines; not pathway expression.",
+    "hpa_pathology": "Cohort-level cancer/disease background (TCGA-derived); no per-patient variation or matched measurements.",
 }
 
 
@@ -172,6 +177,15 @@ def _record(entity: str, source: str, value: dict, run: dict,
         metadata = {"species": "homo_sapiens", "context": "reference", "endpoint": "target_disease_association"}
     elif source == "pubmed":
         metadata = {"endpoint": "literature_search"}
+    elif source == "hpa_cell_lines":
+        metadata = {"species": "homo_sapiens", "context": "in_vitro",
+                    "endpoint": "cell_line_rna_and_protein"}
+    elif source == "opentargets_depmap":
+        metadata = {"species": "homo_sapiens", "context": "in_vitro",
+                    "endpoint": "crispr_fitness_essentiality"}
+    elif source == "hpa_pathology":
+        metadata = {"species": "homo_sapiens", "context": "patient", "modality": "RNA",
+                    "endpoint": "cancer_cohort_expression"}
     explicit = value.get("provenance", [])
     provenance = [p for p in explicit if _text(p)] if isinstance(explicit, list) else []
     return EvidenceRecord(
@@ -251,7 +265,8 @@ def adapt_packages(packages: list[dict]) -> EvidenceBundle:
             else:
                 entries.append((source, None, sources[source]))
         for source in sources.keys() - set(_SOURCES):
-            _gap(bundle, "unsupported_source", f"{source}: no scientific interpretation is defined", str(source), entity)
+            if source not in _OPTIONAL_SOURCES:
+                _gap(bundle, "unsupported_source", f"{source}: no scientific interpretation is defined", str(source), entity)
             entries.append((source, None, sources[source]))
         for source, subkey, value in entries:
             if not _source_ok(bundle, value, source, entity, subkey):
