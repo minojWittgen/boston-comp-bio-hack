@@ -269,3 +269,39 @@ def test_non_scalar_status_is_a_contract_gap_not_a_crash():
     raw = package()
     raw["sources"]["gtex"]["status"] = ["ok"]
     assert "malformed_source" in {g.code for g in adapt_packages([raw]).gaps}
+
+
+def test_pathway_package_carries_defining_pmids_as_provenance():
+    """Pathway-level study IDs: the pathway's defining PubMed refs become record provenance."""
+    pkg = {
+        "schema_version": "0.1-pathway",
+        "run": {"run_id": "r", "reactome_id": "R-HSA-5358508"},
+        "pathway": {"source": "reactome_pathway", "status": "ok", "source_version": "97",
+                    "data": {"reactome_id": "R-HSA-5358508",
+                             "genes": [{"symbol": "MLH1", "shared_participant": False}]}},
+        "pathway_details": {"source": "reactome_pathway_details", "status": "ok",
+                            "data": {"pmids": ["23572416", "16464007"], "name": "Mismatch Repair",
+                                     "hierarchy": ["Mismatch Repair", "DNA Repair"]}},
+        "mouse_inference": {"status": "ok", "data": {"inferred": True}},
+        "summary": {"n_genes": 0}, "genes": [], "missing": [],
+    }
+    bundle = adapt_packages([pkg])
+    record = next(r for r in bundle.records if r.source == "reactome_pathway")
+    assert record.level == "background"
+    assert record.provenance == ["PMID:23572416", "PMID:16464007"]
+    assert record.entity == "R-HSA-5358508"
+    # still flagged as background-only, not measured pathway activity
+    assert any(g.code == "pathway_background_only" for g in bundle.gaps)
+
+
+def test_pathway_failure_does_not_become_a_record():
+    """A failed pathway resolution is a retryable gap, not a membership record."""
+    pkg = {
+        "schema_version": "0.1-pathway",
+        "run": {"run_id": "r", "reactome_id": "R-HSA-1"},
+        "pathway": {"source": "reactome_pathway", "status": "error", "error": "boom", "data": {}},
+        "summary": {"n_genes": 0}, "genes": [], "missing": [],
+    }
+    bundle = adapt_packages([pkg])
+    assert not bundle.records
+    assert [(g.code, g.retryable) for g in bundle.gaps] == [("pathway_error", True)]
