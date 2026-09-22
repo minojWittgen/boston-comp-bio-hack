@@ -28,10 +28,10 @@ Auto-generated from `registry.py` (v3 §4.5). One row per evidence source: its c
 
 ## reactome_gene_pathways
 
-- **Purpose**: Human Reactome pathways a gene participates in (entry B: gene -> pathway).
+- **Purpose**: Which human Reactome pathways a gene is in, and what each does.
 - **Eligible inputs**: human gene symbol
-- **Output meaning**: candidate pathways (stId + name) the gene belongs to
-- **Limitations**: a gene maps to many pathways; the caller picks which to assess
+- **Output meaning**: pathways (stId + name + description) the gene participates in
+- **Limitations**: membership + description only; not a pathway-level evidence rollup
 - **Failure behavior**: not_found if the gene maps to no human pathway; error on failure
 - **Version**: Reactome ContentService (graph DB version recorded per call)
 - **Evidence** — role: background; origin: published_retrieved; measured/inferred: n/a; species: human; context: pathway_definition; modality: pathway_membership

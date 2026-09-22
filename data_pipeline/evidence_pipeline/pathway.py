@@ -111,12 +111,30 @@ def resolve_pathway(reactome_id: str, shared_ref_id: str | None = SHARED_REF_DEF
         return S.result("reactome_pathway", "error", q, error=repr(e), version=version)
 
 
-# ---------------------------------------------------------------- gene -> pathways (entry B)
-def pathways_for_gene(symbol: str) -> dict:
-    """Human Reactome pathways a gene participates in (lowest-level, most specific).
+# ---------------------------------------------------------------- gene → its pathways (+ what each does)
+def _pathway_descriptions(ids: list[str]) -> dict[str, str | None]:
+    """Batch-fetch 'what each pathway does' (Reactome summation) in one POST."""
+    if not ids:
+        return {}
+    try:
+        resp = requests.post(f"{REACTOME}/data/query/ids", data=",".join(ids),
+                             headers={"Content-Type": "text/plain",
+                                      "Accept": "application/json"}, timeout=S.TIMEOUT)
+        resp.raise_for_status()
+        out: dict[str, str | None] = {}
+        for e in resp.json():
+            summ = e.get("summation") or []
+            out[e.get("stId")] = (summ[0].get("text") if summ else None)
+        return out
+    except Exception:  # noqa: BLE001  descriptions are best-effort
+        return {}
 
-    Lets a gene symbol be the entry point: resolve the gene's pathway(s), then assess
-    one as a pathway claim. Reactome's mapping resolves the symbol to UniProt internally.
+
+def pathways_for_gene(symbol: str) -> dict:
+    """Which human Reactome pathways a gene is in, and what each pathway does.
+
+    Attached to a gene's evidence so a reader can see the gene's pathway membership
+    and a short description of each pathway (Reactome summation), fetched in one batch.
     """
     q = {"symbol": symbol}
     version = reactome_version()
@@ -127,6 +145,9 @@ def pathways_for_gene(symbol: str) -> dict:
                     for p in (d or []) if p.get("stId")]
         if not pathways:
             return S.result("reactome_gene_pathways", "not_found", q, version=version)
+        descs = _pathway_descriptions([p["stId"] for p in pathways])
+        for p in pathways:
+            p["description"] = descs.get(p["stId"])
         return S.result("reactome_gene_pathways", "ok", q, version=version,
                         data={"symbol": symbol, "n": len(pathways), "pathways": pathways})
     except Exception as e:  # noqa: BLE001
@@ -181,40 +202,13 @@ def _classify_ortholog(ortho_result: dict) -> str:
     return "no_ortholog"
 
 
-def _anchor_view(pkg: dict, resolved_genes: list[dict]) -> dict:
-    """Where the anchor gene (entry B) stands within its own program.
-
-    Same per-context evidence as the rollup, but for the one target gene, so a
-    'gene program linked to a known target' claim (v1/v3 §1) can be read directly.
-    """
-    sym = pkg["gene"].get("data", {}).get("symbol")
-    shared = next((g.get("shared_participant") for g in resolved_genes
-                   if g.get("symbol") == sym), None)
-
-    def src(name):
-        return pkg["sources"].get(name) or {}
-
-    ortho = {sp: _classify_ortholog(r)
-             for sp, r in (src("ensembl_orthology") or {}).items()}
-    dm = src("opentargets_depmap").get("data") or {}
-    return {
-        "symbol": sym,
-        "shared_participant": shared,
-        "in_vitro": {"hpa": src("hpa_cell_lines").get("status"),
-                     "depmap_essential": dm.get("isEssential")},
-        "in_vivo": {"orthology": ortho,
-                    "impc_phenotyped": (src("impc").get("data") or {}).get("phenotyped")},
-        "human_reference": {"gtex": src("gtex").get("status")}}
-
-
 def aggregate_pathway(reactome_id: str, disease: str, mode: str, run_id: str,
                       gene_packages: list[dict], pathway_result: dict,
-                      mouse_result: dict, anchor_gene: str | None = None) -> dict:
+                      mouse_result: dict) -> dict:
     """Roll up per-gene evidence packages to the pathway level.
 
     NO summed score or probability (v3 §9). Only counts, gene lists and a phenotyped
     coverage ratio. `gene_packages` are full outputs of `package.build_package`.
-    `anchor_gene` (entry B) is surfaced separately within its own program.
     """
     pkgs = [p for p in gene_packages if p]
     symbols = [p["gene"].get("data", {}).get("symbol") or p.get("_symbol") for p in pkgs]
@@ -288,23 +282,12 @@ def aggregate_pathway(reactome_id: str, disease: str, mode: str, run_id: str,
         "note": "shared = also in the reference pathway (e.g. DNA replication); "
                 "not exclusive to this pathway"}
 
-    # entry B: surface the anchor gene within its program
-    anchor = None
-    if anchor_gene:
-        ap = next((p for p in pkgs
-                   if p["gene"].get("data", {}).get("symbol", "").upper()
-                   == anchor_gene.upper()), None)
-        if ap:
-            anchor = _anchor_view(ap, resolved)
-
     return {
         "schema_version": "0.1-pathway",
         "run": {"run_id": run_id, "mode": mode, "disease_query": disease,
-                "reactome_id": reactome_id, "anchor_gene": anchor_gene,
-                "built_at": S.now()},
+                "reactome_id": reactome_id, "built_at": S.now()},
         "pathway": pathway_result,
         "mouse_inference": mouse_result,
-        "anchor": anchor,
         "genes": [s for s in symbols if s],
         "summary": {
             "n_genes": len(pkgs),

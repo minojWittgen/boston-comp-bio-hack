@@ -5,17 +5,16 @@ context-tagged evidence packages** — the factual substrate Person B's agent re
 to produce a verdict. **This layer makes no judgments and computes no scores** (v3 §9):
 every field is a retrieved fact or an explicit gap.
 
-Two levels of input:
+Two inputs:
 
-| Level | Input | Command |
-|-------|-------|---------|
-| **Gene** | gene symbols | `modal run app.py --genes MLH1,MSH2 --disease "colorectal cancer"` |
-| **Pathway A** | Reactome id | `modal run app.py::pathway --reactome-id R-HSA-5358508` |
-| **Pathway B** | gene → its pathway | `modal run app.py::pathway --gene MLH1` |
+| Input | Command | Output |
+|-------|---------|--------|
+| **Gene** | `modal run app.py::main --genes MLH1,MSH2 --disease "colorectal cancer"` | per-gene package **+ `reactome_pathways`: which pathways the gene is in and what each does** |
+| **Pathway** | `modal run app.py::pathway --reactome-id R-HSA-5358508` | pathway-level rollup over all participant genes |
 
-Pathway is the top-level unit (v3 §1/§8.2: "fix the pathway/program definition, then
-assess"). Entry B anchors on a known target gene, resolves its Reactome pathway(s), and
-surfaces that gene within its program (`anchor` block).
+Natural flow: run a **gene** → read its `reactome_pathways` (pathway membership +
+descriptions) → pick a pathway of interest → run that **pathway** id for the full rollup
+(v3 §1/§8.2: "fix the pathway/program definition, then assess").
 
 ## The three contexts (v3 §1/§2)
 
@@ -42,17 +41,18 @@ with the unmet requirement and candidate sources.
 Same computation, two entry points:
 
 ### MCP tools (`mcp_server.py`, stdio)
-- `build_evidence_package(symbol, disease, mode)` — one gene
-- `build_pathway_evidence(reactome_id | gene, disease, mode)` — one pathway
+- `build_evidence_package(symbol, disease, mode)` — one gene (includes `reactome_pathways`)
+- `build_pathway_evidence(reactome_id, disease, mode)` — one pathway
 
 ### Modal functions (deployed app `xctx-evidence`)
 - `build_one(symbol, disease, mode, run_id)` — one gene → package
-- `build_pathway(reactome_id, disease, mode, run_id, gene)` — pathway fan-out → aggregate
+- `build_pathway(reactome_id, disease, mode, run_id)` — pathway fan-out → aggregate
 
 ```python
 import modal
-modal.Function.from_name("xctx-evidence", "build_pathway").remote(
-    "", "colorectal cancer", "explore", "run1", "MLH1")   # entry B
+# one gene (package carries its pathway membership under sources.reactome_pathways)
+modal.Function.from_name("xctx-evidence", "build_one").remote(
+    "MLH1", "colorectal cancer", "explore", "run1")
 ```
 
 Packages land on Modal volume `xctx-cache` under `runs/<run_id>/`.
@@ -112,7 +112,11 @@ pytest tests/ -v                  # 23 tests, no network
 ```
 
 ## Verified (2026-09-22)
-Live end-to-end for **Mismatch Repair (R-HSA-5358508)** and via entry B (`--gene MLH1` →
-R-HSA-5358565): 14 participants built in one pass; in-vitro (HPA + DepMap, 7 essential),
-in-vivo (13/14 mouse one2one, IMPC 4/4 phenotyped, mouse inference labeled), human-reference
-(GTEx), patients marked as gap; 9 shared / 5 exclusive participants. `pytest`: 23 passed.
+Live on Modal. **Gene input** (`MLH1`): package carries `reactome_pathways` (7 pathways
+with descriptions) plus in-vitro/in-vivo/human-reference evidence. **Pathway input**
+(`R-HSA-5358508`): 15 participants built in one pass; in-vitro (HPA + DepMap, 7 essential),
+in-vivo (14 mouse one2one, IMPC 5/5 phenotyped, mouse inference labeled), human-reference
+(GTEx), patients marked as gap; 9 shared / 6 exclusive participants. `pytest`: 23 passed.
+
+`build_one`'s receipt (`path` + `package`) is unchanged, so it stays a drop-in for the
+coordinator's `ModalEvidence` provider; `reactome_pathways` rides along inside the package.

@@ -6,31 +6,34 @@ judgments and no scores** (v3 §9): every field is a retrieved fact or an explic
 
 ## Two ways in
 
-| Level | Input | Command |
-|-------|-------|---------|
-| Gene | symbols | `modal run app.py --genes MLH1,MSH2 --disease "colorectal cancer"` |
-| Pathway **A** | Reactome id | `modal run app.py::pathway --reactome-id R-HSA-5358508` |
-| Pathway **B** | gene → its pathway | `modal run app.py::pathway --gene MLH1` |
+| Input | Command | Output |
+|-------|---------|--------|
+| **Gene** | `modal run app.py::main --genes MLH1,MSH2 --disease "colorectal cancer"` | per-gene package **+ which Reactome pathways the gene is in and what each does** |
+| **Pathway** | `modal run app.py::pathway --reactome-id R-HSA-5358508` | pathway-level rollup over all participant genes |
+
+Natural flow: run a **gene** → read its `reactome_pathways` (membership + descriptions) →
+pick one you care about → run that **pathway** id for the full rollup.
 
 ## Flow
 
 ```mermaid
 flowchart TD
-    G([gene]) --> ONE
-    RID([Reactome id]) --> RES
-    GB([gene, entry B]) --> P4G["pathways_for_gene<br/>gene → its Reactome pathway(s)"]
-    P4G -->|pick first, keep alternatives| RES["resolve_pathway<br/>participants + shared_participant flag"]
+    G([gene input]) --> ONE
+    RID([pathway id input]) --> RES["resolve_pathway<br/>participants + shared_participant flag"]
     RES --> FAN
 
-    subgraph FAN ["fan out build_one over participant genes (Modal starmap)"]
-        ONE["build_package (per gene)<br/>background: orthology · IMPC · GTEx · Open Targets · PubMed"]
+    subgraph FAN ["per gene: build_one"]
+        ONE["build_package<br/>background: orthology · IMPC · GTEx · Open Targets · PubMed"]
         ONE --> IV["enrich_invitro<br/>+ HPA cell lines + DepMap"]
+        IV --> MEM["+ reactome_pathways<br/>which pathways this gene is in + what each does"]
     end
 
-    FAN --> AGG["aggregate_pathway<br/>counts only, grouped by context<br/>+ anchor gene (entry B)"]
+    RES -->|fan out over participants| FAN
+    FAN -->|gene input| GPKG([gene package JSON])
+    FAN -->|pathway input| AGG["aggregate_pathway<br/>counts only, grouped by context"]
     RES -.->|inferred, labeled| MOUSE["infer_mouse_pathway<br/>Reactome mouse (isInferred=true)"]
     MOUSE --> AGG
-    AGG --> PKG([evidence package JSON<br/>on volume xctx-cache])
+    AGG --> PPKG([pathway package JSON])
 ```
 
 ## Evidence organized by context — mirrors the v3 §1/§2 boxes
@@ -81,8 +84,9 @@ Baseline expression, HPA, and DepMap fitness are **not** association → kept in
 - **No scores** (v3 §9): pathway rollup is counts only — per-species ortholog coverage,
   IMPC phenotyped ratio, DepMap essential count, and **shared vs exclusive participants**
   (PCNA/RPA/POLD also in DNA replication → `shared_participant`; MLH1/MSH2 exclusive).
-- **anchor** (entry B): the input gene surfaced within its own program, so a
-  "known-target's program" claim is readable at a glance.
+- **Gene → pathways**: each gene package carries `reactome_pathways` (the pathways the
+  gene is in, each with a Reactome description), so a reader can jump from a gene to a
+  pathway of interest.
 
 ## Source contracts
 
@@ -92,7 +96,8 @@ its §6 evidence dimensions (role, origin, measured/inferred, species, context, 
 dependencies).
 
 ## Verified (2026-09-22)
-Live on Modal for **Mismatch Repair (R-HSA-5358508)** and entry B (`--gene MLH1` →
-R-HSA-5358565): 15 / 14 participants built in one pass; in-vitro (HPA + DepMap, 7
-essential), in-vivo (14 mouse one2one, IMPC 5/5 phenotyped, mouse inference labeled),
-human reference (GTEx), patients = explicit gap; 9 shared / 6 exclusive. `pytest`: 23 passed.
+Live on Modal — **gene input** (`MLH1`): package carries `reactome_pathways` (7 pathways
+with descriptions) alongside in-vitro/in-vivo/human-reference evidence. **Pathway input**
+(`R-HSA-5358508`): 15 participants built in one pass; in-vitro (HPA + DepMap, 7 essential),
+in-vivo (14 mouse one2one, IMPC 5/5 phenotyped, mouse inference labeled), human reference
+(GTEx), patients = explicit gap; 9 shared / 6 exclusive. `pytest`: 23 passed.

@@ -194,20 +194,15 @@ def test_aggregate_in_vitro_counts():
     assert iv["depmap"]["essential_genes"] == ["MLH1"]
 
 
-def test_aggregate_anchor_gene_surfaced():
-    """Entry B: the anchor gene is highlighted within its own program."""
-    pathway_res = S.result("reactome_pathway", "ok", {}, data={"genes": [
-        {"symbol": "MSH2", "shared_participant": False},
-        {"symbol": "PCNA", "shared_participant": True}]})
-    mouse_res = S.result("reactome_orthology", "ok", {}, data={"inferred": True})
-    pkgs = [_pkg("MSH2", "ortholog_one2one", True),
-            _pkg("PCNA", "ortholog_one2many", False)]
-    agg = PW.aggregate_pathway("R-HSA-T", "d", "explore", "r",
-                               pkgs, pathway_res, mouse_res, anchor_gene="MSH2")
-    a = agg["anchor"]
-    assert a["symbol"] == "MSH2" and a["shared_participant"] is False
-    assert a["in_vivo"]["orthology"]["mus_musculus"] == "one2one"
-    assert a["in_vivo"]["impc_phenotyped"] is True
-    # no anchor when none requested
-    assert PW.aggregate_pathway("R-HSA-T", "d", "explore", "r",
-                                pkgs, pathway_res, mouse_res)["anchor"] is None
+def test_pathways_for_gene_attaches_descriptions(monkeypatch):
+    """Gene → its pathways, each with a 'what it does' description (batched)."""
+    monkeypatch.setattr(PW, "reactome_version", lambda: "97")
+    monkeypatch.setattr(S, "http", lambda m, u, **k: [
+        {"stId": "R-HSA-5358565", "displayName": "MutSalpha"}])
+    monkeypatch.setattr(PW, "_pathway_descriptions",
+                        lambda ids: {"R-HSA-5358565": "MSH2:MSH6 binds mismatches."})
+    r = PW.pathways_for_gene("MLH1")
+    assert r["status"] == "ok"
+    p = r["data"]["pathways"][0]
+    assert p["name"] == "MutSalpha"
+    assert p["description"] == "MSH2:MSH6 binds mismatches."

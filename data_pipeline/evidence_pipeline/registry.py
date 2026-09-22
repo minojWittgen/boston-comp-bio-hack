@@ -45,10 +45,10 @@ SOURCES: dict[str, dict] = {
         "source_dependencies": ["Reactome"], "leaks_answers": False,
     },
     "reactome_gene_pathways": {
-        "purpose": "Human Reactome pathways a gene participates in (entry B: gene -> pathway).",
+        "purpose": "Which human Reactome pathways a gene is in, and what each does.",
         "eligible_inputs": "human gene symbol",
-        "output_meaning": "candidate pathways (stId + name) the gene belongs to",
-        "limitations": "a gene maps to many pathways; the caller picks which to assess",
+        "output_meaning": "pathways (stId + name + description) the gene participates in",
+        "limitations": "membership + description only; not a pathway-level evidence rollup",
         "failure_behavior": "not_found if the gene maps to no human pathway; error on failure",
         "version": "Reactome ContentService (graph DB version recorded per call)",
         "evidence_role": "background", "result_origin": "published_retrieved",
