@@ -4,8 +4,9 @@
 
 Use the system on `codex/investigation-coordinator` (currently `f7578e7`) as the
 scientific backend. Its scientific engine, planner and schemas are unchanged.
-`coordinator/api.py` has one optional submission callback so the integrated app can
-validate model-free requests before creating a job; standalone behavior is unchanged. Replace the
+`coordinator/api.py` has optional submission and read callbacks so the integrated app
+can validate requests before creating a job and serve cached tutorials through the same
+state/report routes; standalone behavior is unchanged. Replace the
 earlier frontend branch's separate numerical coordinator with thin adapters around
 this implementation. The old engine, examples and tests remain available in Git
 history at `09505fc`; they are not a second runtime option.
@@ -76,10 +77,22 @@ conversation. Cloud jobs use the team's ModalRunStore and persist each detached 
 The same `reconcile_job` implementation runs on state/report polling, so provider polling
 failures are not mistaken for biological or worker failure.
 
-The integrated API protects chat, MCP, schema and investigation routes with the same
-token; `/health` is public and does not indicate model readiness. Prefer
-`COORDINATOR_API_TOKEN`; the previous `INVESTIGATION_API_TOKEN` alias is accepted only
-when the canonical name is absent. Visitor model keys are password inputs in the
+The user requested an open tutorial and direct Claude MCP connection. The combined
+Modal deployment is now explicitly public (`api_token=""`), and no longer mounts the
+old access-code secret. Local/standalone APIs still support optional bearer-token auth.
+The public run store is `xctx-public-investigations`, separate from former team runs.
+No listing endpoint exists; knowing a public run ID permits retrieving its result.
+
+The default view is **Try the tutorial**. Its two fixture results are computed by the
+canonical coordinator, cached in process and copied per read; no API/worker is needed.
+MCP and `/demos` serve the same cached cases. A new optional canonical read callback
+allows their IDs through both state and Markdown-report routes.
+
+**Investigate with your key** exposes the existing chat and key settings. **Connect
+through MCP** supplies exact Claude Code commands and Claude app setup instructions.
+The server uses Streamable HTTP without authentication; no separate model key is needed.
+
+Visitor model keys are password inputs in the
 Streamlit session. `/chat` receives them in dedicated headers and uses them only for
 one bounded planning call; they never enter worker arguments or saved runs. The
 model setting has no environment fallback. Clearing the key prevents further chat
@@ -89,8 +102,15 @@ The SDK client is per request, uses the official Anthropic endpoint, and closes 
 planning. Never set process-wide environment variables for visitor credentials.
 The frontend refuses to send keys over non-local HTTP or follow redirects. Do not
 enable request-header logging on the API or reverse proxy. Missing settings and safe
-provider errors return HTTP 422 without creating a job. Auth remains separate from
-model billing: the owner still pays Modal/evidence compute, so retain the access gate.
+provider errors return HTTP 422 without creating a job.
+
+Public live starts share an atomic 12-slot allowance in a dedicated Modal Dict;
+exhaustion returns HTTP 429 / an MCP tool error before a worker is created. A capacity
+check before chat planning avoids charging a visitor when the allowance is already
+exhausted; a concurrent request can still take the final slot during planning. The
+fixed default window ends 2026-09-29 00:00 UTC, before the initial reservations can
+expire from seven days of inactivity. There is no automatic daily renewal. See README
+for owner overrides and limits; tutorials remain usable after the live allowance ends.
 
 ## Verified in this integration
 

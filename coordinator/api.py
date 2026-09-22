@@ -14,7 +14,8 @@ from .runtime import build_coordinator
 
 
 def create_app(coordinator=None, dispatch: Callable | None = None, api_token: str | None = None,
-               refresh: Callable | None = None, submit: Callable | None = None):
+               refresh: Callable | None = None, submit: Callable | None = None,
+               read: Callable | None = None):
     coordinator = coordinator or build_coordinator()
     token = api_token if api_token is not None else os.environ.get("COORDINATOR_API_TOKEN")
     app = FastAPI(title="Cross-context investigation coordinator", version="0.1.0")
@@ -28,6 +29,8 @@ def create_app(coordinator=None, dispatch: Callable | None = None, api_token: st
 
     def read_run(run_id: str):
         try:
+            if read:
+                return read(run_id)
             state = coordinator.store.get(run_id)
             return refresh(state) if refresh else state
         except (KeyError, ValueError):

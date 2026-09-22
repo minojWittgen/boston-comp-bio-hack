@@ -14,6 +14,7 @@ from coordinator.api import create_app as coordinator_app
 from coordinator.models import Submission
 from coordinator.planner import PlanningError
 from research_app.planning import ModelSetupError, PlanningCredentials
+from research_app.budget import RunLimitError
 from research_app.service import ChatMessage, DemoRequest, RunService
 
 
@@ -24,8 +25,13 @@ def configured_token():
 def create_app(service=None, api_token=None):
     service = service or RunService()
     token = configured_token() if api_token is None else api_token
+    def submit(submission):
+        try:
+            return service.start(submission)
+        except RunLimitError as exc:
+            raise HTTPException(429, str(exc)) from None
     app = coordinator_app(service.coordinator, dispatch=service.dispatch,
-                          api_token=token, refresh=service.refresh, submit=service.start)
+                          api_token=token, refresh=service.refresh, submit=submit, read=service.get)
     mcp = MCPServer("cross-context-investigator", instructions=
         "Start a research investigation and poll the returned run_id. Use a nested Submission with explicit "
         "research requirements, or an explicit synthetic demo request. Your host assistant frames the criteria; "
@@ -78,6 +84,8 @@ def create_app(service=None, api_token=None):
         try:
             credentials = PlanningCredentials.from_headers(request.headers)
             return service.chat(message, credentials)
+        except RunLimitError as exc:
+            raise HTTPException(429, str(exc)) from None
         except (ModelSetupError, PlanningError) as exc:
             raise HTTPException(422, str(exc)) from None
         except ValidationError as exc:
