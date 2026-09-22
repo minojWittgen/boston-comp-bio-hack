@@ -1,108 +1,98 @@
-# Evidence Pipeline — Data Flow
+# Evidence Pipeline — Data Flow (Person A)
 
-Person A's pipeline turns **one human gene symbol** into **one evidence-package JSON**
-by querying five target-knowledge sources, caching every result, and fanning the work
-out across Modal containers. The LLM coordinator never touches the network — it only
-reads the deterministic package these tools produce.
+Turns a **gene** or a **pathway** into one deterministic, **context-tagged evidence
+package** — the factual substrate Person B's coordinator reasons over. It makes **no
+judgments and no scores** (v3 §9): every field is a retrieved fact or an explicit gap.
 
-## Status contract
+## Two ways in
 
-Every source fetcher returns a `SourceResult` and **never raises**. Exactly four statuses:
+| Level | Input | Command |
+|-------|-------|---------|
+| Gene | symbols | `modal run app.py --genes MLH1,MSH2 --disease "colorectal cancer"` |
+| Pathway **A** | Reactome id | `modal run app.py::pathway --reactome-id R-HSA-5358508` |
+| Pathway **B** | gene → its pathway | `modal run app.py::pathway --gene MLH1` |
 
-| Status | Meaning | Cached? |
-|--------|---------|---------|
-| `ok` | record found | ✅ |
-| `not_found` | query succeeded, source has no record (a database fact, not a biological negative) | ✅ |
-| `error` | technical failure (network, schema drift, rate limit) | ❌ never |
-| `skipped` | disabled by mode, or an upstream step failed | n/a |
-
-## Per-gene source flow (`package.build_package`)
+## Flow
 
 ```mermaid
 flowchart TD
-    IN([symbol, disease, mode, run_id]) --> NORM["MyGene<br/>normalize_gene(symbol)"]
-    NORM -->|ok → ENSG| GATE{ensembl_primary<br/>resolved?}
-    NORM -->|error / not_found| GATE
-    GATE -->|no ENSG| SKIP["downstream sources → skipped<br/>(reason: gene normalization failed)"]
+    G([gene]) --> ONE
+    RID([Reactome id]) --> RES
+    GB([gene, entry B]) --> P4G["pathways_for_gene<br/>gene → its Reactome pathway(s)"]
+    P4G -->|pick first, keep alternatives| RES["resolve_pathway<br/>participants + shared_participant flag"]
+    RES --> FAN
 
-    GATE -->|ENSG ok| ORTHO
-    subgraph ORTHO ["Ensembl orthology — one call per species"]
-        MM["mus_musculus"]
-        RN["rattus_norvegicus"]
-        MC["macaca_mulatta"]
+    subgraph FAN ["fan out build_one over participant genes (Modal starmap)"]
+        ONE["build_package (per gene)<br/>background: orthology · IMPC · GTEx · Open Targets · PubMed"]
+        ONE --> IV["enrich_invitro<br/>+ HPA cell lines + DepMap"]
     end
 
-    MM -->|"unique one2one<br/>mouse symbol?"| IMPCGATE{exactly one<br/>one2one ortholog?}
-    IMPCGATE -->|yes| IMPC["IMPC<br/>statistical-result: phenotyped?<br/>genotype-phenotype: hits"]
-    IMPCGATE -->|no| IMPCSKIP["IMPC → skipped<br/>(no unique one2one ortholog)"]
-
-    GATE -->|ENSG ok| GTEX["GTEx v8<br/>reference/gene → gencodeId<br/>median expression by tissue"]
-    GATE -->|ENSG ok| OT["Open Targets GraphQL<br/>target + associatedDiseases"]
-    IN --> PUBMED["PubMed E-utilities<br/>esearch: symbol[tiab] AND disease"]
-
-    ORTHO --> ASM
-    IMPC --> ASM
-    IMPCSKIP --> ASM
-    GTEX --> ASM
-    OT --> ASM
-    PUBMED --> ASM
-    SKIP --> ASM
-
-    ASM["assemble package<br/>gene · sources · summary · missing"] --> OUT([evidence_package JSON])
-
-    classDef skip fill:#eee,stroke:#999,color:#666;
-    class SKIP,IMPCSKIP skip;
+    FAN --> AGG["aggregate_pathway<br/>counts only, grouped by context<br/>+ anchor gene (entry B)"]
+    RES -.->|inferred, labeled| MOUSE["infer_mouse_pathway<br/>Reactome mouse (isInferred=true)"]
+    MOUSE --> AGG
+    AGG --> PKG([evidence package JSON<br/>on volume xctx-cache])
 ```
 
-**Mode gating** — `--mode eval` disables `pubmed` and `opentargets` (both become `skipped`)
-so benchmark answers cannot leak; cross-species sources (orthology, GTEx, IMPC) stay on.
+## Evidence organized by context — mirrors the v3 §1/§2 boxes
 
-## Cache layer (`cache.JsonCache`)
-
-```mermaid
-flowchart LR
-    REQ["fetch(source, query, fn)"] --> HIT{cache hit?}
-    HIT -->|yes| RET["return cached<br/>(cache_hit=true)"]
-    HIT -->|no| CALL["call fn() → SourceResult"]
-    CALL --> STORE{status in<br/>ok / not_found?}
-    STORE -->|yes| WRITE["content-addressed write<br/>sha256(source+query+version)"]
-    STORE -->|no error| PASS["return, do NOT store<br/>(retries next run)"]
-    WRITE --> RET2["return fresh"]
-```
-
-Content-addressed by `sha256({source, query, CACHE_VERSION})`; writes are atomic
-(`tmp` + `os.replace`). Bump `CACHE_VERSION` when a fetcher's output shape changes.
-
-## Fan-out & serving (`app.py`, `mcp_server.py`)
+Tracked as **context × species × modality × individual**. Unavailable contexts stay as
+**visible gaps** (v3 §1), never dropped.
 
 ```mermaid
-flowchart TD
-    CLI["modal run app.py<br/>--genes TYK2,CD28 --disease psoriasis --mode explore"]
-    MCP["MCP tool<br/>build_evidence_package(symbol, disease, mode)"]
-
-    CLI -->|starmap over genes| FN
-    MCP -->|"Function.from_name('xctx-evidence','build_one').remote()"| FN
-
-    subgraph MODAL ["Modal app: xctx-evidence (max 8 containers)"]
-        FN["build_one(symbol, disease, mode, run_id)"]
-        FN --> BP["build_package()"]
-        BP --> VOL[("Volume xctx-cache<br/>cache/… + runs/&lt;run_id&gt;/&lt;gene&gt;.json")]
+flowchart TB
+    subgraph VITRO ["IN VITRO — cell lines / organoids"]
+        direction TB
+        V1["species: human · culture/cell-line IDs"]
+        V2["RNA — HPA cell-line nTPM (summary)"]
+        V3["protein — HPA subcellular / class"]
+        V4["functional — DepMap CRISPR fitness (isEssential, geneEffect)"]
     end
-
-    FN --> MAN["local runs/&lt;run_id&gt;/manifest.json<br/>(per-gene status + missing)"]
-    VOL --> DOWN["modal volume get xctx-cache runs/&lt;run_id&gt;"]
+    subgraph VIVO ["IN VIVO — animal models"]
+        direction TB
+        M1["species: mouse/rat/macaque · orthology type kept"]
+        M2["phenotype — IMPC (phenotyped? MP terms)"]
+        M3["pathway — Reactome mouse inference (LABELED inferred)"]
+        M4["DNA/RNA/protein — gap"]
+    end
+    subgraph PAT ["PATIENTS — human cohorts + individual variation"]
+        direction TB
+        P1["patient/specimen/time-point IDs — none"]
+        P2["DNA | RNA | protein | clinical — GAP"]
+        P3["needs GEO / CELLxGENE / GDC (download+analysis, out of scope)"]
+    end
+    HR["human reference (background): GTEx baseline · Open Targets association* · PubMed"]
+    VITRO --> PKG([context-tagged package])
+    VIVO --> PKG
+    PAT --> PKG
+    HR --> PKG
+    classDef gap fill:#fff0df,stroke:#ba8140,color:#573b1d;
+    class PAT gap;
 ```
 
-Containers `vol.reload()` before reading and `vol.commit()` after writing, so cache
-entries are shared across the fan-out. Optional `ncbi-api-key` secret raises the PubMed
-rate limit when `USE_NCBI_SECRET=1`.
+\* Open Targets **association** = disease link; skipped in `eval` mode (leaks answers).
+Baseline expression, HPA, and DepMap fitness are **not** association → kept in `eval`.
 
-## Verified end-to-end (2026-09-22)
+## Contract, independence, aggregation
 
-| Gene | explore | eval | Notes |
-|------|---------|------|-------|
-| TYK2 | all 5 sources `ok`, `missing=[]` | pubmed/opentargets `skipped` | GTEx, IMPC (24 hits), Open Targets all live |
-| CD28 | rat ortholog `not_found` (legit), rest `ok` | + pubmed/opentargets `skipped` | mouse one2one → IMPC (4 hits) |
+- **Four statuses**, never conflated: `ok` / `not_found` (a database fact, not a
+  biological negative) / `error` (never cached, retried) / `skipped`.
+- **Independence** (v3 §3): sources declare `source_dependencies`; a direct IMPC query
+  and Open Targets' IMPC-derived evidence share the `IMPC` provider and count **once**.
+- **No scores** (v3 §9): pathway rollup is counts only — per-species ortholog coverage,
+  IMPC phenotyped ratio, DepMap essential count, and **shared vs exclusive participants**
+  (PCNA/RPA/POLD also in DNA replication → `shared_participant`; MLH1/MSH2 exclusive).
+- **anchor** (entry B): the input gene surfaced within its own program, so a
+  "known-target's program" claim is readable at a glance.
 
-Both genes ran through Modal; packages landed on the `xctx-cache` volume under
-`runs/20260922T154435-explore/` and `runs/20260922T154534-eval/`.
+## Source contracts
+
+[`tools.md`](tools.md) is auto-generated from `registry.py` (v3 §4.5) — one entry per
+source with purpose, inputs, output meaning, limitations, failure behavior, version, and
+its §6 evidence dimensions (role, origin, measured/inferred, species, context, modality,
+dependencies).
+
+## Verified (2026-09-22)
+Live on Modal for **Mismatch Repair (R-HSA-5358508)** and entry B (`--gene MLH1` →
+R-HSA-5358565): 15 / 14 participants built in one pass; in-vitro (HPA + DepMap, 7
+essential), in-vivo (14 mouse one2one, IMPC 5/5 phenotyped, mouse inference labeled),
+human reference (GTEx), patients = explicit gap; 9 shared / 6 exclusive. `pytest`: 23 passed.
