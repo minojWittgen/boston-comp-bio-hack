@@ -94,7 +94,9 @@ def summarize(srcs: dict) -> dict:
                  "n_phenotype_hits": len(data(impc).get("hits", []))},
         "gtex_top_tissues": data(gtex).get("tissues", [])[:5],
         "opentargets_top_diseases": [
-            {"id": r["disease"]["id"], "name": r["disease"]["name"], "score": r["score"]}
+            {"id": r["disease"]["id"], "name": r["disease"]["name"], "score": r["score"],
+             # datasource provenance behind each association (europepmc, impc, eva, gwas...)
+             "datasources": [ds["id"] for ds in (r.get("datasourceScores") or [])]}
             for r in (data(ot).get("associatedDiseases") or {}).get("rows", [])[:5]],
         "pubmed_count": data(srcs["pubmed"]).get("count"),
     }
