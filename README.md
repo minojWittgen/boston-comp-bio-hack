@@ -12,7 +12,7 @@ not biological validation.
 
 ## Run the integrated app locally
 
-From this branch (`codex/coordinator-modal-mcp`):
+From the repository root after pulling `main`:
 
 ```bash
 python3.11 -m venv .venv

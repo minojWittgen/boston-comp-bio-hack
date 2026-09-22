@@ -29,10 +29,12 @@ tests. Keep shared schema changes in `coordinator/models.py`; update UI projecti
 needed. Preserve `coordinator/AGENTS.md` and the team's scientific limitations. There is
 no need to port changes into a second planner or checker.
 
-The newer pathway/in-vitro pipeline on `jaeeun-wittgen/data-pipeline` was inspected but
-is not merged by this frontend integration. Its new formats need the coordinator team's
-adapter review; this integration does not silently treat those background records as
-empirical observations or invent pathway membership.
+The newer pathway/in-vitro pipeline from `jaeeun-wittgen/data-pipeline` is included
+from shared `main` at `41e488d`. The coordinator remains unchanged: its adapter retains
+unknown source payloads as background and reports unsupported-source gaps. Native
+pathway-package orchestration and the new source semantics still need coordinator
+adapter work; merging the code does not promote retrieved records to observations or
+invent versioned pathway membership.
 
 ## UI semantics
 

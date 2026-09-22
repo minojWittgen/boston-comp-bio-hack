@@ -24,6 +24,7 @@ MYGENE = "https://mygene.info/v3"
 GTEX = "https://gtexportal.org/api/v2"
 IMPC = "https://www.ebi.ac.uk/mi/impc/solr"
 EUTILS = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
+HPA = "https://www.proteinatlas.org/api/search_download.php"
 
 
 def now() -> str:
@@ -203,3 +204,70 @@ def pubmed_search(symbol: str, disease: str = "", retmax: int = 20) -> dict:
         return result("pubmed", "ok", q, data={"count": count, "pmids": ids})
     except Exception as e:  # noqa: BLE001
         return result("pubmed", "error", q, error=repr(e))
+
+
+# ---------------------------------------------------------------- HPA cell lines (in vitro)
+def hpa_cell_lines(ensg: str) -> dict:
+    """Human Protein Atlas in-vitro evidence: cell-line RNA + protein (separate modalities).
+
+    RNA (modality=rna): HPA cell-line distribution and cell-line-specific nTPM (summary;
+    per-cell-line nTPM vectors need the bulk TSV, see registry limitations).
+    Protein (modality=protein): subcellular location and protein class (HPA
+    immunofluorescence in cell lines).
+    """
+    q = {"ensg": ensg}
+    cols = "g,eg,rnacld,rnaclsm,scl,scml,pc"
+    try:
+        rows = http("GET", HPA, params={"search": ensg, "format": "json",
+                                        "compress": "no", "columns": cols})
+        row = next((r for r in rows if r.get("Ensembl") == ensg), None)
+        if not row:
+            return result("hpa_cell_lines", "not_found", q, version="HPA")
+        return result("hpa_cell_lines", "ok", q, version="HPA", data={
+            "gene": row.get("Gene"),
+            "rna": {"cell_line_distribution": row.get("RNA cell line distribution"),
+                    "cell_line_specific_ntpm": row.get("RNA cell line specific nTPM")},
+            "protein": {"subcellular_location": row.get("Subcellular location"),
+                        "subcellular_main": row.get("Subcellular main location"),
+                        "protein_class": row.get("Protein class")}})
+    except Exception as e:  # noqa: BLE001
+        return result("hpa_cell_lines", "error", q, error=repr(e))
+
+
+# ---------------------------------------------------------------- Open Targets DepMap (in vitro)
+OT_DEPMAP_QUERY = """
+query D($id: String!) {
+  target(ensemblId: $id) {
+    id approvedSymbol
+    isEssential
+    depMapEssentiality {
+      tissueName
+      screens { cellLineName diseaseFromSource geneEffect expression mutation }
+    }
+  }
+}"""
+
+
+def opentargets_depmap(ensg: str) -> dict:
+    """DepMap CRISPR fitness essentiality (in vitro cell lines) via Open Targets.
+
+    This is fitness dependency, NOT disease association and NOT pathway expression, so
+    it does not leak benchmark answers and runs in eval mode too.
+    """
+    q = {"ensg": ensg}
+    try:
+        d = http("POST", OT_URL, json={"query": OT_DEPMAP_QUERY, "variables": {"id": ensg}})
+        if d.get("errors"):
+            return result("opentargets_depmap", "error", q, error=str(d["errors"]))
+        tgt = d["data"]["target"]
+        if not tgt:
+            return result("opentargets_depmap", "not_found", q)
+        ess = tgt.get("depMapEssentiality") or []
+        if tgt.get("isEssential") is None and not ess:
+            return result("opentargets_depmap", "not_found", q,
+                          data={"isEssential": None, "n_tissues": 0})
+        return result("opentargets_depmap", "ok", q, data={
+            "isEssential": tgt.get("isEssential"),
+            "n_tissues": len(ess), "tissues": ess})
+    except Exception as e:  # noqa: BLE001
+        return result("opentargets_depmap", "error", q, error=repr(e))

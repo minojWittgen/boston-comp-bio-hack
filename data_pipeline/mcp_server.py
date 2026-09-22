@@ -80,5 +80,27 @@ def read_evidence_package(path: str) -> dict:
     return package
 
 
+@server.tool(
+    description="Build a PATHWAY-level evidence package. Give EITHER a Reactome stable "
+    "id (reactome_id='R-HSA-...') to assess that pathway directly, OR a gene symbol "
+    "(gene='MLH1') to resolve the gene's Reactome pathway(s) and assess the first "
+    "(alternatives are returned). Resolves participating human genes, fans out the "
+    "per-gene pipeline, and aggregates by species/context — counts only, no summed "
+    "score (v3 §9). mode='explore' runs all sources; mode='eval' skips answer-leaking "
+    "sources (disease association, literature) but keeps baseline/fitness evidence. "
+    "Returns a receipt: reactome_id, resolved_from_gene, package path, per-context "
+    "summary, and missing."
+)
+def build_pathway_evidence(reactome_id: str = "", disease: str = "",
+                           mode: str = "explore", gene: str = "") -> dict:
+    if mode not in VALID_MODES:
+        raise ValueError(f"mode must be one of {sorted(VALID_MODES)}, got {mode!r}")
+    if not reactome_id and not gene:
+        raise ValueError("provide reactome_id='R-HSA-...' or gene='SYMBOL'")
+    run_id = dt.datetime.utcnow().strftime("%Y%m%dT%H%M%S") + f"-{mode}-pathway-mcp"
+    build_pathway = modal.Function.from_name(APP_NAME, "build_pathway")
+    return build_pathway.remote(reactome_id, disease, mode, run_id, gene)
+
+
 if __name__ == "__main__":
     server.run(transport="stdio")
