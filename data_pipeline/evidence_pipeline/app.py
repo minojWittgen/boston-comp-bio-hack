@@ -35,7 +35,7 @@ def build_one(symbol: str, disease: str, mode: str, run_id: str) -> dict:
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(pkg, indent=2))
     vol.commit()
-    return {"symbol": symbol, "path": str(out),
+    return {"symbol": symbol, "path": str(out), "package": pkg,
             "missing": [f"{m['source']}:{m['status']}" for m in pkg["missing"]]}
 
 

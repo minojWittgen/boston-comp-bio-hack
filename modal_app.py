@@ -29,13 +29,15 @@ settings = {"ANTHROPIC_MODEL": os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-
               cpu=1, memory=2048, timeout=660, max_containers=4, retries=0)
 async def run_investigation(run_id: str):
     from coordinator.engine import execute
+    from coordinator.chat import execute_chat
     from coordinator.models import InvestigationRequest
     from coordinator.providers import ClaudeReasoner, ModalEvidence
     from coordinator.service import ModalStore
     store = ModalStore()
     state = await store.get(run_id)
     request = InvestigationRequest.model_validate(state["request"])
-    final = await execute(state, store.put, ModalEvidence(), ClaudeReasoner(request.budget))
+    workflow = execute_chat if "chat" in state else execute
+    final = await workflow(state, store.put, ModalEvidence(), ClaudeReasoner(request.budget))
     await artifacts.reload.aio()
     path = Path("/artifacts") / f"{run_id}.json"
     path.write_text(json.dumps(final, indent=2, allow_nan=False))

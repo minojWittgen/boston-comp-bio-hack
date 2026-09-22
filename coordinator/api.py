@@ -8,21 +8,25 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from mcp.server import MCPServer
 
-from coordinator.models import InvestigationRequest
+from coordinator.models import InvestigationRequest, ChatSubmission
 
 
 def create_app(service, token=None):
     token = os.environ.get("INVESTIGATION_API_TOKEN", "") if token is None else token
     mcp = MCPServer("cross-context-investigator", instructions=
-        "Start a bounded biological investigation and poll its ID. Supply researcher-confirmed scientific criteria. "
-        "A needs_input result requires a new request with confirmed criteria, not invented thresholds. "
+        "Start a bounded biological investigation and poll its ID. Supply a prompt for conversational intake, "
+        "or a structured request with researcher-confirmed scientific criteria. Reply to needs_input using "
+        "a prompt plus previous_investigation_id. Never invent thresholds or measurements. "
         "Distinguish execution status from scientific findings; synthetic fixtures are not real biological evidence.")
 
     @mcp.tool(description="Start the shared coordinator in the background; returns an investigation ID immediately. "
-              "Uses the same service as POST /investigations. Research criteria are immutable after submission. "
-              "If criteria are absent or unconfirmed, the run stops as needs_input without analysis. "
+              "Pass {prompt, previous_investigation_id?} for chat, or a full InvestigationRequest for direct execution. "
+              "Uses the same service as POST /chat and POST /investigations. Criteria are frozen before execution. "
+              "Chat can explore references before criteria are available; this does not validate biological claims. "
               "Processed observations and sample maps are optional; missing contexts remain explicit gaps.", structured_output=True)
-    async def start_investigation(request: InvestigationRequest) -> dict[str, Any]:
+    async def start_investigation(request: InvestigationRequest | ChatSubmission) -> dict[str, Any]:
+        if isinstance(request, ChatSubmission):
+            return await service.start_chat(request)
         return await service.start(request)
 
     @mcp.tool(description="Get progress, action trace, checked findings, evidence and terminal status for an investigation ID. "
@@ -65,6 +69,15 @@ def create_app(service, token=None):
     @app.post("/investigations", status_code=202)
     async def start(request: InvestigationRequest):
         return await service.start(request)
+
+    @app.post("/chat", status_code=202)
+    async def chat(submission: ChatSubmission):
+        try:
+            return await service.start_chat(submission)
+        except KeyError:
+            raise HTTPException(404, "Previous investigation was not found") from None
+        except ValueError as exc:
+            raise HTTPException(409, str(exc)) from None
 
     @app.get("/investigations/{run_id}")
     async def get(run_id: str):

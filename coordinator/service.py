@@ -11,6 +11,7 @@ import uuid
 from coordinator.engine import execute, initial_state, now
 from coordinator.models import InvestigationRequest, TERMINAL
 from coordinator.providers import ClaudeReasoner, ModalEvidence
+from coordinator.chat import prepare_chat, execute_chat
 
 
 def valid_run_id(value: str) -> str:
@@ -53,9 +54,18 @@ class LocalService:
 
     async def start(self, request: InvestigationRequest):
         state = initial_state(str(uuid.uuid4()), request)
+        return await self.dispatch(state)
+
+    async def start_chat(self, submission):
+        previous = await self.get(submission.previous_investigation_id) if submission.previous_investigation_id else None
+        return await self.dispatch(prepare_chat(submission, previous))
+
+    async def dispatch(self, state):
         await self.store.put(state)
+        request = InvestigationRequest.model_validate(state["request"])
         reasoner = self.reasoner_factory(request.budget) if self.reasoner_factory else None
-        task = asyncio.create_task(execute(state, self.store.put, self.provider, reasoner))
+        workflow = execute_chat if "chat" in state else execute
+        task = asyncio.create_task(workflow(state, self.store.put, self.provider, reasoner))
         self.tasks.add(task)
         task.add_done_callback(self.tasks.discard)
         return receipt(state)
@@ -96,8 +106,15 @@ class ModalService:
         self.store = ModalStore()
 
     async def start(self, request):
-        import modal
         state = initial_state(str(uuid.uuid4()), request)
+        return await self.dispatch(state)
+
+    async def start_chat(self, submission):
+        previous = await self.get(submission.previous_investigation_id) if submission.previous_investigation_id else None
+        return await self.dispatch(prepare_chat(submission, previous))
+
+    async def dispatch(self, state):
+        import modal
         await self.store.put(state)
         try:
             worker = modal.Function.from_name(os.environ.get("COORDINATOR_APP_NAME", "xctx-research"), "run_investigation")

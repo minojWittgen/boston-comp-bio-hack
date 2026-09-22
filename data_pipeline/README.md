@@ -115,3 +115,10 @@ Ran live against all five APIs and through Modal:
 - The build tool returns a receipt; the read tool retrieves the full package body.
 - Out of scope by design: drug-response prediction and imputing missing data. Missing
   data is reported explicitly, never inferred.
+
+## Coordinator integration
+
+`build_one` returns the archived evidence JSON in a `package` field alongside its
+existing `symbol`, `path`, and `missing` receipt fields. This lets the coordinator
+consume the data without a second external object-storage transfer. Older
+receipt-only deployments remain supported by the coordinator Volume-read fallback.

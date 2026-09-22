@@ -1,19 +1,18 @@
-"""Thin frontend for the shared investigation API. All research runs on the backend."""
-import json
+"""Chat frontend. Intent extraction, contracts, model calls and tools live on the server."""
 import hmac
+import json
 import os
-from pathlib import Path
 
 import requests
 import streamlit as st
 
-from coordinator.models import InvestigationRequest, TERMINAL
+from coordinator.models import TERMINAL
 from research_app.client import InvestigationClient
 from research_app.evidence import source_rows
 
-st.set_page_config(page_title="Cross-context · Investigations", page_icon="◈", layout="wide")
+st.set_page_config(page_title="Cross-context · Research chat", page_icon="◈", layout="wide")
 st.markdown("""<style>
-.block-container {max-width: 1400px; padding-top: 4rem;}
+.block-container {max-width: 1100px; padding-top: 4rem;}
 h1 {font-family: Georgia, serif; font-weight: 500 !important; letter-spacing: -1px;}
 [data-testid="stSidebar"] {border-right: 1px solid #e1e5dc;}
 .eyebrow {color: #527064; text-transform: uppercase; font-size: .72rem; letter-spacing: .18em;}
@@ -42,83 +41,104 @@ if access_token and not st.session_state.get("authorized"):
         st.error("The access code was not accepted.")
     st.stop()
 
+api_url = setting("INVESTIGATION_API_URL", "http://127.0.0.1:8000")
+client = InvestigationClient(api_url, access_token)
+
+
+def submit(prompt, demo=False):
+    try:
+        started = client.chat(prompt, st.session_state.get("run_id"), demo=demo)
+        st.session_state.run_id = started["id"]
+        st.session_state.pop("run_snapshot", None)
+        st.rerun()
+    except requests.RequestException:
+        st.error("The research service could not accept this message. Check the connection and try again.")
+
 
 with st.sidebar:
     st.markdown("### ◈ Cross-context")
     st.caption("BIOLOGICAL INVESTIGATIONS")
     st.divider()
-    st.write("One claim. Every context.")
-    st.caption("Fixed criteria · traceable evidence · explicit uncertainty")
-    with st.expander("Connection"):
-        api_url = setting("INVESTIGATION_API_URL", "http://127.0.0.1:8000")
-        st.caption(f"Investigation API: {api_url}")
-        st.caption("The frontend and MCP call the same coordinator.")
-    if st.button("New investigation", width="stretch"):
+    st.write("One question. Every context.")
+    st.caption("In vitro · In vivo · Patients")
+    if st.button("New conversation", width="stretch"):
         st.session_state.pop("run_id", None)
         st.session_state.pop("run_snapshot", None)
         st.rerun()
+    if st.button("Try synthetic investigation", width="stretch", disabled="run_id" in st.session_state):
+        submit("Show me the synthetic investigation across all three contexts.", demo=True)
+    st.caption("The example uses fabricated measurements to demonstrate the workflow.")
+    with st.expander("Connection"):
+        st.caption(f"Investigation API: {api_url}")
+        st.caption("Chat and MCP use the same research service.")
     st.divider()
-    st.caption("Research prototype. Supported findings are conditional on the stated methods and supplied samples.")
+    st.caption("Research prototype. Conclusions remain conditional on the available evidence, methods and sample identities.")
 
-client = InvestigationClient(api_url, setting("INVESTIGATION_API_TOKEN"))
 st.markdown('<div class="eyebrow">Boston computational biology hackathon</div>', unsafe_allow_html=True)
 st.title("Follow the evidence across contexts.")
-st.write("Define a biological claim. Run the investigation. Inspect what supports it—and what remains unresolved.")
+st.write("Ask a research question. We’ll frame the investigation, collect evidence and show what remains unresolved.")
+
+
+def show_report(state):
+    report = state.get("report") or {}
+    for error in state["errors"]:
+        st.error(f"{error['stage']}: {error['reason']}")
+    if not report or state["status"] == "needs_input":
+        return
+    if "synthetic_fixture" in report.get("origins", []):
+        st.warning("Synthetic demonstration · these measurements are fabricated, not real biological evidence.")
+    if report.get("contexts"):
+        for column, (name, context) in zip(st.columns(3), report["contexts"].items()):
+            with column.container(border=True):
+                st.markdown(f"**{name.replace('_', ' ').title()}**")
+                st.write(context["finding"].replace("_", " "))
+    findings, evidence = st.tabs(["Findings", "Evidence"])
+    with findings:
+        for finding in report.get("criteria", []):
+            with st.expander(f"{finding['criterion_id']} · {finding['finding']}"):
+                st.write(finding["scope"])
+                for check in finding["checks"]:
+                    st.write(f"{'✓' if check['passed'] else '○'} {check['detail']}")
+                for calc in finding["calculations"]:
+                    st.markdown(f"**{calc['modality']}** · {calc['n_pairs']} biological pairs")
+                    st.write(f"Mean log₂ fold change: {calc['mean_log2_fold_change']:.3f}; {calc['confidence_level']:.0%} interval: {calc['interval'][0]:.3f} to {calc['interval'][1]:.3f}")
+                    st.dataframe(calc["individuals"], hide_index=True, width="stretch")
+        for note in (report.get("interpretation") or {}).get("reference_notes", []):
+            st.write(note["note"])
+            st.caption(f"Source: {note['source']} · package {note['package_run_id']}")
+        if report.get("phase") == "exploration":
+            st.info("Background evidence collected for framing. Numerical validation still needs study measurements and agreed comparison rules.")
+        for step in report.get("next_steps", []):
+            st.write(step)
+        with st.expander("Scope and limitations"):
+            for limitation in report.get("limitations", []):
+                st.write(limitation)
+            st.caption(report.get("interpretation_status", ""))
+    with evidence:
+        if report.get("observations"):
+            st.dataframe(report["observations"], hide_index=True, width="stretch")
+        for package in state["reference_packages"]:
+            st.markdown("**Retrieved background evidence**")
+            st.dataframe(source_rows(package), hide_index=True, width="stretch")
+        if not report.get("observations") and not state["reference_packages"]:
+            st.caption("No evidence collected yet.")
+    with st.expander("Investigation activity"):
+        for event in state["events"]:
+            st.write(event["detail"])
+        st.caption(f"{state['usage']['tool_calls']} tool calls · {state['usage']['model_calls']} model calls")
+    st.download_button("Download investigation and evidence", json.dumps(state, indent=2),
+                       file_name=f"investigation-{state['id']}.json", mime="application/json")
+
 
 if "run_id" not in st.session_state:
-    left, right = st.columns([1.1, 1], gap="large")
-    with left:
-        st.subheader("Start an investigation")
-        mode = st.radio("Starting point", ["Research question", "Synthetic development example"], horizontal=True)
-        fixture = json.loads((Path(__file__).parent / "examples/development-investigation.json").read_text())
-        if mode == "Synthetic development example":
-            st.warning("Synthetic measurements for demonstrating workflow behavior. This is not a biological finding or a held-out evaluation.")
-            base = fixture
-        else:
-            base = {"intent": "", "genes": [], "disease": "", "criteria": [], "criteria_confirmed": False,
-                    "observations": [], "retrieve_reference": True}
-        intent = st.text_area("Research intent", value=base["intent"], height=110, key=f"intent-{mode}")
-        uploaded = st.file_uploader("Load an investigation contract (optional)", type=["json"])
-        if uploaded:
-            try:
-                base = json.loads(uploaded.getvalue())
-            except ValueError:
-                st.error("The uploaded file is not valid JSON.")
-                st.stop()
-        with st.expander("Scientific criteria and processed measurements", expanded=bool(uploaded)):
-            st.caption("Confirm study IDs, assays, species mappings, paired samples, thresholds and limits before execution. Missing criteria produce a needs_input result.")
-            raw = st.text_area("Investigation contract JSON", value=json.dumps(base, indent=2), height=260,
-                               key=f"contract-{mode}-{uploaded.file_id if uploaded else 'none'}")
-            confirmed = st.checkbox("I confirm the scientific criteria in this contract", key=f"confirmed-{mode}")
-        if st.button("Start investigation", type="primary", width="stretch"):
-            try:
-                payload = json.loads(raw)
-                if intent.strip() and not uploaded:
-                    payload["intent"] = intent.strip()
-                payload["criteria_confirmed"] = confirmed
-                request = InvestigationRequest.model_validate(payload)
-                started = client.start(request.model_dump(mode="json"))
-                st.session_state.run_id = started["id"]
-                st.rerun()
-            except (ValueError, requests.RequestException) as exc:
-                st.error(f"Could not start: {exc}")
-    with right:
-        st.subheader("One investigation, three contexts")
-        for name, description in [
-            ("In vitro", "Cultures and organoids, with independent biological replicates."),
-            ("In vivo", "Animal measurements, measured-cell species, host species and reviewed mappings."),
-            ("Patients", "Individual subjects, matched specimens, time points and measurement differences."),
-        ]:
-            with st.container(border=True):
-                st.markdown(f"**{name}**")
-                st.write(description)
-        st.caption("Missing contexts stay visible. Retrieval records supply background; numerical comparisons need suitable measurements.")
+    with st.chat_message("assistant"):
+        st.write("What biological question are you investigating? Include the gene or target, the disease or tissue, and what you want to compare if you know it.")
+        st.caption('For example: “What evidence connects TYK2 to psoriasis across cell experiments, animal models and patients?”')
 else:
     run_id = st.session_state.run_id
-    st.caption(f"Investigation {run_id}")
 
     @st.fragment(run_every="3s")
-    def show_investigation():
+    def show_conversation():
         cached = st.session_state.get("run_snapshot")
         try:
             if cached and cached["id"] == run_id and cached["status"] in TERMINAL:
@@ -126,61 +146,30 @@ else:
             else:
                 state = client.get(run_id)
                 st.session_state.run_snapshot = state
-        except requests.RequestException as exc:
-            st.error(f"Could not read this investigation: {exc}")
+                if state["status"] in TERMINAL:
+                    st.rerun()  # Re-enable chat input after the background job stops.
+        except requests.RequestException:
+            st.error("Could not refresh this investigation. The background job may still be running.")
+            if st.button("Retry connection"):
+                st.rerun()
             return
-        st.subheader(state["request"]["intent"])
-        st.write(f"**Execution:** {state['status']} · **Stage:** {state['stage']}")
+        for message in state.get("chat", {}).get("messages", []):
+            with st.chat_message(message["role"]):
+                st.write(message["content"])
         if state["status"] not in TERMINAL:
-            st.info("The coordinator is working. Progress refreshes automatically; the job continues independently of this page.")
-        report = state.get("report") or {}
-        if state["status"] == "needs_input":
-            st.info(report["required_input"])
-        if "synthetic_fixture" in report.get("origins", []):
-            st.warning("Synthetic development data · these results demonstrate software behavior, not real biological evidence.")
-        if report.get("contexts"):
-            for column, (name, context) in zip(st.columns(3), report["contexts"].items()):
-                with column.container(border=True):
-                    st.markdown(f"**{name.replace('_', ' ').title()}**")
-                    st.write(context["finding"].replace("_", " "))
-        results, evidence, trace, contract = st.tabs(["Findings", "Evidence", "Execution trace", "Fixed criteria"])
-        with results:
-            interpretation = report.get("interpretation")
-            if interpretation:
-                st.write(interpretation["summary"])
-                st.caption("Model-assisted interpretation; structured findings and cited IDs were checked. Scientific review remains necessary.")
-                for note in interpretation.get("reference_notes", []):
-                    st.write(note["note"])
-                    st.caption(f"Source: {note['source']} · package {note['package_run_id']}")
-            for finding in report.get("criteria", []):
-                with st.expander(f"{finding['criterion_id']} · {finding['finding']}", expanded=True):
-                    st.write(finding["scope"])
-                    for check in finding["checks"]:
-                        st.write(f"{'✓' if check['passed'] else '○'} {check['detail']}")
-                    for calc in finding["calculations"]:
-                        st.markdown(f"**{calc['modality']}** · {calc['n_pairs']} biological pairs")
-                        st.write(f"Mean log₂ fold change: {calc['mean_log2_fold_change']:.3f}; {calc['confidence_level']:.0%} interval: {calc['interval'][0]:.3f} to {calc['interval'][1]:.3f}")
-                        st.dataframe(calc["individuals"], hide_index=True, width="stretch")
-            for message in report.get("limitations", []):
-                st.caption(message)
-            for error in state["errors"]:
-                st.error(f"{error['stage']}: {error['reason']}")
-        with evidence:
-            if report.get("observations"):
-                st.dataframe(report["observations"], hide_index=True, width="stretch")
-            for package in state["reference_packages"]:
-                st.markdown("**Retrieved background evidence**")
-                st.dataframe(source_rows(package), hide_index=True, width="stretch")
-                st.json(package, expanded=False)
-            if not report.get("observations") and not state["reference_packages"]:
-                st.caption("No evidence collected yet.")
-        with trace:
-            for event in state["events"]:
-                st.write(f"**{event['stage']} / {event['action']}** — {event['detail']}")
-            st.json(state["usage"])
-        with contract:
-            st.caption(f"Immutable contract SHA-256: {state['contract_hash']}")
-            st.json(state["request"], expanded=False)
-        st.download_button("Download investigation and evidence", json.dumps(state, indent=2),
-                           file_name=f"investigation-{run_id}.json", mime="application/json")
-    show_investigation()
+            stages = {"understanding_intent": "Framing your question", "collecting": "Collecting evidence",
+                      "checking": "Checking comparisons", "comparison": "Comparing contexts",
+                      "planning": "Choosing the next research step"}
+            st.info(stages.get(state["stage"], "Working on your investigation") + "…")
+        else:
+            st.caption(f"Investigation {run_id[:8]} · {state['status'].replace('_', ' ')}")
+        show_report(state)
+    show_conversation()
+
+snapshot = st.session_state.get("run_snapshot")
+pending = "run_id" in st.session_state and (not snapshot or snapshot["status"] not in TERMINAL)
+if prompt := st.chat_input("Ask a research question or reply…", disabled=pending, max_chars=4000):
+    if len(prompt.strip()) < 3:
+        st.info("Please add a little more detail to your message.")
+    else:
+        submit(prompt.strip())

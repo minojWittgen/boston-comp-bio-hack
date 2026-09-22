@@ -44,7 +44,7 @@ def validate_interpretation(value, findings, packages=()):
             raise ValueError("Model cited evidence outside the checked comparison.")
         if source["calculations"] and not item["evidence_ids"]:
             raise ValueError("Interpretation of a calculated finding must cite evidence.")
-    allowed_refs = {(p["run"]["run_id"], source) for p in packages for source in p["sources"]}
+    allowed_refs = {(p["run"]["run_id"], source) for p in packages for source in ["mygene", *p["sources"]]}
     for note in value.get("reference_notes", []):
         if (note.get("package_run_id"), note.get("source")) not in allowed_refs:
             raise ValueError("Model cited a reference source that was not retrieved.")
@@ -92,7 +92,7 @@ async def execute(state: dict, save, provider, reasoner=None) -> dict:
         nonlocal findings, observations
         state["status"] = "running"
         await checkpoint("criteria", "contract_recorded", "Inputs and scientific rules recorded before execution.", contract_hash=frozen_hash)
-        if not request.criteria or not request.criteria_confirmed:
+        if request.phase == "validation" and (not request.criteria or not request.criteria_confirmed):
             state["status"] = "needs_input"
             state["report"] = {"execution_status": "needs_input", "required_input":
                 "Supply and confirm criteria: study/context/species, assay meaning, paired comparison, biological replicates, thresholds and confidence level. Resubmit as a new investigation.",
@@ -156,6 +156,10 @@ async def execute(state: dict, save, provider, reasoner=None) -> dict:
                              findings=[{"id": f["criterion_id"], "finding": f["finding"]} for f in findings])
         await checkpoint("comparison", "numerical_checks", "Calculated paired subject-level contrasts; preserved individual results and all contexts.")
         state["report"] = make_report(request, findings, observations, reference_failures)
+        if request.phase == "exploration":
+            state["report"]["next_steps"] = [
+                "Provide study measurements and define the comparison, biological replicates, effect threshold and confidence level before numerical validation.",
+                "Keep in vitro, in vivo and patient evidence separate, with measured species, assay meaning and sample identity preserved."]
         remaining_reference = request.retrieve_reference and any(f"reference:{g}" not in attempted for g in request.genes)
         if request.reference_required and (reference_failures or remaining_reference or not state["reference_packages"]):
             state["report"]["execution_status"] = "failed" if any(f.get("status") == "error" for f in reference_failures) else "partial"
@@ -208,7 +212,7 @@ def make_report(request, findings, observations, reference_failures):
     unresolved = [f["criterion_id"] for f in findings if f["required"] and f["finding"] == "not_assessable"]
     studies = sorted({f["study_id"] for f in findings if f["calculations"]})
     return {"execution_status": "partial" if missing_contexts or unresolved else "complete",
-            "intent": request.intent, "contract_hash": request.digest(), "contexts": contexts,
+            "intent": request.intent, "phase": request.phase, "contract_hash": request.digest(), "contexts": contexts,
             "criteria": findings, "unmet_required_criteria": unresolved, "missing_contexts": missing_contexts,
             "independent_study_ids": studies, "reference_failures": reference_failures,
             "origins": sorted({o.origin for o in observations}),

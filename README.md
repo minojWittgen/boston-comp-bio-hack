@@ -19,6 +19,7 @@ commands below while it is awaiting integration into `main`.
 The coordinator, Streamlit frontend and MCP adapter share one investigation service.
 The scientific scope is in [the canonical design](cross-context-biology-agent.md);
 the implemented workflow and its limits are in [the coordinator guide](docs/coordinator.md).
+The chat flow and internal contract are documented in [chat-and-contract.md](docs/chat-and-contract.md).
 
 ```bash
 python3.11 -m venv .venv
@@ -38,8 +39,8 @@ In a second terminal, with the virtual environment activated:
 streamlit run streamlit_app.py
 ```
 
-Open the displayed local URL, choose **Synthetic development example**, expand the
-scientific criteria, confirm them, and start the investigation. The numerical
+Open the displayed local URL and click **Try synthetic investigation** in the sidebar.
+The chat interface sends the request to the backend. The numerical
 workflow executes; the report explicitly labels the data synthetic and the model
 interpretation disabled. This is a software demonstration, not a real finding or
 held-out evaluation. To run Claude locally, configure `ANTHROPIC_API_KEY` in the
@@ -72,13 +73,18 @@ a non-default Modal environment. Workspaces are selected through the Modal profi
 
 ## Use the API or MCP
 
-`POST /investigations` starts a job; `GET /investigations/{id}` returns progress and
-results. Both require a bearer token when one is configured. The complete request
+`POST /chat` accepts `{ "prompt": "your research question" }` and starts conversational
+intake. Send `previous_investigation_id` with a reply to continue. The frontend has no
+contract editor: Claude frames the intent and the server builds the internal request.
+`POST /investigations` remains available for structured integrations;
+`GET /investigations/{id}` returns progress and results for both entry points. Both require a bearer token when one is configured. The complete request
 example is [examples/development-investigation.json](examples/development-investigation.json).
-Scientific criteria are immutable after submission. Requests without confirmed
-criteria return a `needs_input` run; resubmit a new request after review.
+Scientific criteria are immutable during execution. Chat can first explore background
+evidence without numerical validation; missing comparison rules are discussed in chat.
+Structured validation requests without confirmed criteria return `needs_input`.
 
 The MCP exposes `start_investigation(request)` and `get_investigation(investigation_id)`.
+The start tool accepts a prompt object or the full structured request.
 It uses Streamable HTTP and the same bearer token. Test a real MCP connection:
 
 ```bash

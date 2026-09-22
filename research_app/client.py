@@ -16,3 +16,10 @@ class InvestigationClient:
         response = requests.get(f"{self.url}/investigations/{run_id}", headers=self.headers, timeout=15)
         response.raise_for_status()
         return response.json()
+
+    def chat(self, prompt: str, previous_investigation_id=None, demo=False) -> dict:
+        response = requests.post(f"{self.url}/chat", json={"prompt": prompt,
+                                 "previous_investigation_id": previous_investigation_id, "demo": demo},
+                                 headers=self.headers, timeout=30)
+        response.raise_for_status()
+        return response.json()

@@ -101,6 +101,7 @@ class Budget(ContractModel):
 
 class InvestigationRequest(ContractModel):
     schema_version: Literal["1.0"] = "1.0"
+    phase: Literal["validation", "exploration"] = "validation"
     intent: str = Field(min_length=3, max_length=4000)
     genes: list[str] = Field(default_factory=list, max_length=3)
     disease: str = Field(default="", max_length=200)
@@ -117,6 +118,8 @@ class InvestigationRequest(ContractModel):
     @model_validator(mode="after")
     def unique_ids(self):
         import re
+        if self.phase == "exploration" and (self.criteria or self.observations):
+            raise ValueError("Exploration cannot execute numerical criteria or measurements.")
         for values, label in (([c.id for c in self.criteria], "criterion"),
                               ([o.id for o in self.observations], "observation"),
                               ([m.id for m in self.available_sample_maps], "sample map")):
@@ -129,3 +132,19 @@ class InvestigationRequest(ContractModel):
     def digest(self) -> str:
         payload = json.dumps(self.model_dump(mode="json"), sort_keys=True, separators=(",", ":"))
         return hashlib.sha256(payload.encode()).hexdigest()
+
+
+class ChatSubmission(ContractModel):
+    prompt: str = Field(min_length=3, max_length=4000)
+    previous_investigation_id: str | None = None
+    demo: bool = False
+
+
+class IntakeDecision(ContractModel):
+    """The model may propose rules, but cannot provide observations or authorize them."""
+    intent: str = Field(min_length=3, max_length=4000)
+    genes: list[str] = Field(default_factory=list, max_length=3)
+    disease: str = Field(default="", max_length=200)
+    next_step: Literal["clarify", "explore", "propose_criteria"]
+    message: str = Field(min_length=1, max_length=2000)
+    criteria: list[Criterion] = Field(default_factory=list, max_length=3)
