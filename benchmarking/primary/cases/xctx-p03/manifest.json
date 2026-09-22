@@ -1,0 +1,38 @@
+{
+  "case_id": "xctx-p03",
+  "suite": "primary",
+  "task_file": "task.md",
+  "corpus_root": "corpus",
+  "permitted_files": [
+    "PROVENANCE.json",
+    "README_CORPUS.md",
+    "api/ensembl_homology_mus_musculus.json",
+    "api/gtex_medianGeneExpression_TYK2.json",
+    "api/impc_genotype_phenotype_Tyk2.json",
+    "api/mygene_query_TYK2.json",
+    "study_A_invitro/de_results.csv",
+    "study_A_invitro/methods.md",
+    "study_B_mouse_imq/animals.csv",
+    "study_B_mouse_imq/de_results.csv",
+    "study_B_mouse_imq/methods.md",
+    "study_C_patient_cohort/methods.md",
+    "study_C_patient_cohort/protein_npx.csv",
+    "study_C_patient_cohort/rna_log2cpm.csv",
+    "study_C_patient_cohort/specimens.csv"
+  ],
+  "deliverable_schema": "../../../schema/report.schema.json",
+  "tools": [
+    "list_files",
+    "read_file",
+    "search",
+    "python_eval",
+    "submit_report"
+  ],
+  "limits": {
+    "max_data_tool_calls": 6,
+    "max_bookkeeping_calls": 10,
+    "max_output_tokens_total": 5000,
+    "max_output_tokens_per_call": 2000,
+    "wall_clock_seconds": 90
+  }
+}

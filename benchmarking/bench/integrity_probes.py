@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Integrity probes — the review's offline attacks, each of which the harness MUST now reject.
 
-17 probes in 10 groups (15 attacks that must be rejected, 2 positive controls that must pass).
-Groups 5, 5b and 6 shell out to grade.py, so held_out/reference_answers.json must be present.
+24 probes in 11 groups, covering both suites: groups 1-10 the secondary suite, group 11 the
+primary corpus sandbox. Most assert an attack is REJECTED; a few are positive controls that
+must still succeed. Groups 5, 5b and 6 shell out to grade.py, so held_out/reference_answers.json
+must be present or the run aborts partway.
 
   python bench/integrity_probes.py        # exit 0 only if every probe is rejected
 
@@ -115,6 +117,18 @@ def main():
     from agents import build_output
     o = build_output(m, "A", 1, "timeout", None, tb, Usage("probe", m["limits"]), "deadline")
     probe("execution: timeout → not_assessable everywhere, execution_status=timeout", o["execution_status"] == "timeout" and all(a["verdict"] == "not_assessable" for a in o["axes"]))
+
+    # 11. PRIMARY suite isolation: corpus tools cannot leave the corpus; rubric is not under primary/
+    from primary_common import CorpusTools
+    pc = ROOT / "primary" / "cases" / "xctx-p03"; pm = load(pc / "manifest.json")
+    ct = CorpusTools(pm, pc, Usage("probe", {**pm["limits"], "max_data_tool_calls": 10**6, "wall_clock_seconds": 10**6}))
+    r = ct.read_file("../../../../held_out/primary_rubric.json"); probe("primary read_file: .. escape to held_out", r["status"] == "rejected")
+    r = ct.read_file(str((ROOT / "held_out" / "primary_rubric.json").resolve())); probe("primary read_file: absolute path outside corpus", r["status"] == "rejected")
+    r = ct.python_eval("f = open_corpus('../../../../held_out/primary_rubric.json')"); probe("primary python_eval: open_corpus outside corpus", r["status"] == "error")
+    r = ct.python_eval("f = open('/etc/hostname')"); probe("primary python_eval: builtin open() unavailable", r["status"] == "error")
+    r = ct.python_eval("import os"); probe("primary python_eval: import unavailable", r["status"] == "error")
+    probe("primary: no rubric/answer file inside primary/", not any("rubric" in q.name or "answer" in q.name for q in (ROOT / "primary").rglob("*")))
+    probe("primary: citation with fabricated row does not resolve", not ct.resolve_citation("study_A_invitro/de_results.csv", "row:gene=NOTAGENE") and ct.resolve_citation("study_A_invitro/de_results.csv", "row:gene=TYK2"))
 
     shutil.rmtree(batch, ignore_errors=True)
     bad = [n for n, r in results if not r]

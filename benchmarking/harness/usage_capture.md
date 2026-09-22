@@ -1,7 +1,9 @@
-# Capturing `usage` fairly across A0, A, B and C
+# Capturing `usage` fairly
 
-Updated for v2 (post-review 2026-09-22). The principle is unchanged — **sum the provider's
-`usage` object, never estimate from text** — but who does the summing changed.
+Updated for v3 (handoff 2026-09-22). Covers both suites: **primary** (`baseline` vs
+`integrated`) and **secondary** (`A0` / `A` / `B` / `C`). The principle is unchanged — **sum
+the provider's `usage` object, never estimate from text** — but who does the summing changed,
+and in the primary suite *what counts as the run* changed too.
 
 ## The harness measures, the agent does not
 
@@ -57,6 +59,30 @@ scientific row. Do not "rescue" such a run by rerunning it silently — report i
 **Do not trim B's prompt to make its numbers look better.** B's extra prompt and extra calls
 are the cost being measured. Report them as they fall.
 
+## Primary suite: measure the *whole* run
+
+The primary suite compares `baseline` (a general agent) against `integrated` (collector →
+normalization → coordinator). The fairness risk is different here: the integrated system has
+**more stages**, and it is easy to measure only the last one.
+
+- Every model call in either system goes through `common.Usage` — retrieval, extraction,
+  planning, normalization, checking and revision included. An extraction step whose tokens go
+  uncounted makes the integrated system look free.
+- `report.schema.json` has **no `usage` field at all.** The agent cannot report its own cost
+  even by accident; the harness writes `runs/<batch>/usage/<id>.json` exactly as in the
+  secondary suite, signed the same way.
+- If stages use different models, record `_system_internal.model_inventory`. A cheap model on
+  one stage and an expensive one on another is a real cost profile, not a rounding detail.
+- **Every corpus tool call costs data budget** — `list_files`, `read_file`, `search` and
+  `python_eval` all call `usage.add_tool("data")`. With `max_data_tool_calls: 6` against 15
+  permitted files, reading everything is not a viable strategy for either system. That
+  pressure is deliberate and applies equally.
+
+`bench/integrated_adapter.py` raises until the real extraction path exists. If it is not
+ready, run the secondary suite and report its narrower scope — **do not** hand the integrated
+side pre-extracted observations the baseline never got. That is the one substitution that
+would invalidate the comparison outright.
+
 ## Configuration C (the team's coordinator)
 
 C is no longer a generic external comparator; it is the team's own coordinator, wired through
@@ -91,6 +117,11 @@ Also record, for C only:
 - Whether C could read `held_out/`. It must not; probe 3b covers the `read_file` path.
 
 ## What to put in the write-up
+
+**Report the two suites separately and never pool them.** They answer different questions over
+different input boundaries; a combined pass rate is meaningless. The primary result is the
+headline; the secondary result diagnoses where a difference comes from and is never presented
+as the score of the full product.
 
 Take the numbers from `summary.json` — don't recompute them. Per configuration and case it
 reports raw counts (`passes/runs`) for `integrity`, `execution`, each `axis:<id>`, `overall`,

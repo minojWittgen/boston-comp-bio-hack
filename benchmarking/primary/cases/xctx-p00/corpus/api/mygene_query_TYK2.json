@@ -1,0 +1,17 @@
+{
+ "took": 3,
+ "total": 1,
+ "max_score": 90.1,
+ "hits": [
+  {
+   "_id": "7297",
+   "_score": 90.1,
+   "symbol": "TYK2",
+   "name": "tyrosine kinase 2",
+   "entrezgene": "7297",
+   "ensembl": {
+    "gene": "ENSG00000105397"
+   }
+  }
+ ]
+}

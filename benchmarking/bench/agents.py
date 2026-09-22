@@ -1,4 +1,4 @@
-"""Agent configurations (v2, post-review).
+"""[SECONDARY suite — component test, shared normalized observations] Agent configurations (v2, post-review).
 
   A0  no-tool baseline      : same model, same instructions + checklist (prose), no tools, one submit.
   A   tool baseline          : A0 + read_file / fetch_dataset / build_evidence_package.

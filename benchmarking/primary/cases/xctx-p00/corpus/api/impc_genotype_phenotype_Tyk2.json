@@ -1,0 +1,19 @@
+{
+ "response": {
+  "numFound": 1,
+  "docs": [
+   {
+    "marker_symbol": "Tyk2",
+    "mp_term_id": "MP:0002169",
+    "mp_term_name": "no abnormal phenotype detected",
+    "top_level_mp_term_name": [
+     "immune system phenotype"
+    ],
+    "zygosity": "homozygote",
+    "sex": "both",
+    "p_value": 1e-06,
+    "allele_symbol": "Tyk2<tm1a(EUCOMM)Wtsi>"
+   }
+  ]
+ }
+}
