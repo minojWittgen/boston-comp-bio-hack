@@ -264,15 +264,19 @@ def _adapt_pathway_package(package: dict, bundle: EvidenceBundle, seen: set[str]
     members = sorted(
         [(g.get("symbol"), g.get("shared_participant")) for g in (pdata.get("genes") or [])
          if isinstance(g, dict)], key=lambda x: str(x[0]))
+    # Real study IDs at the pathway level: the pathway's defining PubMed references.
+    pdetails = package.get("pathway_details") if isinstance(package.get("pathway_details"), dict) else {}
+    pdd = pdetails.get("data") if isinstance(pdetails.get("data"), dict) else {}
+    pmids = [f"PMID:{p}" for p in (pdd.get("pmids") or []) if _text(str(p))]
     identity = {"pathway": reactome_id, "source_version": pathway.get("source_version"),
-                "members": members, "summary": summary}
+                "members": members, "pmids": pmids, "summary": summary}
     digest = hashlib.sha256(json.dumps(identity, sort_keys=True, ensure_ascii=True,
                                        allow_nan=False, default=str).encode()).hexdigest()[:24]
     record = EvidenceRecord(
         id=f"pathway-{digest}", source="reactome_pathway", entity=reactome_id, level="background",
         context="reference", endpoint="pathway_membership_and_coverage",
         source_version=_text(pathway.get("source_version")),
-        retrieved_at=_text(pathway.get("retrieved_at")),
+        retrieved_at=_text(pathway.get("retrieved_at")), provenance=pmids,
         payload={"pathway_package": deepcopy(package),
                  "limitation": "Pathway membership and per-gene coverage counts; "
                                "not measured pathway activity or a completed comparison."})
