@@ -1,0 +1,49 @@
+# Local secrets
+.env
+.env.*
+!.env.example
+!.env.template
+*.pem
+*.key
+
+# Python and notebooks
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+.coverage
+htmlcov/
+
+# JavaScript and build outputs
+node_modules/
+.next/
+dist/
+build/
+coverage/
+
+# Local datasets and results
+data/
+outputs/
+artifacts/
+checkpoints/
+*.h5ad
+*.h5
+*.hdf5
+*.fastq
+*.fastq.gz
+*.bam
+*.cram
+*.pt
+*.pth
+*.safetensors
+
+# Local editor and OS files
+.DS_Store
+.idea/
+.vscode/
+*.log
