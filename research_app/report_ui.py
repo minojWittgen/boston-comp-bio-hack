@@ -282,6 +282,7 @@ def _show_investigation_report(state):
             view = source_view(record)
             with st.container(border=True):
                 st.markdown(f"**{view.title}**")
+                st.caption(f"{CONTEXT_LABELS.get(record.context, readable(record.context))} · {readable(record.species)} · {record.modality or 'Measurement not specified'}")
                 st.write(view.summary)
                 st.caption(view.limitation)
                 for label, url, _ in view.links[:1]:
@@ -386,11 +387,17 @@ def _show_investigation_report(state):
 
 def _show_notes(title, notes, limit=2):
     notes = list(dict.fromkeys(note.strip() for note in notes if note.strip()))
+    wording = {
+        "Research completion means source material and research gaps were accounted for, not that a molecular effect was confirmed.":
+            "Completing the source review does not confirm a biological effect.",
+        "Database measurements and summaries are usable research findings at their reported scope. The background label distinguishes them from separately supplied normalized observations; it does not mean non-empirical or unusable.":
+            "Database findings are interpreted at the level reported by each source. A summary is not automatically a comparable study measurement.",
+    }
     if not notes:
         return
     st.markdown(f"**{title}**")
     for note in notes[:limit]:
-        st.write("• " + note)
+        st.write("• " + wording.get(note, note))
     if len(notes) > limit:
         with st.expander(f"{title} · {len(notes) - limit} more"):
             for note in notes[limit:]:

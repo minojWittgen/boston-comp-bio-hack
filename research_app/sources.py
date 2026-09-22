@@ -66,6 +66,9 @@ def source_view(record):
     for i, value in enumerate(record.provenance, 1):
         if url := safe_url(value):
             view.links.append((f"Supplied source link {i}", url, "supplied"))
+        elif isinstance(value, str) and re.fullmatch(r"PMID:\d+", value):
+            pmid = value.removeprefix("PMID:")
+            view.links.append((f"Source reference · PMID {pmid}", f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/", "identifier"))
         elif isinstance(value, str) and ":" not in value:
             view.facts[f"Source reference {i}"] = value
     # These links navigate by returned identifiers. They are not paper citations or
