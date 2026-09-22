@@ -234,6 +234,32 @@ def hpa_cell_lines(ensg: str) -> dict:
         return result("hpa_cell_lines", "error", q, error=repr(e))
 
 
+# ---------------------------------------------------------------- HPA pathology (patient / disease)
+def hpa_pathology(ensg: str) -> dict:
+    """HPA cancer/disease evidence (TCGA-derived). COHORT-level, not individual variation.
+
+    Fills the patient/disease context at the same background/summary level as the other
+    sources: disease involvement and cancer RNA specificity/distribution. Per-patient
+    variation and matched measurements are NOT provided (kept as an explicit gap).
+    """
+    q = {"ensg": ensg}
+    cols = "g,eg,di,rnacas,rnacad"
+    try:
+        rows = http("GET", HPA, params={"search": ensg, "format": "json",
+                                        "compress": "no", "columns": cols})
+        row = next((r for r in rows if r.get("Ensembl") == ensg), None)
+        if not row:
+            return result("hpa_pathology", "not_found", q, version="HPA")
+        return result("hpa_pathology", "ok", q, version="HPA", data={
+            "disease_involvement": row.get("Disease involvement") or [],
+            "cancer_rna_specificity": row.get("RNA cancer specificity"),
+            "cancer_rna_distribution": row.get("RNA cancer distribution"),
+            "granularity": "cohort",
+            "individual_variation": "not resolved"})
+    except Exception as e:  # noqa: BLE001
+        return result("hpa_pathology", "error", q, error=repr(e))
+
+
 # ---------------------------------------------------------------- Open Targets DepMap (in vitro)
 OT_DEPMAP_QUERY = """
 query D($id: String!) {

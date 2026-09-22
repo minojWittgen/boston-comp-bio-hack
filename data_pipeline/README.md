@@ -25,15 +25,17 @@ contexts stay as **visible gaps**, never silently dropped (v3 §1).
 | **in vitro** | HPA cell lines, DepMap (Open Targets) | RNA, protein, CRISPR fitness | ✅ |
 | **in vivo** | Ensembl orthology, IMPC, Reactome mouse inference* | phenotype/functional, orthology | ✅ |
 | **human reference** | GTEx baseline, Open Targets association, PubMed | RNA, association, literature | ✅ |
-| **patients** | — | individual variation | ⛔ **explicit gap** |
+| **patients** | HPA pathology (TCGA), cohort-level | disease RNA (cohort) | 🟡 cohort only; individual variation **gap** |
 
 \* Reactome mouse pathway is **computationally inferred** and labeled as such — not an
 independent cross-species experiment (v3 §4.4).
 
-**Patients gap**: real per-patient/disease-cohort data (GEO / CELLxGENE Census / GDC)
-needs dataset download+analysis, out of this retrieval layer's scope. The package marks
-it explicitly (`summary.patients.status = "gap"`, `individual_variation = "not resolved"`)
-with the unmet requirement and candidate sources.
+**Patients (cohort-level)**: `hpa_pathology` adds HPA/TCGA cancer background (disease
+involvement, cancer RNA) at cohort level — same background granularity as the other
+contexts. **Per-patient variation and matched measurements stay an explicit gap**
+(`individual_variation = "not resolved"`); those need dataset analysis (GEO / CELLxGENE
+Census / NCI GDC), out of this retrieval layer's scope. Disease-linked, so skipped in
+`eval` mode.
 
 ## What Person B / Person C call
 
@@ -107,15 +109,15 @@ separately from pathway-exclusive genes like MLH1, MSH2).
 pip install -r requirements.txt
 modal setup                       # first time
 modal deploy evidence_pipeline/app.py
-pytest tests/ -v                  # 23 tests, no network
+pytest tests/ -v                  # no network
 ```
 
 ## Verified (2026-09-22)
 Live on Modal. **Gene input** (`MLH1`): in-vitro/in-vivo/human-reference evidence built.
 **Pathway input** (`R-HSA-5358508`): 15 participants built in one pass; in-vitro (HPA +
 DepMap, 7 essential), in-vivo (14 mouse one2one, IMPC 5/5 phenotyped, mouse inference
-labeled), human-reference (GTEx), patients marked as gap; 9 shared / 6 exclusive
-participants. `pytest`: 20 passed.
+labeled), human-reference (GTEx), patients = HPA cohort-level (individual variation still
+gap); 9 shared / 6 exclusive participants. `pytest`: 22 passed.
 
 ## Coordinator integration
 

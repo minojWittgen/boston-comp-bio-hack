@@ -257,17 +257,17 @@ def aggregate_pathway(reactome_id: str, disease: str, mode: str, run_id: str,
             "human_reference": {
                 "note": "GTEx baseline + Open Targets association live in each gene "
                         "package; association is skipped in eval mode"},
-            # v3 §1: an unavailable context is a VISIBLE gap with its requirement unmet
+            # patient/disease context: cohort-level background present (HPA), but the
+            # individual-variation requirement (v3 §1) stays an explicit gap.
             "patients": {
-                "status": "gap",
-                "requirement": "human patient/disease cohorts with individual variation "
-                               "(patient + specimen + time-point IDs; DNA/RNA/protein/"
-                               "functional)",
-                "why_gap": "requires dataset download/analysis, not a lightweight lookup; "
-                           "out of the target-knowledge retrieval scope (Person A)",
+                "status": "cohort_only",
+                "n_genes_with_disease_background": len(
+                    [p for p in pkgs if _src(p, "hpa_pathology").get("status") == "ok"]),
+                "source": "HPA pathology (TCGA-derived), cohort-level",
                 "individual_variation": "not resolved",
-                "candidate_sources": ["GEO", "CELLxGENE Census", "NCI GDC",
-                                      "Expression Atlas (differential)"]}},
+                "gap": "per-patient variation and matched measurements "
+                       "(patient/specimen/time-point IDs) — needs dataset analysis "
+                       "(GEO / CELLxGENE Census / NCI GDC), out of this layer's scope"}},
         "missing": _pathway_missing(pathway_result, mouse_result, pkgs),
     }
 

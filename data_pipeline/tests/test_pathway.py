@@ -121,6 +121,14 @@ def test_independent_sources_dedupes_shared_providers():
     assert out["providers"]["GTEx"] == ["opentargets_association", "gtex"]
 
 
+def test_hpa_pathology_is_patient_cohort_and_leaks_in_eval():
+    """HPA pathology fills the patient context at cohort level; disease-linked → leaks."""
+    e = R.SOURCES["hpa_pathology"]
+    assert e["context"] == "patient"
+    assert "cohort" in e["limitations"].lower()
+    assert R.eval_allows("hpa_pathology") is False  # disease-linked, skipped in eval
+
+
 def test_annotate_package_makes_dimensions_explicit():
     """Every source result carries §6 dims — including HPA/DepMap context=in_vitro."""
     pkg = {

@@ -53,11 +53,11 @@ flowchart TB
         M3["pathway — Reactome mouse inference (LABELED inferred)"]
         M4["DNA/RNA/protein — gap"]
     end
-    subgraph PAT ["PATIENTS — human cohorts + individual variation"]
+    subgraph PAT ["PATIENTS — disease cohorts (cohort-level)"]
         direction TB
-        P1["patient/specimen/time-point IDs — none"]
-        P2["DNA | RNA | protein | clinical — GAP"]
-        P3["needs GEO / CELLxGENE / GDC (download+analysis, out of scope)"]
+        P1["cohort background — HPA pathology (TCGA): disease involvement, cancer RNA"]
+        P2["individual variation (patient/specimen IDs) — GAP"]
+        P3["per-patient / matched needs GEO / CELLxGENE / GDC (out of scope)"]
     end
     HR["human reference (background): GTEx baseline · Open Targets association* · PubMed"]
     VITRO --> PKG([context-tagged package])
@@ -92,5 +92,5 @@ dependencies).
 Live on Modal — **gene input** (`MLH1`): in-vitro/in-vivo/human-reference evidence built.
 **Pathway input** (`R-HSA-5358508`): 15 participants built in one pass; in-vitro (HPA +
 DepMap, 7 essential), in-vivo (14 mouse one2one, IMPC 5/5 phenotyped, mouse inference
-labeled), human reference (GTEx), patients = explicit gap; 9 shared / 6 exclusive.
-`pytest`: 20 passed.
+labeled), human reference (GTEx), patients = HPA cohort-level (individual variation still
+gap); 9 shared / 6 exclusive. `pytest`: 22 passed.

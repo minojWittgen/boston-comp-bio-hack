@@ -122,6 +122,18 @@ Auto-generated from `registry.py` (v3 §4.5). One row per evidence source: its c
 - **Source dependencies**: DepMap, Open Targets
 - **Eval**: allowed
 
+## hpa_pathology
+
+- **Purpose**: HPA cancer/disease evidence (TCGA-derived) at the patient/disease context.
+- **Eligible inputs**: human Ensembl gene id
+- **Output meaning**: disease involvement, cancer RNA specificity/distribution
+- **Limitations**: COHORT-level summary; no per-patient variation or matched measurements
+- **Failure behavior**: not_found if gene absent; error on technical failure
+- **Version**: HPA search-api (Pathology Atlas)
+- **Evidence** — role: background; origin: published_retrieved; measured/inferred: measured; species: human; context: patient; modality: rna
+- **Source dependencies**: Human Protein Atlas, TCGA
+- **Eval**: skipped (leaks answers)
+
 ## pubmed
 
 - **Purpose**: Literature hit count for a gene (optionally AND a disease term).

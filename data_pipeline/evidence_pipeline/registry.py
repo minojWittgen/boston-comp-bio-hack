@@ -144,6 +144,19 @@ SOURCES: dict[str, dict] = {
         "source_dependencies": ["DepMap", "Open Targets"],
         "leaks_answers": False,  # fitness, not disease association -> allowed in eval
     },
+    "hpa_pathology": {
+        "purpose": "HPA cancer/disease evidence (TCGA-derived) at the patient/disease context.",
+        "eligible_inputs": "human Ensembl gene id",
+        "output_meaning": "disease involvement, cancer RNA specificity/distribution",
+        "limitations": "COHORT-level summary; no per-patient variation or matched measurements",
+        "failure_behavior": "not_found if gene absent; error on technical failure",
+        "version": "HPA search-api (Pathology Atlas)",
+        "evidence_role": "background", "result_origin": "published_retrieved",
+        "measured_vs_inferred": "measured", "species": "human",
+        "context": "patient", "modality": "rna",
+        "source_dependencies": ["Human Protein Atlas", "TCGA"],
+        "leaks_answers": True,  # disease-linked -> skipped in eval, like association
+    },
     "pubmed": {
         "purpose": "Literature hit count for a gene (optionally AND a disease term).",
         "eligible_inputs": "gene symbol + optional disease term",
@@ -185,6 +198,7 @@ _PACKAGE_SOURCE = {
     "opentargets": "opentargets_association",
     "pubmed": "pubmed",
     "opentargets_depmap": "opentargets_depmap",
+    "hpa_pathology": "hpa_pathology",
 }
 
 

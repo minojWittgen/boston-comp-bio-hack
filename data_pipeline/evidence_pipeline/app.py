@@ -28,6 +28,7 @@ secrets = [modal.Secret.from_name("ncbi-api-key")] if os.environ.get("USE_NCBI_S
               timeout=900)
 def build_one(symbol: str, disease: str, mode: str, run_id: str) -> dict:
     import registry as R
+    import sources as S
     from cache import JsonCache
     from invitro import enrich_invitro
     from package import build_package
@@ -36,6 +37,20 @@ def build_one(symbol: str, disease: str, mode: str, run_id: str) -> dict:
     cache = JsonCache(ROOT)
     pkg = build_package(symbol, disease, mode, run_id, cache)
     enrich_invitro(pkg, mode, cache)  # add in-vitro context (HPA, DepMap)
+
+    # patient/disease context: HPA cancer cohort-level background (disease-linked -> eval skips)
+    ensg = (pkg["gene"].get("data") or {}).get("ensembl_primary")
+    if mode == "eval" and not R.eval_allows("hpa_pathology"):
+        rp = S.result("hpa_pathology", "skipped", {}, error=f"disabled in {mode} mode")
+    elif not ensg:
+        rp = S.result("hpa_pathology", "skipped", {}, error="no ensembl id")
+    else:
+        rp = cache.fetch("hpa_pathology", {"ensg": ensg}, lambda: S.hpa_pathology(ensg))
+    pkg["sources"]["hpa_pathology"] = rp
+    if rp["status"] != "ok":
+        pkg["missing"].append({"source": "hpa_pathology", "sub": None,
+                               "status": rp["status"], "reason": rp.get("error")})
+
     R.annotate_package(pkg)  # make species/context/modality explicit on every source
     out = Path(ROOT) / "runs" / run_id / f"{symbol}.json"
     out.parent.mkdir(parents=True, exist_ok=True)
