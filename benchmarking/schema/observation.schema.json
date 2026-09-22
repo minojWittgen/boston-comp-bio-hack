@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "benchmarking/observation",
+  "title": "Normalized observation dataset",
+  "description": "One context dataset = one file = a list of observations sharing species/context/modality. The SAME records go to every configuration (review: shared observation normalization). Every field the coordinator's checks need is either present or explicitly null — never invented at grading time.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["dataset_id", "status", "context", "species", "modality", "provenance", "observations"],
+  "properties": {
+    "dataset_id": { "type": "string" },
+    "status": { "enum": ["available", "unavailable"], "description": "unavailable = the manifest declares this dataset but the initial delivery failed (retryable via fetch_dataset). The file then carries `unavailable_reason` and an EMPTY observations list." },
+    "unavailable_reason": { "type": ["string", "null"] },
+    "context": { "enum": ["in_vitro", "in_vivo", "patient"] },
+    "species": { "enum": ["Homo sapiens", "Mus musculus", "Rattus norvegicus", "Macaca mulatta"] },
+    "modality": { "enum": ["rna", "protein", "phenotype"] },
+    "provenance": {
+      "type": "object", "additionalProperties": false,
+      "required": ["synthetic", "origin"],
+      "properties": {
+        "synthetic": { "type": "boolean" },
+        "origin": { "type": "string", "description": "e.g. 'bench/gen_fixtures.py from spec.json' or a dataset accession" },
+        "modified_fields": { "type": "array", "items": { "type": "string" } },
+        "original_path": { "type": ["string", "null"] }
+      }
+    },
+    "observations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["observation_id", "gene", "tissue", "model_or_cohort", "contrast", "endpoint", "method", "effect"],
+        "properties": {
+          "observation_id": { "type": "string", "pattern": "^obs_[a-z0-9_]+$" },
+          "gene": { "type": "string", "description": "symbol in the observation's species (TYK2 human, Tyk2 mouse)" },
+          "tissue": { "type": "string" },
+          "model_or_cohort": { "type": "string" },
+          "contrast": {
+            "type": "object", "additionalProperties": false,
+            "required": ["name", "case", "reference"],
+            "properties": {
+              "name": { "type": "string", "description": "machine key, e.g. lesional_vs_nonlesional, treated_vs_control, imq_vs_vehicle" },
+              "case": { "type": "string" },
+              "reference": { "type": "string" },
+              "alignment_basis": { "type": ["string", "null"], "description": "why this contrast is comparable to the claim's contrast; null when none is declared" }
+            }
+          },
+          "endpoint": { "type": "string", "description": "what was measured, e.g. 'mRNA abundance, log2 CPM'" },
+          "method": { "type": "string" },
+          "effect": {
+            "type": "object", "additionalProperties": false,
+            "required": ["log2fc", "padj", "direction", "n_case", "n_reference"],
+            "properties": {
+              "log2fc": { "type": "number" }, "padj": { "type": "number" },
+              "direction": { "enum": ["up", "down", "none"] },
+              "n_case": { "type": "integer" }, "n_reference": { "type": "integer" },
+              "aggregate_of": { "type": ["string", "null"], "description": "'samples' when computed from the samples array below; null when only the aggregate is known" }
+            }
+          },
+          "samples": {
+            "type": "array",
+            "description": "Per-specimen values. participant_id, specimen_id and timepoint are DISTINCT so identity checks can tell person from specimen from visit.",
+            "items": {
+              "type": "object", "additionalProperties": false,
+              "required": ["participant_id", "specimen_id", "timepoint", "arm", "value"],
+              "properties": {
+                "participant_id": { "type": "string" }, "specimen_id": { "type": "string" },
+                "timepoint": { "type": "string" }, "arm": { "enum": ["case", "reference"] },
+                "value": { "type": "number" }
+              }
+            }
+          },
+          "cohort_summary": { "type": "object" }
+        }
+      }
+    }
+  }
+}

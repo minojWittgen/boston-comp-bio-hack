@@ -1,8 +1,16 @@
 {
+  "_note": "HARNESS-ONLY. Not in input_allowlist; read_file refuses it.",
+  "fetch_dataset": {
+    "invivo_rna": {
+      "sequence": [
+        "invivo_rna.recovered.json"
+      ]
+    }
+  },
   "build_evidence_package": {
     "{\"disease\":\"psoriasis\",\"mode\":\"eval\",\"symbol\":\"TYK2\"}": {
       "sequence": [
-        "evidence_package.recovered.json"
+        "evidence_package.json"
       ]
     },
     "default": {

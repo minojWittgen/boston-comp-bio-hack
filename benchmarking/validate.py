@@ -1,49 +1,45 @@
 #!/usr/bin/env python3
-"""Validate every case manifest and reference answer against the schemas.
-
-Placeholders (<<...>>) in `limits` are tolerated with a warning until frozen.
-Run from the xctx-eval/ directory:  python validate.py
-"""
-import json, sys, pathlib
-from jsonschema import Draft202012Validator
+"""Validate manifests (numeric + literature), observation datasets, and reference answers."""
+import json, pathlib, sys
+from jsonschema import Draft202012Validator as V
 
 ROOT = pathlib.Path(__file__).parent
 load = lambda p: json.loads(p.read_text())
-
-manifest_schema = load(ROOT / "schema/case_manifest.schema.json")
-ref_schema = load(ROOT / "schema/reference_answer.schema.json")
+MS, OS, RS = (V(load(ROOT / "schema" / f)) for f in ("case_manifest.schema.json", "observation.schema.json", "reference_answer.schema.json"))
 ok = True
+def fail(msg):
+    global ok; ok = False; print("FAIL", msg)
 
-for path in sorted((ROOT / "cases").glob("xctx-*.json")):
-    m = load(path)
-    # tolerate unfrozen limits
-    unfrozen = [k for k, v in m.get("limits", {}).items() if isinstance(v, str) and v.startswith("<<")]
-    if unfrozen:
-        print(f"WARN {path.name}: limits not frozen: {unfrozen}")
-        m["limits"] = {k: (1 if k in unfrozen else v) for k, v in m["limits"].items()}
-    if m["case_id"] != "xctx-000" and "_note" in m:
-        print(f"FAIL {path.name}: _note is only allowed on the dev example"); ok = False
-    if m["case_id"] != "xctx-000" and m["mode"] != "eval":
-        print(f"FAIL {path.name}: final cases must be mode=eval"); ok = False
-    errs = list(Draft202012Validator(manifest_schema).iter_errors(m))
-    for e in errs:
-        print(f"FAIL {path.name}: {'/'.join(map(str, e.path))}: {e.message}"); ok = False
-    if not errs:
-        print(f"ok   {path.name}")
+for mp in sorted(list((ROOT / "cases").glob("xctx-*.json")) + list((ROOT / "cases" / "lit").glob("lit-*.json"))):
+    m = load(mp); errs = list(MS.iter_errors(m))
+    for e in errs: fail(f"{mp.name}: {'/'.join(map(str, e.path))}: {e.message}")
+    if m["case_id"] != "xctx-000" and "_note" in m: fail(f"{mp.name}: _note only on dev example")
+    if m["case_id"] != "xctx-000" and m["mode"] != "eval": fail(f"{mp.name}: final cases must be eval mode")
+    allow = {(mp.parent / p).resolve() for p in m["input_allowlist"]}
+    for d in m["datasets"]:
+        p = (mp.parent / d["path"]).resolve()
+        if p not in allow: fail(f"{mp.name}: dataset {d['id']} not in input_allowlist")
+        if d["modality"] != "narrative":
+            f = load(p)
+            for e in OS.iter_errors(f): fail(f"{p.name}: {'/'.join(map(str, e.path))}: {e.message}")
+            if f["status"] != d["status"]: fail(f"{mp.name}: {d['id']} status mismatch manifest={d['status']} file={f['status']}")
+            if not f["provenance"]["synthetic"] and "synthetic" not in f["provenance"]["origin"]: pass
+            for o in f.get("observations", []):
+                if o["effect"].get("aggregate_of") == "samples" and not o.get("samples"): fail(f"{p.name}: {o['observation_id']} claims aggregate_of samples but has none")
+    for p in (mp.parent / m["evidence_package"]["path"]).resolve().parent.iterdir():
+        if p.name.endswith(("tool_stub.json", ".recovered.json", ".original.json")) and p.resolve() in allow: fail(f"{mp.name}: harness file {p.name} is in input_allowlist")
+    pkg = load((mp.parent / m["evidence_package"]["path"]).resolve())
+    if "_provenance" not in pkg: fail(f"{mp.name}: evidence package lacks _provenance")
+    elif pkg["_provenance"].get("modified_fields") and not pkg["_provenance"].get("original_path"): fail(f"{mp.name}: package modified but no original kept")
+    if not errs: print("ok  ", mp.name)
 
-ref_path = ROOT / "held_out/reference_answers.json"
-if ref_path.exists():
-    ref = load(ref_path)
-    case_ids = {p.stem for p in (ROOT / "cases").glob("xctx-*.json")}
-    for entry in ref["cases"]:
-        errs = list(Draft202012Validator(ref_schema).iter_errors(entry))
-        for e in errs:
-            print(f"FAIL reference {entry.get('case_id')}: {'/'.join(map(str, e.path))}: {e.message}"); ok = False
-        if entry["case_id"] not in case_ids:
-            print(f"FAIL reference {entry['case_id']}: no matching manifest"); ok = False
-        if not errs:
-            print(f"ok   reference {entry['case_id']} ({entry['situation']})")
+rp = ROOT / "held_out" / "reference_answers.json"
+if rp.exists():
+    ids = {p.stem for p in (ROOT / "cases").glob("xctx-*.json")}
+    for c in load(rp)["cases"]:
+        for e in RS.iter_errors(c): fail(f"reference {c['case_id']}: {'/'.join(map(str, e.path))}: {e.message}")
+        if c["case_id"] not in ids: fail(f"reference {c['case_id']}: no manifest")
+        else: print("ok   reference", c["case_id"], f"({c['situation']})")
 else:
-    print("note: held_out/ not present here (good, if the agent can read this tree)")
-
+    print("note: held_out/ absent here (correct for an agent-visible checkout)")
 sys.exit(0 if ok else 1)

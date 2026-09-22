@@ -1,15 +1,54 @@
 {
   "case_id": "xctx-002",
-  "schema_version": "1.0",
+  "schema_version": "2.0",
   "mode": "eval",
   "task": {
-    "claim": "TYK2 upregulation in IL-23-stimulated primary human keratinocytes reflects a JAK/STAT-driven state that is present in lesional skin of psoriasis patients.",
-    "instruction": "Using only the evidence package and context datasets provided (and the listed tools if you judge more evidence is needed), decide whether the in-vitro finding described in the claim is corroborated across the in-vivo and patient contexts. Return one verdict from allowed_verdicts with cited evidence, caveats, and every action you took, in the shape given by output_schema.",
-    "allowed_verdicts": [
-      "persists",
-      "partially_persists",
-      "diverges",
-      "not_comparable"
+    "claim": "TYK2 mRNA abundance is higher in IL-23-stimulated primary human keratinocytes than in vehicle-treated controls (treated vs control, 24 h). Question: does this directional increase in TYK2 mRNA also hold (a) in mouse imiquimod-induced psoriasiform skin vs vehicle skin, (b) in lesional vs non-lesional skin of psoriasis patients at the mRNA level, and (c) at the protein level within the same patients?",
+    "claim_contrast": {
+      "gene": "TYK2",
+      "endpoint": "mRNA abundance (log2 CPM)",
+      "direction": "up",
+      "origin_dataset": "invitro_rna"
+    },
+    "axes": [
+      {
+        "axis_id": "in_vitro_vs_in_vivo",
+        "question": "Does TYK2/Tyk2 mRNA change in the same direction in mouse imiquimod psoriasiform skin (IMQ vs vehicle) as in the in-vitro contrast? Declare the alignment basis (both are inflammatory psoriasis-like stimulation of keratinocyte-rich tissue) or mark not_assessable.",
+        "datasets": [
+          "invitro_rna",
+          "invivo_rna"
+        ],
+        "requires_matched_participants": false
+      },
+      {
+        "axis_id": "in_vitro_vs_patient_rna",
+        "question": "Does TYK2 mRNA change in the same direction in patient lesional vs non-lesional skin as in the in-vitro contrast?",
+        "datasets": [
+          "invitro_rna",
+          "patient_rna"
+        ],
+        "requires_matched_participants": false
+      },
+      {
+        "axis_id": "patient_rna_vs_patient_protein_within_person",
+        "question": "WITHIN THE SAME PARTICIPANTS, is the patient mRNA increase accompanied by a TYK2 protein increase (lesional vs non-lesional)? This axis requires overlapping participant_ids; without them it is not_assessable \u2014 independent-cohort agreement is a different, weaker statement and must be labelled as such.",
+        "datasets": [
+          "patient_rna",
+          "patient_prot"
+        ],
+        "requires_matched_participants": true
+      }
+    ],
+    "instruction": "Answer each axis in task.axes separately with a verdict, the observation_ids / reference keys it rests on, and the contrast-alignment basis. Then give an overall verdict consistent with the axes. Use only the provided datasets and evidence package, plus the listed tools under the stated retry policy. Report how you interpreted every non-ok reference-source status. Call submit_answer once.",
+    "checklist": [
+      "Read the in-vitro origin observation and note gene, endpoint, contrast, direction.",
+      "For each axis, read the counterpart observation(s); if a required dataset is `unavailable`, apply the retry policy (fetch_dataset once) before deciding the axis.",
+      "For each axis, state the contrast alignment basis explicitly; if none can be stated, the axis is not_assessable.",
+      "For the within-person axis, verify participant_id overlap between the two patient datasets; specimen_id and timepoint are not participant identity.",
+      "Interpret reference-source statuses structurally: not_found = database has no record; error = technical, retryable; skipped = disabled by mode or upstream. Never read any of them as a biological negative.",
+      "Use GTEx reference abundance, orthology and IMPC phenotypes as background only; they are not disease-contrast observations and do not decide an axis.",
+      "Cite every observation_id or reference key an axis verdict rests on; do not cite what you did not use.",
+      "Overall verdict must be consistent with the axes: any axis diverges \u2192 overall cannot be persists; an axis not_assessable \u2192 say so in caveats."
     ],
     "output_schema": "../schema/agent_output.schema.json"
   },
@@ -20,41 +59,68 @@
   "evidence_package": {
     "path": "../fixtures/xctx-002/evidence_package.json",
     "run_id": "gen-xctx-002",
-    "produced_by": "xctx-evidence.build_package"
+    "produced_by": "xctx-evidence.build_package",
+    "role": "reference_context"
   },
-  "context_datasets": [
+  "datasets": [
     {
       "id": "invitro_rna",
       "context": "in_vitro",
+      "species": "Homo sapiens",
       "modality": "rna",
       "path": "../fixtures/xctx-002/invitro_rna.json",
-      "description": "Bulk/pseudobulk RNA from the in-vitro model named in the claim, treated vs control."
+      "status": "available",
+      "required": true
+    },
+    {
+      "id": "invivo_rna",
+      "context": "in_vivo",
+      "species": "Mus musculus",
+      "modality": "rna",
+      "path": "../fixtures/xctx-002/invivo_rna.json",
+      "status": "available",
+      "required": true
     },
     {
       "id": "patient_rna",
       "context": "patient",
+      "species": "Homo sapiens",
       "modality": "rna",
       "path": "../fixtures/xctx-002/patient_rna.json",
-      "description": "Per-sample RNA from patient tissue, lesional vs non-lesional, with cohort summary."
+      "status": "available",
+      "required": true
     },
     {
       "id": "patient_prot",
       "context": "patient",
+      "species": "Homo sapiens",
       "modality": "protein",
       "path": "../fixtures/xctx-002/patient_prot.json",
-      "description": "Per-sample protein from patient tissue, lesional vs non-lesional, with cohort summary."
+      "status": "available",
+      "required": true
     }
+  ],
+  "input_allowlist": [
+    "../fixtures/xctx-002/evidence_package.json",
+    "../fixtures/xctx-002/invitro_rna.json",
+    "../fixtures/xctx-002/invivo_rna.json",
+    "../fixtures/xctx-002/patient_rna.json",
+    "../fixtures/xctx-002/patient_prot.json"
   ],
   "tools": {
     "available": [
       "read_file",
+      "fetch_dataset",
       "build_evidence_package"
     ],
-    "stub_responses": "../fixtures/xctx-002/tool_stub.json"
+    "stub_responses": "../fixtures/xctx-002/tool_stub.json",
+    "retry_policy": "If a dataset marked required has status `unavailable`, call fetch_dataset(dataset_id) exactly once. If a reference source in the evidence package has status `error`, you may call build_evidence_package once. `not_found` and `skipped` do not change on retry."
   },
   "limits": {
-    "max_tool_calls": 12,
-    "max_output_tokens": 4000,
-    "wall_clock_seconds": 600
+    "max_data_tool_calls": 6,
+    "max_bookkeeping_calls": 10,
+    "max_output_tokens_total": 5000,
+    "max_output_tokens_per_call": 2000,
+    "wall_clock_seconds": 90
   }
 }

@@ -1,2 +1,3 @@
 anthropic>=0.40
 jsonschema
+requests

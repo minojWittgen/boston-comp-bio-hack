@@ -1,6 +1,11 @@
 {
   "dataset_id": "narrative",
+  "status": "available",
   "context": "literature",
+  "provenance": {
+    "synthetic": false,
+    "origin": "already-interpreted findings summarised from the cited papers; tests judgment over supplied summaries, NOT reproduction from raw data"
+  },
   "gene": "DCX",
   "program": "iPSC-derived cortical neuron identity \u2014 fetal rather than adult signature",
   "axis": "in_vitro_vs_patient",

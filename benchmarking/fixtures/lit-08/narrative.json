@@ -1,6 +1,11 @@
 {
   "dataset_id": "narrative",
+  "status": "available",
   "context": "literature",
+  "provenance": {
+    "synthetic": false,
+    "origin": "already-interpreted findings summarised from the cited papers; tests judgment over supplied summaries, NOT reproduction from raw data"
+  },
   "gene": "CXCL8",
   "program": "CXCL8 (IL-8) \u2014 human chemokine with no mouse ortholog",
   "axis": "mouse_vs_human",

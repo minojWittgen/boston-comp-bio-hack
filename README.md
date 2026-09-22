@@ -18,7 +18,7 @@ The project idea and application stack are still to be decided. Setup and run in
 |---|---|
 | [`cross-context-biology-agent.md`](cross-context-biology-agent.md) | The design document — architecture, evidence dimensions, and the criteria the agent is judged against. |
 | [`data_pipeline/`](data_pipeline/README.md) | Retrieval layer. Turns a gene or pathway into a deterministic, context-tagged evidence package. Makes no judgments and computes no scores. |
-| [`benchmarking/`](benchmarking/README.md) | Evaluation layer. Blinded A/B case suite that measures whether the agent reasons correctly over those packages. |
+| [`benchmarking/`](benchmarking/README.md) | Evaluation layer. Blinded, integrity-checked case suite that measures whether an agent reasons correctly over those packages — per evidence axis, with enforced budgets. |
 
 ## Work together
 

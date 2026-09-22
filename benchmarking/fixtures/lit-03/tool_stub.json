@@ -1,4 +1,6 @@
 {
+  "_note": "HARNESS-ONLY. Not in input_allowlist; read_file refuses it.",
+  "fetch_dataset": {},
   "build_evidence_package": {
     "{\"disease\":\"\",\"mode\":\"eval\",\"symbol\":\"MYH7\"}": {
       "sequence": [

@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-"""Grade a batch of BLIND outputs, then unblind and summarise.
+"""Grade a batch (v2). Auto rows + human-confirmed rows, then unblind and summarise with RAW COUNTS.
 
-  python bench/grade.py runs/<batch>                 # auto rows + review list, then summary
-  python bench/grade.py runs/<batch> --no-unblind    # stop before opening key.json
+  python bench/grade.py runs/<batch> --no-unblind   # grade; fill `confirm` on must_detect items in scorecard.json
+  python bench/grade.py runs/<batch>                # re-grade (preserving confirms), unblind, summary.json
 
-Auto-gradable rows are decided here (verdict, citations, tool-count rules, retrieval, schema,
-limits). `must_detect` items are keyword-matched and flagged for a human to confirm; the
-scorecard records both the auto result and the reviewer's override.
+Review fixes:
+  §3  human `confirm` values persist across regrades; mandatory confirmations gate all_rows_pass;
+      status interpretation graded structurally; citations validated for exact source + resolvable locator +
+      declared support relation; execution failures get no scientific credit.
+  §4  usage read ONLY from the harness-signed copy; a tampered blind file or usage file fails `integrity`.
 """
 from __future__ import annotations
 
@@ -18,180 +20,204 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import BENCHMARK, CASES, HELD_OUT, ROOT, dump, load  # noqa: E402
+from common import BENCHMARK, CASES, HELD_OUT, SCHEMA, dump, load, sha256_file, sign  # noqa: E402
 
 try:
     from jsonschema import Draft202012Validator
-except ImportError:  # grading still works, completion row degrades to a structural check
+except ImportError:
     Draft202012Validator = None
-
-OUT_SCHEMA = load(ROOT / "schema/agent_output.schema.json")
-
-
-def text_of(o):
-    return (o.get("rationale", "") + " " + " ".join(o.get("caveats", []))).lower()
+OUT_SCHEMA = load(SCHEMA / "agent_output.schema.json")
 
 
-def cites(o, source):
-    return any(c["source"].split(".")[0] == source.split(".")[0] or c["source"] == source
-               for c in o.get("evidence_cited", []))
+# ------------------------------------------------------------------ helpers
+def resolve(obj, path: str):
+    """JSON-path-lite: a/b/0/c  or  a.b.c ; returns (found, value)"""
+    cur = obj
+    for part in re.split(r"[./]", path):
+        if part == "": continue
+        if isinstance(cur, list) and part.isdigit() and int(part) < len(cur): cur = cur[int(part)]
+        elif isinstance(cur, dict) and part in cur: cur = cur[part]
+        else: return False, None
+    return True, cur
 
 
-def kw(text, *groups):
-    """every group must match at least one of its alternatives"""
-    return all(any(re.search(alt, text) for alt in g) for g in groups)
+def case_world(cid):
+    """Everything a citation may point to for this case: datasets (initial + recovered) and package."""
+    mp = (CASES / f"{cid}.json") if (CASES / f"{cid}.json").exists() else (CASES / "lit" / f"{cid}.json")
+    m = load(mp); base = mp.parent
+    pkg = load((base / m["evidence_package"]["path"]).resolve()); fdir = (base / m["evidence_package"]["path"]).resolve().parent
+    obs, dsets = {}, {}
+    for d in m["datasets"]:
+        f = load((base / d["path"]).resolve()); dsets[d["id"]] = f
+        for o in f.get("observations", []): obs[o["observation_id"]] = o
+    stub = (base / m["tools"]["stub_responses"]).resolve()
+    if stub.exists():
+        for name, e in load(stub).get("fetch_dataset", {}).items():
+            for fn in e["sequence"]:
+                for o in load(fdir / fn).get("observations", []): obs[o["observation_id"]] = o
+    refs = {"gtex", "impc", "mygene", "opentargets", "pubmed"} | {f"ensembl_orthology.{s}" for s in ("mus_musculus", "rattus_norvegicus", "macaca_mulatta")}
+    return m, pkg, obs, dsets, refs
 
 
-def validate_schema(o, limits):
-    errs = []
-    if Draft202012Validator:
-        chk = dict(o); chk["configuration"] = "A"  # blind placeholder
-        errs = [e.message for e in Draft202012Validator(OUT_SCHEMA).iter_errors(chk)]
-    else:
-        errs = [k for k in OUT_SCHEMA["required"] if k not in o]
-    u = o["usage"]
-    if u["tool_calls"] > limits["max_tool_calls"]:
-        errs.append("max_tool_calls exceeded")
-    if u["wall_clock_s"] > limits["wall_clock_seconds"]:
-        errs.append("wall_clock exceeded")
-    if u.get("network_calls", 0) > 0:
-        errs.append("live network calls made")
-    return errs
+def locator_resolves(loc, src, pkg, obs, dsets):
+    if src in obs:
+        if loc == src: return True
+        return resolve(obs[src], loc[len(src) + 1:])[0] if loc.startswith(src + "/") else resolve(obs[src], loc)[0]
+    if src in dsets:
+        return loc == src or resolve(dsets[src], loc)[0]
+    # reference key
+    key = src.split(".")
+    node = pkg["sources"].get(key[0]) if key[0] != "mygene" else pkg["gene"]
+    if node is None: return False
+    if len(key) > 1: node = node.get(key[1]) if isinstance(node, dict) else None
+    if node is None: return False
+    loc2 = re.sub(r"^sources\.?" + re.escape(src) + r"[./]?", "", loc)
+    return loc2 == "" or resolve(node, loc2)[0]
 
 
-# ------------------------------------------------------------------ xctx cases
-def grade_xctx(o, ref, limits):
+# ------------------------------------------------------------------ grading one run
+def grade_run(o, ref, m, pkg, obs, dsets, refs, usage_ok, usage, integrity_ok, prior_review):
     rows, review = {}, []
-    t = text_of(o)
-    sit = ref["situation"]
-    ok_verdict = o["verdict"] in ref["accepted_verdicts"]
+    executed = o["execution_status"] == "completed"
+    # execution & integrity
+    rows["integrity"] = (integrity_ok, "" if integrity_ok else "blind file or usage record altered / unsigned")
+    lim = m["limits"]; over = []
+    if usage:
+        if usage["output_tokens"] > lim["max_output_tokens_total"]: over.append("output tokens over cumulative limit")
+        if usage["data_tool_calls"] > lim["max_data_tool_calls"]: over.append("data-tool calls over limit")
+        if usage["bookkeeping_calls"] > lim["max_bookkeeping_calls"]: over.append("bookkeeping calls over limit")
+        if usage["wall_clock_s"] > lim["wall_clock_seconds"]: over.append("wall clock over deadline")
+        if usage["network_calls"] > 0: over.append("live network calls")
+    errs = [e.message for e in Draft202012Validator(OUT_SCHEMA).iter_errors({**o, "configuration": "A", "usage": usage or {}})] if (Draft202012Validator and usage) else []
+    rows["execution"] = (executed and usage_ok and not over and not errs, "; ".join(([] if executed else [f"execution_status={o['execution_status']}"]) + over + errs[:3]))
+    if not executed:
+        for ax in ref["expected_axes"]: rows[f"axis:{ax}"] = (False, "no completed answer")
+        for r in ("overall", "unsupported_corroboration", "citation_validity", "status_interpretation", "required_actions"): rows[r] = (False, "no completed answer")
+        return rows, review
 
-    # conclusion
-    if sit == "invalid_patient_pairing":
-        tie = kw(t, [r"patient[_ ]id", r"disjoint", r"different patients", r"not the same patients", r"pairing"])
-        rows["conclusion"] = (ok_verdict and tie, "verdict ok" if ok_verdict else f"verdict={o['verdict']}" + ("" if tie else "; rationale does not tie to pairing"))
-    else:
-        rows["conclusion"] = (ok_verdict, "" if ok_verdict else f"verdict={o['verdict']} not in {ref['accepted_verdicts']}")
-
-    # evidence: must_cite + must_not
-    missing = [c["source"] for c in ref["must_cite"] if not cites(o, c["source"])]
-    viol = []
-    n_build = sum(1 for a in o["actions_taken"] if a["tool"] == "build_evidence_package")
-    if sit == "recoverable_missing_then_disagreement" and n_build > 2:
-        viol.append("build_evidence_package called >2 times")
-    if sit == "invalid_patient_pairing":
-        if o["verdict"] == "persists":
-            viol.append("reported persists despite invalid pairing")
-        if any("cohort_summary" in c["locator"] and c["supports"] == "comparability_check" for c in o["evidence_cited"]):
-            viol.append("cited cohort_summary as evidence cohorts are the same")
-    if sit == "recoverable_missing_then_disagreement" and o["verdict"] == "persists":
-        viol.append("persists while mandatory source was error / contradicting")
-    if kw(t, [r"not_found.*(negative|absent|no expression|not expressed)"]):
-        viol.append("treated not_found as biological negative")
-    rows["evidence"] = (not missing and not viol, "; ".join((["missing cites: " + ", ".join(missing)] if missing else []) + viol))
-
-    # completion
-    errs = validate_schema(o, limits)
-    rows["completion"] = (not errs, "; ".join(errs))
-
-    # case-3 extra rows
-    if sit == "recoverable_missing_then_disagreement":
-        retr = any(a["tool"] == "build_evidence_package" and a["args"].get("mode") == "eval"
-                   and a["result_status"] == "ok" for a in o["actions_taken"]) and cites(o, "gtex")
-        rows["retrieval"] = (retr, "" if retr else "no successful eval-mode re-run cited")
-        rep = kw(t, [r"gtex"], [r"contradict", r"disagree", r"not expressed", r"against", r"low.*(skin|tissue)", r"tpm\s*=?\s*0"])
-        rows["reporting_after_recovery"] = (rep, "" if rep else "recovered gtex disagreement not reported")
-
-    # must_detect: keyword-assisted, human-confirmed
+    axes = {a["axis_id"]: a for a in o["axes"]}
+    # per-axis
+    unsupported = []
+    for ax, exp in ref["expected_axes"].items():
+        a = axes.get(ax)
+        if a is None: rows[f"axis:{ax}"] = (False, "axis missing"); unsupported.append(f"{ax} missing"); continue
+        ok = a["verdict"] in exp["accepted_verdicts"] and a["verdict"] not in exp.get("forbidden_verdicts", [])
+        need = set(exp["required_evidence"]); have = set(a["evidence"])
+        why = []
+        if not ok: why.append(f"verdict={a['verdict']}")
+        if a["verdict"] != "not_assessable":
+            if not need <= have: why.append(f"missing required evidence {sorted(need - have)}"); unsupported.append(f"{ax}: {a['verdict']} without {sorted(need - have)}")
+            if not a.get("contrast_alignment"): why.append("no contrast_alignment"); unsupported.append(f"{ax}: verdict without alignment basis")
+            bad = [e for e in have if e not in obs and e not in refs and e not in dsets]
+            if bad: why.append(f"unknown evidence {bad}"); unsupported.append(f"{ax}: unknown evidence {bad}")
+        if a["verdict"] in exp.get("forbidden_verdicts", []): unsupported.append(f"{ax}: forbidden verdict {a['verdict']}")
+        rows[f"axis:{ax}"] = (ok and not why, "; ".join(why))
+    # overall
+    ov = o["overall"]["verdict"]
+    cons = not (ov == "persists" and any(a["verdict"] == "diverges" for a in axes.values()))
+    rows["overall"] = (ov in ref["accepted_overall"] and cons, "" if ov in ref["accepted_overall"] and cons else f"overall={ov}" + ("" if cons else " while an axis diverges"))
+    if not cons: unsupported.append("overall persists while an axis diverges")
+    rows["unsupported_corroboration"] = (not unsupported, "; ".join(unsupported))
+    # citations
+    cite_probs = []
+    for c in o["evidence_cited"]:
+        if c["source"] not in obs and c["source"] not in refs and c["source"] not in dsets: cite_probs.append(f"unknown source {c['source']}"); continue
+        if not locator_resolves(c["locator"], c["source"], pkg, obs, dsets): cite_probs.append(f"locator does not resolve: {c['source']} @ {c['locator']}")
+        if c["source"] in refs and c["supports"] in ("claim", "against_claim"): cite_probs.append(f"reference source {c['source']} cited as {c['supports']} (reference data is background)")
+        if c["source"] in obs and c["supports"] in ("claim", "against_claim"):
+            d = obs[c["source"]]["effect"]["direction"]; want = m["task"]["claim_contrast"]["direction"]
+            if (c["supports"] == "claim") != (d == want): cite_probs.append(f"{c['source']} direction {d} cited as {c['supports']}")
+    for mc in ref["must_cite"]:
+        if not any(c["source"] == mc["source"] for c in o["evidence_cited"]): cite_probs.append(f"must_cite missing: {mc['source']}")
+    rows["citation_validity"] = (not cite_probs, "; ".join(cite_probs))
+    # status interpretation (structural)
+    si = o["status_interpretation"]; sp = []
+    for k, v in ref["status_interpretation_expected"].items():
+        if si.get(k) != v: sp.append(f"{k}: got {si.get(k)}, expected {v}")
+    if any(v == "biological_negative" for v in si.values()): sp.append("biological_negative used")
+    rows["status_interpretation"] = (not sp, "; ".join(sp))
+    # required / bounded actions
+    ap = []
+    for ra in ref["required_actions"]:
+        n = sum(1 for a in o["actions_taken"] if a["tool"] == ra["tool"] and all(a["args"].get(k) == v for k, v in ra["args_subset"].items()))
+        if n < ra.get("min_calls", 0): ap.append(f"{ra['tool']}{ra['args_subset']} called {n} < {ra['min_calls']}")
+        if n > ra["max_calls"]: ap.append(f"{ra['tool']}{ra['args_subset']} called {n} > {ra['max_calls']}")
+    rows["required_actions"] = (not ap, "; ".join(ap))
+    # must_detect (keyword-assisted, human-confirmed, confirms preserved)
+    text = (o["overall"]["rationale"] + " " + " ".join(o["caveats"]) + " " + " ".join(a["note"] for a in o["axes"])).lower()
+    prior = {r["id"]: r.get("confirm") for r in prior_review}
     for item in ref["must_detect"]:
-        pats = ref.get("must_detect_keywords", {}).get(item, [])
-        hit = any(re.search(p, t) for p in pats) if pats else None
-        review.append({"item": item, "auto": hit, "confirm": None})
+        auto = any(re.search(p, text) for p in item.get("keywords", [])) if item.get("keywords") else None
+        review.append({"id": item["id"], "text": item["text"], "mandatory": item["mandatory"], "auto": auto, "confirm": prior.get(item["id"])})
     return rows, review
 
 
-# ------------------------------------------------------------------ literature rows
-def grade_lit(o, row, limits):
-    rows = {}
-    ok = o["verdict"] == row["documented_verdict"]
-    rows["conclusion"] = (ok, "" if ok else f"{o['verdict']} != {row['documented_verdict']}")
-    mo = row["pipeline_checks"].get("mouse_orthology")
-    if mo == "not_found":
-        rows["status_semantics"] = (o["verdict"] == "not_comparable" and cites(o, "ensembl_orthology"),
-                                    "no mouse ortholog must map to not_comparable with orthology cited")
-    errs = validate_schema(o, limits)
-    rows["completion"] = (not errs, "; ".join(errs))
-    return rows, []
+def all_pass(entry):
+    if not all(r["result"] == "pass" for r in entry["rows"].values()): return False
+    for r in entry["must_detect_review"]:
+        if r["mandatory"] and r["confirm"] is not True: return False  # unconfirmed or confirm:false never counts
+    return True
 
 
 # ------------------------------------------------------------------ main
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("batch")
-    ap.add_argument("--no-unblind", action="store_true")
-    a = ap.parse_args()
+    ap = argparse.ArgumentParser(); ap.add_argument("batch"); ap.add_argument("--no-unblind", action="store_true"); a = ap.parse_args()
     batch = Path(a.batch)
-
     refs = {c["case_id"]: c for c in load(HELD_OUT / "reference_answers.json")["cases"]}
     lit = {r["id"]: r for r in load(BENCHMARK / "literature_cases.json")["rows"]}
-    limits_of = {p.stem: load(p)["limits"] for p in list(CASES.glob("*.json")) + list((CASES / "lit").glob("*.json"))}
-
+    key = load(batch / "key.json"); secret = key["_secret"]
+    prior = load(batch / "scorecard.json")["entries"] if (batch / "scorecard.json").exists() else {}
     graded = {}
     for bp in sorted((batch / "blind").glob("*.json")):
-        o = load(bp)
-        cid = o["case_id"]
+        bid = bp.stem; o = load(bp); cid = o["case_id"]
+        k = key["runs"].get(bid, {})
+        integrity = k.get("blind_sha256") == sha256_file(bp)
+        up = batch / "usage" / f"{bid}.json"; usage, usage_ok = None, False
+        if up.exists():
+            u = load(up); usage = u["usage"]; usage_ok = (sign(secret, usage) == u["sig"]) and usage.get("harness_signed") is True
+        integrity = integrity and usage_ok
         if cid in refs:
-            rows, review = grade_xctx(o, refs[cid], limits_of[cid])
+            m, pkg, obs, dsets, rk = case_world(cid)
+            rows, review = grade_run(o, refs[cid], m, pkg, obs, dsets, rk, usage_ok, usage, integrity, prior.get(bid, {}).get("must_detect_review", []))
         elif cid in lit:
-            rows, review = grade_lit(o, lit[cid], limits_of[cid])
+            row = lit[cid]; ax = next((x for x in o["axes"] if x["axis_id"] == "literature_axis"), None)
+            ok = o["execution_status"] == "completed" and ax is not None and ax["verdict"] == row["documented_verdict"].replace("not_comparable", "not_assessable")
+            rows = {"integrity": (integrity, ""), "execution": (o["execution_status"] == "completed" and usage_ok, o["execution_status"]),
+                    "axis:literature_axis": (ok, "" if ok else f"{ax and ax['verdict']} != {row['documented_verdict']}")}
+            review = []
         else:
             continue
-        graded[bp.stem] = {"case_id": cid, "rows": {k: {"result": "pass" if v[0] else "fail", "reason": v[1]} for k, v in rows.items()},
-                           "must_detect_review": review, "usage": o["usage"], "verdict": o["verdict"]}
+        graded[bid] = {"case_id": cid, "rows": {r: {"result": "pass" if v[0] else "fail", "reason": v[1]} for r, v in rows.items()},
+                       "must_detect_review": review, "execution_status": o["execution_status"], "overall": o["overall"]["verdict"]}
     dump(batch / "scorecard.json", {"entries": graded})
-    print(f"graded {len(graded)} outputs -> {batch / 'scorecard.json'}")
-    nrev = sum(1 for g in graded.values() for r in g["must_detect_review"] if r["auto"] is not True)
-    if nrev:
-        print(f"  {nrev} must_detect items need human confirmation (auto keyword miss or no keywords). Edit scorecard.json 'confirm' fields.")
-    if a.no_unblind:
-        return
+    pending = sum(1 for g in graded.values() for r in g["must_detect_review"] if r["mandatory"] and r["confirm"] is None)
+    print(f"graded {len(graded)} runs → {batch/'scorecard.json'}; {pending} mandatory must_detect items await human confirm (auto keyword hit is shown as a hint only)")
+    if a.no_unblind: return
+    if pending: print("NOTE: unconfirmed mandatory items count as NOT passed in the summary.")
 
-    key = load(batch / "key.json")
-    per = {}  # config -> case -> row -> [pass?]
-    usage = {}  # config -> list of (tokens, all_pass, tool_calls)
+    per, usage_by = {}, {}
     for bid, g in graded.items():
-        k = key[bid]; cfg, cid = k["configuration"], k["case_id"]
-        allpass = all(r["result"] == "pass" for r in g["rows"].values())
-        for row, r in g["rows"].items():
-            per.setdefault(cfg, {}).setdefault(cid, {}).setdefault(row, []).append(r["result"] == "pass")
-        u = g["usage"]
-        usage.setdefault(cfg, []).append((u["input_tokens"] + u["output_tokens"], allpass, u["tool_calls"], u["wall_clock_s"]))
-
-    summary = {"correctness": {}, "efficiency": {}, "literature_by_bucket": {}}
-    for cfg, cases in per.items():
-        summary["correctness"][cfg] = {cid: {row: f"{sum(v)}/{len(v)}" for row, v in rows.items()} for cid, rows in cases.items()}
-    for cfg, runs in usage.items():
-        toks = [r[0] for r in runs]; passes = sum(1 for r in runs if r[1])
-        summary["efficiency"][cfg] = {
-            "runs": len(runs), "all_rows_pass": passes,
-            "total_tokens_mean": round(statistics.mean(toks)), "total_tokens_median": round(statistics.median(toks)),
-            "tokens_per_pass": round(sum(toks) / passes) if passes else "inf",
-            "tool_calls_mean": round(statistics.mean(r[2] for r in runs), 2),
-            "wall_clock_s_mean": round(statistics.mean(r[3] for r in runs), 1)}
-    if "A" in usage and "B" in usage:
-        summary["efficiency"]["b_over_a_token_ratio"] = round(
-            summary["efficiency"]["B"]["total_tokens_mean"] / max(1, summary["efficiency"]["A"]["total_tokens_mean"]), 2)
-    # literature agreement per bucket
-    for cfg, cases in per.items():
-        buckets = {}
-        for cid, rows in cases.items():
-            if cid in lit:
-                b = lit[cid]["bucket"]; v = rows.get("conclusion", [])
-                buckets.setdefault(b, [0, 0]); buckets[b][0] += sum(v); buckets[b][1] += len(v)
-        if buckets:
-            summary["literature_by_bucket"][cfg] = {b: f"{p}/{n}" for b, (p, n) in buckets.items()}
-    dump(batch / "summary.json", summary)
-    print(json.dumps(summary, indent=2))
+        k = key["runs"][bid]; cfg, cid = k["configuration"], k["case_id"]
+        for r, v in g["rows"].items(): per.setdefault(cfg, {}).setdefault(cid, {}).setdefault(r, []).append(v["result"] == "pass")
+        per[cfg][cid].setdefault("ALL_ROWS", []).append(all_pass(g))
+        up = batch / "usage" / f"{bid}.json"
+        if up.exists(): usage_by.setdefault(cfg, []).append((load(up)["usage"], all_pass(g)))
+    summary = {"_read_me": "Raw counts (passes/runs). Repeats measure run variability, not more biological tasks. Execution failures are failures.",
+               "correctness": {cfg: {cid: {r: f"{sum(v)}/{len(v)}" for r, v in rows.items()} for cid, rows in cases.items()} for cfg, cases in per.items()},
+               "usage": {}}
+    for cfg, runs in usage_by.items():
+        tot = [u["input_tokens"] + u["output_tokens"] for u, _ in runs]; passes = sum(1 for _, p in runs if p)
+        summary["usage"][cfg] = {"runs": len(runs), "all_rows_pass": f"{passes}/{len(runs)}",
+                                 "model": sorted({u["model"] for u, _ in runs}),
+                                 "llm_calls_total": sum(u["llm_calls"] for u, _ in runs),
+                                 "input_tokens_total": sum(u["input_tokens"] for u, _ in runs), "cache_read_total": sum(u["cache_read_tokens"] for u, _ in runs),
+                                 "cache_creation_total": sum(u["cache_creation_tokens"] for u, _ in runs), "output_tokens_total": sum(u["output_tokens"] for u, _ in runs),
+                                 "data_tool_calls_total": sum(u["data_tool_calls"] for u, _ in runs), "bookkeeping_calls_total": sum(u["bookkeeping_calls"] for u, _ in runs),
+                                 "wall_clock_s_total": round(sum(u["wall_clock_s"] for u, _ in runs), 1),
+                                 "tokens_median_per_run": round(statistics.median(tot)) if tot else 0,
+                                 "tokens_per_passed_run": round(sum(tot) / passes) if passes else "no passes",
+                                 "estimated_cost_usd_total": round(sum((u.get("estimated_cost_usd") or 0) for u, _ in runs), 4)}
+    dump(batch / "summary.json", summary); print(json.dumps(summary, indent=2))
 
 
 if __name__ == "__main__":

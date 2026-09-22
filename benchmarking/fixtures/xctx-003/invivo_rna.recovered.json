@@ -1,0 +1,38 @@
+{
+  "dataset_id": "invivo_rna",
+  "status": "available",
+  "unavailable_reason": null,
+  "context": "in_vivo",
+  "species": "Mus musculus",
+  "modality": "rna",
+  "provenance": {
+    "synthetic": true,
+    "origin": "bench/gen_fixtures.py from bench/spec.json (synthetic)",
+    "modified_fields": [],
+    "original_path": null
+  },
+  "observations": [
+    {
+      "observation_id": "obs_invivo_rna_tyk2_imq",
+      "gene": "Tyk2",
+      "tissue": "dorsal skin (full-thickness)",
+      "model_or_cohort": "C57BL/6J, imiquimod 5% cream 62.5 mg/day x 6 days, dorsal skin",
+      "contrast": {
+        "name": "imq_vs_vehicle",
+        "case": "imiquimod-treated dorsal skin, day 6",
+        "reference": "vehicle cream, dorsal skin",
+        "alignment_basis": "IMQ psoriasiform inflammation vs vehicle is the standard murine model of the IL-23/IL-17 axis engaged by the in-vitro IL-23 stimulation; endpoint is the same (mRNA abundance) in keratinocyte-rich tissue"
+      },
+      "endpoint": "mRNA abundance (log2 CPM)",
+      "method": "bulk RNA-seq, DESeq2",
+      "effect": {
+        "log2fc": -0.8,
+        "padj": 0.0004,
+        "direction": "down",
+        "n_case": 6,
+        "n_reference": 6,
+        "aggregate_of": null
+      }
+    }
+  ]
+}

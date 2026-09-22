@@ -1,6 +1,11 @@
 {
   "dataset_id": "narrative",
+  "status": "available",
   "context": "literature",
+  "provenance": {
+    "synthetic": false,
+    "origin": "already-interpreted findings summarised from the cited papers; tests judgment over supplied summaries, NOT reproduction from raw data"
+  },
   "gene": "NOS2",
   "program": "NOS2 (iNOS) induction in macrophages",
   "axis": "mouse_vs_human",

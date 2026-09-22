@@ -1,6 +1,11 @@
 {
   "dataset_id": "narrative",
+  "status": "available",
   "context": "literature",
+  "provenance": {
+    "synthetic": false,
+    "origin": "already-interpreted findings summarised from the cited papers; tests judgment over supplied summaries, NOT reproduction from raw data"
+  },
   "gene": "MYH7",
   "program": "MYH6 vs MYH7 myosin heavy-chain isoform ratio",
   "axis": "in_vitro_vs_patient",

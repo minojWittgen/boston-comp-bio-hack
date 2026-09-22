@@ -1,143 +1,215 @@
 {
   "dataset_id": "patient_rna",
+  "status": "available",
+  "unavailable_reason": null,
   "context": "patient",
+  "species": "Homo sapiens",
   "modality": "rna",
-  "gene": "TYK2",
-  "disease": "psoriasis",
-  "tissue": "Skin_Sun_Exposed_Lower_leg",
-  "cohort_summary": {
-    "n_patients": 12,
-    "age_mean": 44.1,
-    "sex_ratio_f": 0.5,
-    "site": "Site A",
-    "platform": "10x 3' v3 pseudobulk"
+  "provenance": {
+    "synthetic": true,
+    "origin": "bench/gen_fixtures.py from bench/spec.json (synthetic)",
+    "modified_fields": [],
+    "original_path": null
   },
-  "effect": {
-    "comparison": "lesional_vs_nonlesional",
-    "log2fc": 1.1,
-    "padj": 0.0001,
-    "direction": "up"
-  },
-  "samples": [
+  "observations": [
     {
-      "patient_id": "P01",
-      "condition": "nonlesional",
-      "value": 4.483
-    },
-    {
-      "patient_id": "P01",
-      "condition": "lesional",
-      "value": 5.62
-    },
-    {
-      "patient_id": "P02",
-      "condition": "nonlesional",
-      "value": 5.334
-    },
-    {
-      "patient_id": "P02",
-      "condition": "lesional",
-      "value": 6.194
-    },
-    {
-      "patient_id": "P03",
-      "condition": "nonlesional",
-      "value": 5.908
-    },
-    {
-      "patient_id": "P03",
-      "condition": "lesional",
-      "value": 7.279
-    },
-    {
-      "patient_id": "P04",
-      "condition": "nonlesional",
-      "value": 5.416
-    },
-    {
-      "patient_id": "P04",
-      "condition": "lesional",
-      "value": 6.796
-    },
-    {
-      "patient_id": "P05",
-      "condition": "nonlesional",
-      "value": 4.169
-    },
-    {
-      "patient_id": "P05",
-      "condition": "lesional",
-      "value": 5.217
-    },
-    {
-      "patient_id": "P06",
-      "condition": "nonlesional",
-      "value": 4.55
-    },
-    {
-      "patient_id": "P06",
-      "condition": "lesional",
-      "value": 5.602
-    },
-    {
-      "patient_id": "P07",
-      "condition": "nonlesional",
-      "value": 5.625
-    },
-    {
-      "patient_id": "P07",
-      "condition": "lesional",
-      "value": 6.741
-    },
-    {
-      "patient_id": "P08",
-      "condition": "nonlesional",
-      "value": 5.42
-    },
-    {
-      "patient_id": "P08",
-      "condition": "lesional",
-      "value": 6.561
-    },
-    {
-      "patient_id": "P09",
-      "condition": "nonlesional",
-      "value": 5.851
-    },
-    {
-      "patient_id": "P09",
-      "condition": "lesional",
-      "value": 7.11
-    },
-    {
-      "patient_id": "P10",
-      "condition": "nonlesional",
-      "value": 4.758
-    },
-    {
-      "patient_id": "P10",
-      "condition": "lesional",
-      "value": 5.75
-    },
-    {
-      "patient_id": "P11",
-      "condition": "nonlesional",
-      "value": 5.627
-    },
-    {
-      "patient_id": "P11",
-      "condition": "lesional",
-      "value": 6.919
-    },
-    {
-      "patient_id": "P12",
-      "condition": "nonlesional",
-      "value": 5.527
-    },
-    {
-      "patient_id": "P12",
-      "condition": "lesional",
-      "value": 6.839
+      "observation_id": "obs_patient_rna_tyk2",
+      "gene": "TYK2",
+      "tissue": "skin, lesional plaque (full-thickness punch biopsy)",
+      "model_or_cohort": "12 adults with plaque psoriasis, paired lesional/non-lesional 4 mm punch biopsies, baseline visit",
+      "contrast": {
+        "name": "lesional_vs_nonlesional",
+        "case": "lesional plaque biopsy",
+        "reference": "non-lesional biopsy, same participant, same visit",
+        "alignment_basis": "disease-vs-reference tissue contrast in the target organ; endpoint comparable to the in-vitro mRNA endpoint"
+      },
+      "endpoint": "mRNA abundance (log2 CPM)",
+      "method": "bulk RNA-seq, paired DESeq2",
+      "effect": {
+        "log2fc": 1.163,
+        "padj": 0.0001,
+        "direction": "up",
+        "n_case": 12,
+        "n_reference": 12,
+        "aggregate_of": "samples"
+      },
+      "samples": [
+        {
+          "participant_id": "P01",
+          "specimen_id": "S-P01-NL",
+          "timepoint": "baseline",
+          "arm": "reference",
+          "value": 4.483
+        },
+        {
+          "participant_id": "P01",
+          "specimen_id": "S-P01-L",
+          "timepoint": "baseline",
+          "arm": "case",
+          "value": 5.62
+        },
+        {
+          "participant_id": "P02",
+          "specimen_id": "S-P02-NL",
+          "timepoint": "baseline",
+          "arm": "reference",
+          "value": 5.334
+        },
+        {
+          "participant_id": "P02",
+          "specimen_id": "S-P02-L",
+          "timepoint": "baseline",
+          "arm": "case",
+          "value": 6.194
+        },
+        {
+          "participant_id": "P03",
+          "specimen_id": "S-P03-NL",
+          "timepoint": "baseline",
+          "arm": "reference",
+          "value": 5.908
+        },
+        {
+          "participant_id": "P03",
+          "specimen_id": "S-P03-L",
+          "timepoint": "baseline",
+          "arm": "case",
+          "value": 7.279
+        },
+        {
+          "participant_id": "P04",
+          "specimen_id": "S-P04-NL",
+          "timepoint": "baseline",
+          "arm": "reference",
+          "value": 5.416
+        },
+        {
+          "participant_id": "P04",
+          "specimen_id": "S-P04-L",
+          "timepoint": "baseline",
+          "arm": "case",
+          "value": 6.796
+        },
+        {
+          "participant_id": "P05",
+          "specimen_id": "S-P05-NL",
+          "timepoint": "baseline",
+          "arm": "reference",
+          "value": 4.169
+        },
+        {
+          "participant_id": "P05",
+          "specimen_id": "S-P05-L",
+          "timepoint": "baseline",
+          "arm": "case",
+          "value": 5.217
+        },
+        {
+          "participant_id": "P06",
+          "specimen_id": "S-P06-NL",
+          "timepoint": "baseline",
+          "arm": "reference",
+          "value": 4.55
+        },
+        {
+          "participant_id": "P06",
+          "specimen_id": "S-P06-L",
+          "timepoint": "baseline",
+          "arm": "case",
+          "value": 5.602
+        },
+        {
+          "participant_id": "P07",
+          "specimen_id": "S-P07-NL",
+          "timepoint": "baseline",
+          "arm": "reference",
+          "value": 5.625
+        },
+        {
+          "participant_id": "P07",
+          "specimen_id": "S-P07-L",
+          "timepoint": "baseline",
+          "arm": "case",
+          "value": 6.741
+        },
+        {
+          "participant_id": "P08",
+          "specimen_id": "S-P08-NL",
+          "timepoint": "baseline",
+          "arm": "reference",
+          "value": 5.42
+        },
+        {
+          "participant_id": "P08",
+          "specimen_id": "S-P08-L",
+          "timepoint": "baseline",
+          "arm": "case",
+          "value": 6.561
+        },
+        {
+          "participant_id": "P09",
+          "specimen_id": "S-P09-NL",
+          "timepoint": "baseline",
+          "arm": "reference",
+          "value": 5.851
+        },
+        {
+          "participant_id": "P09",
+          "specimen_id": "S-P09-L",
+          "timepoint": "baseline",
+          "arm": "case",
+          "value": 7.11
+        },
+        {
+          "participant_id": "P10",
+          "specimen_id": "S-P10-NL",
+          "timepoint": "baseline",
+          "arm": "reference",
+          "value": 4.758
+        },
+        {
+          "participant_id": "P10",
+          "specimen_id": "S-P10-L",
+          "timepoint": "baseline",
+          "arm": "case",
+          "value": 5.75
+        },
+        {
+          "participant_id": "P11",
+          "specimen_id": "S-P11-NL",
+          "timepoint": "baseline",
+          "arm": "reference",
+          "value": 5.627
+        },
+        {
+          "participant_id": "P11",
+          "specimen_id": "S-P11-L",
+          "timepoint": "baseline",
+          "arm": "case",
+          "value": 6.919
+        },
+        {
+          "participant_id": "P12",
+          "specimen_id": "S-P12-NL",
+          "timepoint": "baseline",
+          "arm": "reference",
+          "value": 5.527
+        },
+        {
+          "participant_id": "P12",
+          "specimen_id": "S-P12-L",
+          "timepoint": "baseline",
+          "arm": "case",
+          "value": 6.839
+        }
+      ],
+      "cohort_summary": {
+        "n_participants": 12,
+        "age_mean": 44.1,
+        "sex_ratio_f": 0.5,
+        "site": "Site A",
+        "visit": "baseline"
+      }
     }
   ]
 }

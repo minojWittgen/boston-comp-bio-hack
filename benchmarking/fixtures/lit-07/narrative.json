@@ -1,6 +1,11 @@
 {
   "dataset_id": "narrative",
+  "status": "available",
   "context": "literature",
+  "provenance": {
+    "synthetic": false,
+    "origin": "already-interpreted findings summarised from the cited papers; tests judgment over supplied summaries, NOT reproduction from raw data"
+  },
   "gene": "EPCAM",
   "program": "EPCAM \u2014 epithelial identity marker",
   "axis": "all",

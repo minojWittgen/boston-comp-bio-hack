@@ -1,6 +1,11 @@
 {
   "dataset_id": "narrative",
+  "status": "available",
   "context": "literature",
+  "provenance": {
+    "synthetic": false,
+    "origin": "already-interpreted findings summarised from the cited papers; tests judgment over supplied summaries, NOT reproduction from raw data"
+  },
   "gene": "TNNI3",
   "program": "TNNI1 \u2192 TNNI3 troponin I isoform switch",
   "axis": "in_vitro_vs_patient",

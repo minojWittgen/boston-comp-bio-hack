@@ -9,7 +9,7 @@
       "gtex",
       "impc"
     ],
-    "built_at": "2026-09-22T17:04:24.786165+00:00"
+    "built_at": "2026-09-22T18:03:51.945836+00:00"
   },
   "gene": {
     "source": "mygene",
@@ -29,7 +29,7 @@
     },
     "error": null,
     "source_version": null,
-    "retrieved_at": "2026-09-22T17:04:24.511390+00:00",
+    "retrieved_at": "2026-09-22T18:03:51.657521+00:00",
     "cache_hit": false
   },
   "sources": {
@@ -65,7 +65,7 @@
         },
         "error": null,
         "source_version": null,
-        "retrieved_at": "2026-09-22T17:04:24.511390+00:00",
+        "retrieved_at": "2026-09-22T18:03:51.657521+00:00",
         "cache_hit": false
       },
       "rattus_norvegicus": {
@@ -80,7 +80,7 @@
         },
         "error": null,
         "source_version": null,
-        "retrieved_at": "2026-09-22T17:04:24.511390+00:00",
+        "retrieved_at": "2026-09-22T18:03:51.657521+00:00",
         "cache_hit": false
       },
       "macaca_mulatta": {
@@ -114,7 +114,7 @@
         },
         "error": null,
         "source_version": null,
-        "retrieved_at": "2026-09-22T17:04:24.511390+00:00",
+        "retrieved_at": "2026-09-22T18:03:51.657521+00:00",
         "cache_hit": false
       }
     },
@@ -143,7 +143,7 @@
       },
       "error": null,
       "source_version": null,
-      "retrieved_at": "2026-09-22T17:04:24.511390+00:00",
+      "retrieved_at": "2026-09-22T18:03:51.657521+00:00",
       "cache_hit": false
     },
     "gtex": {
@@ -184,7 +184,7 @@
       },
       "error": null,
       "source_version": "gtex_v8",
-      "retrieved_at": "2026-09-22T17:04:24.511390+00:00",
+      "retrieved_at": "2026-09-22T18:03:51.657521+00:00",
       "cache_hit": false
     },
     "opentargets": {
@@ -194,7 +194,7 @@
       "data": null,
       "error": "disabled in eval mode",
       "source_version": null,
-      "retrieved_at": "2026-09-22T17:04:24.786136+00:00"
+      "retrieved_at": "2026-09-22T18:03:51.945815+00:00"
     },
     "pubmed": {
       "source": "pubmed",
@@ -203,7 +203,7 @@
       "data": null,
       "error": "disabled in eval mode",
       "source_version": null,
-      "retrieved_at": "2026-09-22T17:04:24.786160+00:00"
+      "retrieved_at": "2026-09-22T18:03:51.945831+00:00"
     }
   },
   "summary": {
@@ -273,5 +273,11 @@
       "status": "skipped",
       "reason": "disabled in eval mode"
     }
-  ]
+  ],
+  "_provenance": {
+    "origin": "stub: build_package with stubbed fetchers (values synthetic)",
+    "synthetic": true,
+    "modified_fields": [],
+    "original_path": null
+  }
 }

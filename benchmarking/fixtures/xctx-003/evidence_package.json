@@ -9,7 +9,7 @@
       "gtex",
       "impc"
     ],
-    "built_at": "2026-09-22T17:04:24.786165+00:00"
+    "built_at": "2026-09-22T18:03:51.945836+00:00"
   },
   "gene": {
     "source": "mygene",
@@ -29,7 +29,7 @@
     },
     "error": null,
     "source_version": null,
-    "retrieved_at": "2026-09-22T17:04:24.511390+00:00",
+    "retrieved_at": "2026-09-22T18:03:51.657521+00:00",
     "cache_hit": false
   },
   "sources": {
@@ -65,7 +65,7 @@
         },
         "error": null,
         "source_version": null,
-        "retrieved_at": "2026-09-22T17:04:24.511390+00:00",
+        "retrieved_at": "2026-09-22T18:03:51.657521+00:00",
         "cache_hit": false
       },
       "rattus_norvegicus": {
@@ -80,7 +80,7 @@
         },
         "error": null,
         "source_version": null,
-        "retrieved_at": "2026-09-22T17:04:24.511390+00:00",
+        "retrieved_at": "2026-09-22T18:03:51.657521+00:00",
         "cache_hit": false
       },
       "macaca_mulatta": {
@@ -114,7 +114,7 @@
         },
         "error": null,
         "source_version": null,
-        "retrieved_at": "2026-09-22T17:04:24.511390+00:00",
+        "retrieved_at": "2026-09-22T18:03:51.657521+00:00",
         "cache_hit": false
       }
     },
@@ -143,20 +143,48 @@
       },
       "error": null,
       "source_version": null,
-      "retrieved_at": "2026-09-22T17:04:24.511390+00:00",
+      "retrieved_at": "2026-09-22T18:03:51.657521+00:00",
       "cache_hit": false
     },
     "gtex": {
       "source": "gtex",
-      "status": "error",
+      "status": "ok",
       "query": {
         "ensg": "ENSG00000105397",
         "dataset": "gtex_v8"
       },
-      "data": null,
-      "error": "HTTPError('502 Server Error: Bad Gateway for url: https://gtexportal.org/api/v2/...')",
+      "data": {
+        "gencodeId": "ENSG00000105397.12",
+        "tissues": [
+          {
+            "tissue": "Skin_Sun_Exposed_Lower_leg",
+            "median_tpm": 14.2
+          },
+          {
+            "tissue": "Skin_Not_Sun_Exposed_Suprapubic",
+            "median_tpm": 12.9
+          },
+          {
+            "tissue": "Whole_Blood",
+            "median_tpm": 9.7
+          },
+          {
+            "tissue": "Spleen",
+            "median_tpm": 8.1
+          },
+          {
+            "tissue": "Lung",
+            "median_tpm": 6.4
+          },
+          {
+            "tissue": "Brain_Cortex",
+            "median_tpm": 0.9
+          }
+        ]
+      },
+      "error": null,
       "source_version": "gtex_v8",
-      "retrieved_at": "2026-09-22T17:04:24.511390+00:00",
+      "retrieved_at": "2026-09-22T18:03:51.657521+00:00",
       "cache_hit": false
     },
     "opentargets": {
@@ -166,7 +194,7 @@
       "data": null,
       "error": "disabled in eval mode",
       "source_version": null,
-      "retrieved_at": "2026-09-22T17:04:24.786136+00:00"
+      "retrieved_at": "2026-09-22T18:03:51.945815+00:00"
     },
     "pubmed": {
       "source": "pubmed",
@@ -175,7 +203,7 @@
       "data": null,
       "error": "disabled in eval mode",
       "source_version": null,
-      "retrieved_at": "2026-09-22T17:04:24.786160+00:00"
+      "retrieved_at": "2026-09-22T18:03:51.945831+00:00"
     }
   },
   "summary": {
@@ -201,7 +229,28 @@
       "phenotyped": true,
       "n_phenotype_hits": 1
     },
-    "gtex_top_tissues": [],
+    "gtex_top_tissues": [
+      {
+        "tissue": "Skin_Sun_Exposed_Lower_leg",
+        "median_tpm": 14.2
+      },
+      {
+        "tissue": "Skin_Not_Sun_Exposed_Suprapubic",
+        "median_tpm": 12.9
+      },
+      {
+        "tissue": "Whole_Blood",
+        "median_tpm": 9.7
+      },
+      {
+        "tissue": "Spleen",
+        "median_tpm": 8.1
+      },
+      {
+        "tissue": "Lung",
+        "median_tpm": 6.4
+      }
+    ],
     "opentargets_top_diseases": [],
     "pubmed_count": null
   },
@@ -223,12 +272,12 @@
       "sub": null,
       "status": "skipped",
       "reason": "disabled in eval mode"
-    },
-    {
-      "source": "gtex",
-      "sub": null,
-      "status": "error",
-      "reason": "HTTPError('502 Server Error: Bad Gateway for url: https://gtexportal.org/api/v2/...')"
     }
-  ]
+  ],
+  "_provenance": {
+    "origin": "stub: build_package with stubbed fetchers (values synthetic)",
+    "synthetic": true,
+    "modified_fields": [],
+    "original_path": null
+  }
 }

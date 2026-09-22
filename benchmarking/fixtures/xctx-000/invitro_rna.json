@@ -1,15 +1,38 @@
 {
   "dataset_id": "invitro_rna",
+  "status": "available",
+  "unavailable_reason": null,
   "context": "in_vitro",
+  "species": "Homo sapiens",
   "modality": "rna",
-  "gene": "TYK2",
-  "model": "primary human keratinocytes",
-  "perturbation": "IL-23 24h",
-  "effect": {
-    "comparison": "treated_vs_control",
-    "log2fc": 1.4,
-    "padj": 2e-05,
-    "direction": "up",
-    "n_replicates": 3
-  }
+  "provenance": {
+    "synthetic": true,
+    "origin": "bench/gen_fixtures.py from bench/spec.json (synthetic)",
+    "modified_fields": [],
+    "original_path": null
+  },
+  "observations": [
+    {
+      "observation_id": "obs_invitro_rna_tyk2",
+      "gene": "TYK2",
+      "tissue": "epidermal keratinocytes (2D culture)",
+      "model_or_cohort": "primary human epidermal keratinocytes, pooled 3 donors",
+      "contrast": {
+        "name": "treated_vs_control",
+        "case": "IL-23 10 ng/mL, 24 h",
+        "reference": "vehicle (PBS/0.1% BSA), 24 h",
+        "alignment_basis": null
+      },
+      "endpoint": "mRNA abundance (log2 CPM)",
+      "method": "bulk RNA-seq, DESeq2",
+      "effect": {
+        "log2fc": 1.4,
+        "padj": 2e-05,
+        "direction": "up",
+        "n_case": 3,
+        "n_reference": 3,
+        "aggregate_of": null
+      }
+    }
+  ]
 }

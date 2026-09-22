@@ -1,0 +1,15 @@
+{
+  "dataset_id": "invivo_rna",
+  "status": "unavailable",
+  "unavailable_reason": "retrieval error: object-store timeout fetching invivo_rna (transient, retryable)",
+  "context": "in_vivo",
+  "species": "Mus musculus",
+  "modality": "rna",
+  "provenance": {
+    "synthetic": true,
+    "origin": "bench/gen_fixtures.py from bench/spec.json (synthetic)",
+    "modified_fields": [],
+    "original_path": null
+  },
+  "observations": []
+}
