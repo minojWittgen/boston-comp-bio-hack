@@ -111,30 +111,6 @@ def resolve_pathway(reactome_id: str, shared_ref_id: str | None = SHARED_REF_DEF
         return S.result("reactome_pathway", "error", q, error=repr(e), version=version)
 
 
-# ---------------------------------------------------------------- gene -> pathways (entry B)
-def pathways_for_gene(symbol: str) -> dict:
-    """Human Reactome pathways a gene participates in (lowest-level, most specific).
-
-    Lets a gene symbol be the entry point: resolve the gene's pathway(s), then assess
-    one as a pathway claim. Reactome's mapping resolves the symbol to UniProt internally.
-    """
-    q = {"symbol": symbol}
-    version = reactome_version()
-    try:
-        d = S.http("GET", f"{REACTOME}/data/mapping/UniProt/{symbol}/pathways",
-                   params={"species": "9606"})
-        pathways = [{"stId": p.get("stId"), "name": p.get("displayName")}
-                    for p in (d or []) if p.get("stId")]
-        if not pathways:
-            return S.result("reactome_gene_pathways", "not_found", q, version=version)
-        return S.result("reactome_gene_pathways", "ok", q, version=version,
-                        data={"symbol": symbol, "n": len(pathways), "pathways": pathways})
-    except Exception as e:  # noqa: BLE001
-        if _status_404(e):
-            return S.result("reactome_gene_pathways", "not_found", q, version=version)
-        return S.result("reactome_gene_pathways", "error", q, error=repr(e), version=version)
-
-
 # ---------------------------------------------------------------- mouse inference (labeled)
 def infer_mouse_pathway(reactome_id: str) -> dict:
     """Reactome's computationally inferred mouse pathway for a human pathway.
@@ -181,40 +157,13 @@ def _classify_ortholog(ortho_result: dict) -> str:
     return "no_ortholog"
 
 
-def _anchor_view(pkg: dict, resolved_genes: list[dict]) -> dict:
-    """Where the anchor gene (entry B) stands within its own program.
-
-    Same per-context evidence as the rollup, but for the one target gene, so a
-    'gene program linked to a known target' claim (v1/v3 §1) can be read directly.
-    """
-    sym = pkg["gene"].get("data", {}).get("symbol")
-    shared = next((g.get("shared_participant") for g in resolved_genes
-                   if g.get("symbol") == sym), None)
-
-    def src(name):
-        return pkg["sources"].get(name) or {}
-
-    ortho = {sp: _classify_ortholog(r)
-             for sp, r in (src("ensembl_orthology") or {}).items()}
-    dm = src("opentargets_depmap").get("data") or {}
-    return {
-        "symbol": sym,
-        "shared_participant": shared,
-        "in_vitro": {"hpa": src("hpa_cell_lines").get("status"),
-                     "depmap_essential": dm.get("isEssential")},
-        "in_vivo": {"orthology": ortho,
-                    "impc_phenotyped": (src("impc").get("data") or {}).get("phenotyped")},
-        "human_reference": {"gtex": src("gtex").get("status")}}
-
-
 def aggregate_pathway(reactome_id: str, disease: str, mode: str, run_id: str,
                       gene_packages: list[dict], pathway_result: dict,
-                      mouse_result: dict, anchor_gene: str | None = None) -> dict:
+                      mouse_result: dict) -> dict:
     """Roll up per-gene evidence packages to the pathway level.
 
     NO summed score or probability (v3 §9). Only counts, gene lists and a phenotyped
     coverage ratio. `gene_packages` are full outputs of `package.build_package`.
-    `anchor_gene` (entry B) is surfaced separately within its own program.
     """
     pkgs = [p for p in gene_packages if p]
     symbols = [p["gene"].get("data", {}).get("symbol") or p.get("_symbol") for p in pkgs]
@@ -288,23 +237,27 @@ def aggregate_pathway(reactome_id: str, disease: str, mode: str, run_id: str,
         "note": "shared = also in the reference pathway (e.g. DNA replication); "
                 "not exclusive to this pathway"}
 
-    # entry B: surface the anchor gene within its program
-    anchor = None
-    if anchor_gene:
-        ap = next((p for p in pkgs
-                   if p["gene"].get("data", {}).get("symbol", "").upper()
-                   == anchor_gene.upper()), None)
-        if ap:
-            anchor = _anchor_view(ap, resolved)
+    # patient/disease context: count only genes with SUBSTANTIVE HPA pathology (an
+    # identifier-only row is not_found). Status reflects real availability, not a match.
+    hpa_pat = [_src(p, "hpa_pathology") for p in pkgs]
+    n_disease_bg = sum(1 for r in hpa_pat if r.get("status") == "ok")
+    patients = {
+        "status": "cohort_only" if n_disease_bg else "gap",
+        "n_genes_with_disease_background": n_disease_bg,
+        "n_genes_skipped": sum(1 for r in hpa_pat if r.get("status") == "skipped"),
+        "n_genes_no_data": sum(1 for r in hpa_pat if r.get("status") in ("not_found", "error")),
+        "source": "HPA pathology (TCGA-derived), cohort-level" if n_disease_bg else None,
+        "individual_variation": "not resolved",
+        "gap": "per-patient variation and matched measurements "
+               "(patient/specimen/time-point IDs) — needs dataset analysis "
+               "(GEO / CELLxGENE Census / NCI GDC), out of this layer's scope"}
 
     return {
         "schema_version": "0.1-pathway",
         "run": {"run_id": run_id, "mode": mode, "disease_query": disease,
-                "reactome_id": reactome_id, "anchor_gene": anchor_gene,
-                "built_at": S.now()},
+                "reactome_id": reactome_id, "built_at": S.now()},
         "pathway": pathway_result,
         "mouse_inference": mouse_result,
-        "anchor": anchor,
         "genes": [s for s in symbols if s],
         "summary": {
             "n_genes": len(pkgs),
@@ -319,17 +272,8 @@ def aggregate_pathway(reactome_id: str, disease: str, mode: str, run_id: str,
             "human_reference": {
                 "note": "GTEx baseline + Open Targets association live in each gene "
                         "package; association is skipped in eval mode"},
-            # v3 §1: an unavailable context is a VISIBLE gap with its requirement unmet
-            "patients": {
-                "status": "gap",
-                "requirement": "human patient/disease cohorts with individual variation "
-                               "(patient + specimen + time-point IDs; DNA/RNA/protein/"
-                               "functional)",
-                "why_gap": "requires dataset download/analysis, not a lightweight lookup; "
-                           "out of the target-knowledge retrieval scope (Person A)",
-                "individual_variation": "not resolved",
-                "candidate_sources": ["GEO", "CELLxGENE Census", "NCI GDC",
-                                      "Expression Atlas (differential)"]}},
+            # patient/disease context: cohort_only only when substantive HPA exists (§1).
+            "patients": patients},
         "missing": _pathway_missing(pathway_result, mouse_result, pkgs),
     }
 

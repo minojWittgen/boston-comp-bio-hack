@@ -6,31 +6,30 @@ judgments and no scores** (v3 §9): every field is a retrieved fact or an explic
 
 ## Two ways in
 
-| Level | Input | Command |
-|-------|-------|---------|
-| Gene | symbols | `modal run app.py --genes MLH1,MSH2 --disease "colorectal cancer"` |
-| Pathway **A** | Reactome id | `modal run app.py::pathway --reactome-id R-HSA-5358508` |
-| Pathway **B** | gene → its pathway | `modal run app.py::pathway --gene MLH1` |
+| Input | Command | Output |
+|-------|---------|--------|
+| **Gene** | `modal run app.py::main --genes MLH1,MSH2 --disease "colorectal cancer"` | per-gene evidence package |
+| **Pathway** | `modal run app.py::pathway --reactome-id R-HSA-5358508` | pathway-level rollup over all participant genes |
 
 ## Flow
 
 ```mermaid
 flowchart TD
-    G([gene]) --> ONE
-    RID([Reactome id]) --> RES
-    GB([gene, entry B]) --> P4G["pathways_for_gene<br/>gene → its Reactome pathway(s)"]
-    P4G -->|pick first, keep alternatives| RES["resolve_pathway<br/>participants + shared_participant flag"]
+    G([gene input]) --> ONE
+    RID([pathway id input]) --> RES["resolve_pathway<br/>participants + shared_participant flag"]
     RES --> FAN
 
-    subgraph FAN ["fan out build_one over participant genes (Modal starmap)"]
-        ONE["build_package (per gene)<br/>background: orthology · IMPC · GTEx · Open Targets · PubMed"]
+    subgraph FAN ["per gene: build_one"]
+        ONE["build_package<br/>background: orthology · IMPC · GTEx · Open Targets · PubMed"]
         ONE --> IV["enrich_invitro<br/>+ HPA cell lines + DepMap"]
     end
 
-    FAN --> AGG["aggregate_pathway<br/>counts only, grouped by context<br/>+ anchor gene (entry B)"]
+    RES -->|fan out over participants| FAN
+    FAN -->|gene input| GPKG([gene package JSON])
+    FAN -->|pathway input| AGG["aggregate_pathway<br/>counts only, grouped by context"]
     RES -.->|inferred, labeled| MOUSE["infer_mouse_pathway<br/>Reactome mouse (isInferred=true)"]
     MOUSE --> AGG
-    AGG --> PKG([evidence package JSON<br/>on volume xctx-cache])
+    AGG --> PPKG([pathway package JSON])
 ```
 
 ## Evidence organized by context — mirrors the v3 §1/§2 boxes
@@ -54,11 +53,11 @@ flowchart TB
         M3["pathway — Reactome mouse inference (LABELED inferred)"]
         M4["DNA/RNA/protein — gap"]
     end
-    subgraph PAT ["PATIENTS — human cohorts + individual variation"]
+    subgraph PAT ["PATIENTS — disease cohorts (cohort-level)"]
         direction TB
-        P1["patient/specimen/time-point IDs — none"]
-        P2["DNA | RNA | protein | clinical — GAP"]
-        P3["needs GEO / CELLxGENE / GDC (download+analysis, out of scope)"]
+        P1["cohort background — HPA pathology (TCGA): disease involvement, cancer RNA"]
+        P2["individual variation (patient/specimen IDs) — GAP"]
+        P3["per-patient / matched needs GEO / CELLxGENE / GDC (out of scope)"]
     end
     HR["human reference (background): GTEx baseline · Open Targets association* · PubMed"]
     VITRO --> PKG([context-tagged package])
@@ -81,8 +80,6 @@ Baseline expression, HPA, and DepMap fitness are **not** association → kept in
 - **No scores** (v3 §9): pathway rollup is counts only — per-species ortholog coverage,
   IMPC phenotyped ratio, DepMap essential count, and **shared vs exclusive participants**
   (PCNA/RPA/POLD also in DNA replication → `shared_participant`; MLH1/MSH2 exclusive).
-- **anchor** (entry B): the input gene surfaced within its own program, so a
-  "known-target's program" claim is readable at a glance.
 
 ## Source contracts
 
@@ -92,7 +89,8 @@ its §6 evidence dimensions (role, origin, measured/inferred, species, context, 
 dependencies).
 
 ## Verified (2026-09-22)
-Live on Modal for **Mismatch Repair (R-HSA-5358508)** and entry B (`--gene MLH1` →
-R-HSA-5358565): 15 / 14 participants built in one pass; in-vitro (HPA + DepMap, 7
-essential), in-vivo (14 mouse one2one, IMPC 5/5 phenotyped, mouse inference labeled),
-human reference (GTEx), patients = explicit gap; 9 shared / 6 exclusive. `pytest`: 23 passed.
+Live on Modal — **gene input** (`MLH1`): in-vitro/in-vivo/human-reference evidence built.
+**Pathway input** (`R-HSA-5358508`): 15 participants built in one pass; in-vitro (HPA +
+DepMap, 7 essential), in-vivo (14 mouse one2one, IMPC 5/5 phenotyped, mouse inference
+labeled), human reference (GTEx), patients = HPA cohort-level (individual variation still
+gap); 9 shared / 6 exclusive. `pytest`: 22 passed.

@@ -27,6 +27,8 @@ secrets = [modal.Secret.from_name("ncbi-api-key")] if os.environ.get("USE_NCBI_S
               max_containers=8,  # stays under Ensembl/NCBI rate limits
               timeout=900)
 def build_one(symbol: str, disease: str, mode: str, run_id: str) -> dict:
+    import registry as R
+    import sources as S
     from cache import JsonCache
     from invitro import enrich_invitro
     from package import build_package
@@ -35,6 +37,21 @@ def build_one(symbol: str, disease: str, mode: str, run_id: str) -> dict:
     cache = JsonCache(ROOT)
     pkg = build_package(symbol, disease, mode, run_id, cache)
     enrich_invitro(pkg, mode, cache)  # add in-vitro context (HPA, DepMap)
+
+    # patient/disease context: HPA cancer cohort-level background (disease-linked -> eval skips)
+    ensg = (pkg["gene"].get("data") or {}).get("ensembl_primary")
+    if mode == "eval" and not R.eval_allows("hpa_pathology"):
+        rp = S.result("hpa_pathology", "skipped", {}, error=f"disabled in {mode} mode")
+    elif not ensg:
+        rp = S.result("hpa_pathology", "skipped", {}, error="no ensembl id")
+    else:
+        rp = cache.fetch("hpa_pathology", {"ensg": ensg}, lambda: S.hpa_pathology(ensg))
+    pkg["sources"]["hpa_pathology"] = rp
+    if rp["status"] != "ok":
+        pkg["missing"].append({"source": "hpa_pathology", "sub": None,
+                               "status": rp["status"], "reason": rp.get("error")})
+
+    R.annotate_package(pkg)  # make species/context/modality explicit on every source
     out = Path(ROOT) / "runs" / run_id / f"{symbol}.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(pkg, indent=2))
@@ -45,15 +62,12 @@ def build_one(symbol: str, disease: str, mode: str, run_id: str) -> dict:
 
 @app.function(image=image, volumes={ROOT: vol}, secrets=secrets,
               max_containers=8, timeout=1800)
-def build_pathway(reactome_id: str = "", disease: str = "", mode: str = "explore",
-                  run_id: str = "", gene: str = "") -> dict:
+def build_pathway(reactome_id: str, disease: str = "", mode: str = "explore",
+                  run_id: str = "") -> dict:
     """Pathway-level evidence: resolve participants, fan out build_one, aggregate.
 
-    Two entry points (v3 §1/§8.2):
-      A) reactome_id given -> assess that pathway directly.
-      B) gene given        -> resolve the gene's Reactome pathway(s), assess the first,
-                              and return the alternatives so the caller can pick another.
-    No summed score across genes (v3 §9) — aggregate_pathway rolls up counts only.
+    Pathway input (Reactome id). No summed score across genes (v3 §9) —
+    aggregate_pathway rolls up counts only.
     """
     import json
     from pathlib import Path
@@ -61,21 +75,6 @@ def build_pathway(reactome_id: str = "", disease: str = "", mode: str = "explore
     import pathway as PW
 
     vol.reload()
-
-    # entry B: gene -> its pathway (choose the first, expose alternatives)
-    resolved_from = None
-    if not reactome_id and gene:
-        gp = PW.pathways_for_gene(gene)
-        cands = (gp.get("data") or {}).get("pathways", [])
-        if not cands:
-            return {"gene": gene, "reactome_id": None, "n_participant_genes": 0,
-                    "n_built": 0, "summary": {}, "missing": [
-                        {"source": "reactome_gene_pathways", "status": gp["status"],
-                         "reason": gp.get("error") or f"no human pathway for {gene}"}]}
-        reactome_id = cands[0]["stId"]
-        resolved_from = {"gene": gene, "chosen_pathway": reactome_id,
-                         "alternatives": cands}
-
     pathway_res = PW.resolve_pathway(reactome_id)
     mouse_res = PW.infer_mouse_pathway(reactome_id)
     genes = [g["symbol"] for g in (pathway_res.get("data") or {}).get("genes", [])]
@@ -93,31 +92,25 @@ def build_pathway(reactome_id: str = "", disease: str = "", mode: str = "explore
                 packages.append(pkg)
 
     pkg = PW.aggregate_pathway(reactome_id, disease, mode, run_id,
-                               packages, pathway_res, mouse_res,
-                               anchor_gene=gene or None)
+                               packages, pathway_res, mouse_res)
     out = Path(ROOT) / "runs" / run_id / f"pathway_{reactome_id}.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(pkg, indent=2))
     vol.commit()
-    return {"reactome_id": reactome_id, "resolved_from_gene": resolved_from,
-            "path": str(out), "n_participant_genes": len(genes),
-            "n_built": len(packages), "anchor": pkg.get("anchor"),
+    return {"reactome_id": reactome_id, "path": str(out),
+            "n_participant_genes": len(genes), "n_built": len(packages),
             "summary": pkg["summary"], "missing": pkg["missing"]}
 
 
 @app.local_entrypoint()
-def pathway(reactome_id: str = "", disease: str = "", mode: str = "explore",
-            gene: str = ""):
-    """Assess a pathway. Give EITHER --reactome-id R-HSA-... OR --gene SYMBOL."""
-    if not reactome_id and not gene:
-        raise ValueError("provide --reactome-id R-HSA-... or --gene SYMBOL")
+def pathway(reactome_id: str, disease: str = "", mode: str = "explore"):
+    """Assess a pathway by Reactome id, e.g. --reactome-id R-HSA-5358508."""
     run_id = dt.datetime.utcnow().strftime("%Y%m%dT%H%M%S") + f"-{mode}-pathway"
-    result = build_pathway.remote(reactome_id, disease, mode, run_id, gene)
+    result = build_pathway.remote(reactome_id, disease, mode, run_id)
     manifest = {"run_id": run_id, "mode": mode, "disease": disease, **result}
     local = Path("runs") / run_id
     local.mkdir(parents=True, exist_ok=True)
-    chosen = result.get("reactome_id") or "unresolved"  # entry B resolves it remotely
-    (local / f"pathway_{chosen}.json").write_text(json.dumps(manifest, indent=2))
+    (local / f"pathway_{reactome_id}.json").write_text(json.dumps(manifest, indent=2))
     print(json.dumps(manifest, indent=2))
     print(f"\nPathway package on volume 'xctx-cache' under runs/{run_id}/  "
           f"(modal volume get xctx-cache runs/{run_id} .)")

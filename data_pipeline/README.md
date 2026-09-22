@@ -5,17 +5,15 @@ context-tagged evidence packages** — the factual substrate Person B's agent re
 to produce a verdict. **This layer makes no judgments and computes no scores** (v3 §9):
 every field is a retrieved fact or an explicit gap.
 
-Two levels of input:
+Two inputs:
 
-| Level | Input | Command |
-|-------|-------|---------|
-| **Gene** | gene symbols | `modal run app.py --genes MLH1,MSH2 --disease "colorectal cancer"` |
-| **Pathway A** | Reactome id | `modal run app.py::pathway --reactome-id R-HSA-5358508` |
-| **Pathway B** | gene → its pathway | `modal run app.py::pathway --gene MLH1` |
+| Input | Command | Output |
+|-------|---------|--------|
+| **Gene** | `modal run app.py::main --genes MLH1,MSH2 --disease "colorectal cancer"` | per-gene evidence package |
+| **Pathway** | `modal run app.py::pathway --reactome-id R-HSA-5358508` | pathway-level rollup over all participant genes |
 
 Pathway is the top-level unit (v3 §1/§8.2: "fix the pathway/program definition, then
-assess"). Entry B anchors on a known target gene, resolves its Reactome pathway(s), and
-surfaces that gene within its program (`anchor` block).
+assess").
 
 ## The three contexts (v3 §1/§2)
 
@@ -27,15 +25,17 @@ contexts stay as **visible gaps**, never silently dropped (v3 §1).
 | **in vitro** | HPA cell lines, DepMap (Open Targets) | RNA, protein, CRISPR fitness | ✅ |
 | **in vivo** | Ensembl orthology, IMPC, Reactome mouse inference* | phenotype/functional, orthology | ✅ |
 | **human reference** | GTEx baseline, Open Targets association, PubMed | RNA, association, literature | ✅ |
-| **patients** | — | individual variation | ⛔ **explicit gap** |
+| **patients** | HPA pathology (TCGA), cohort-level | disease RNA (cohort) | 🟡 cohort only; individual variation **gap** |
 
 \* Reactome mouse pathway is **computationally inferred** and labeled as such — not an
 independent cross-species experiment (v3 §4.4).
 
-**Patients gap**: real per-patient/disease-cohort data (GEO / CELLxGENE Census / GDC)
-needs dataset download+analysis, out of this retrieval layer's scope. The package marks
-it explicitly (`summary.patients.status = "gap"`, `individual_variation = "not resolved"`)
-with the unmet requirement and candidate sources.
+**Patients (cohort-level)**: `hpa_pathology` adds HPA/TCGA cancer background (disease
+involvement, cancer RNA) at cohort level — same background granularity as the other
+contexts. **Per-patient variation and matched measurements stay an explicit gap**
+(`individual_variation = "not resolved"`); those need dataset analysis (GEO / CELLxGENE
+Census / NCI GDC), out of this retrieval layer's scope. Disease-linked, so skipped in
+`eval` mode.
 
 ## What Person B / Person C call
 
@@ -43,16 +43,17 @@ Same computation, two entry points:
 
 ### MCP tools (`mcp_server.py`, stdio)
 - `build_evidence_package(symbol, disease, mode)` — one gene
-- `build_pathway_evidence(reactome_id | gene, disease, mode)` — one pathway
+- `read_evidence_package(path)` — read a gene package using a receipt path issued in the same MCP session
+- `build_pathway_evidence(reactome_id, disease, mode)` — one pathway
 
 ### Modal functions (deployed app `xctx-evidence`)
 - `build_one(symbol, disease, mode, run_id)` — one gene → package
-- `build_pathway(reactome_id, disease, mode, run_id, gene)` — pathway fan-out → aggregate
+- `build_pathway(reactome_id, disease, mode, run_id)` — pathway fan-out → aggregate
 
 ```python
 import modal
-modal.Function.from_name("xctx-evidence", "build_pathway").remote(
-    "", "colorectal cancer", "explore", "run1", "MLH1")   # entry B
+modal.Function.from_name("xctx-evidence", "build_one").remote(
+    "MLH1", "colorectal cancer", "explore", "run1")
 ```
 
 Packages land on Modal volume `xctx-cache` under `runs/<run_id>/`.
@@ -108,11 +109,21 @@ separately from pathway-exclusive genes like MLH1, MSH2).
 pip install -r requirements.txt
 modal setup                       # first time
 modal deploy evidence_pipeline/app.py
-pytest tests/ -v                  # 23 tests, no network
+pytest tests/ -v                  # no network
 ```
 
 ## Verified (2026-09-22)
-Live end-to-end for **Mismatch Repair (R-HSA-5358508)** and via entry B (`--gene MLH1` →
-R-HSA-5358565): 14 participants built in one pass; in-vitro (HPA + DepMap, 7 essential),
-in-vivo (13/14 mouse one2one, IMPC 4/4 phenotyped, mouse inference labeled), human-reference
-(GTEx), patients marked as gap; 9 shared / 5 exclusive participants. `pytest`: 23 passed.
+Live on Modal. **Gene input** (`MLH1`): in-vitro/in-vivo/human-reference evidence built.
+**Pathway input** (`R-HSA-5358508`): 15 participants built in one pass; in-vitro (HPA +
+DepMap, 7 essential), in-vivo (14 mouse one2one, IMPC 5/5 phenotyped, mouse inference
+labeled), human-reference (GTEx), patients = HPA cohort-level (individual variation still
+gap); 9 shared / 6 exclusive participants. `pytest`: 22 passed.
+
+## Coordinator integration
+
+`build_one` returns its archived JSON in a `package` field as well as the original
+receipt (both unchanged), so it stays a drop-in for the coordinator's `ModalEvidence`
+provider. The team coordinator currently validates the receipt and reads the committed
+package from `xctx-cache`. The gene package read tool only accepts paths issued by its
+own session; it does not read pathway receipts. All retrieved records remain background
+evidence in the coordinator until an empirical observation adapter is provided.

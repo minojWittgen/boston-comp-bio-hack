@@ -27,6 +27,7 @@ build/
 coverage/
 
 # Local datasets and results
+.coordinator-runs/
 data/
 outputs/
 artifacts/
@@ -47,3 +48,6 @@ checkpoints/
 .idea/
 .vscode/
 *.log
+.streamlit/secrets.toml
+.modal.toml
+runs/

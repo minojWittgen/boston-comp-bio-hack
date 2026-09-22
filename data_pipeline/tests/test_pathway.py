@@ -47,23 +47,6 @@ def test_resolve_pathway_empty_is_not_found(monkeypatch):
     assert r["status"] == "not_found"
 
 
-def test_pathways_for_gene_lists_candidates(monkeypatch):
-    monkeypatch.setattr(PW, "reactome_version", lambda: "97")
-    monkeypatch.setattr(S, "http", lambda m, u, **k: [
-        {"stId": "R-HSA-5358565", "displayName": "MutSalpha"},
-        {"stId": "R-HSA-5358606", "displayName": "MutSbeta"},
-        {"stId": None, "displayName": "dropped"}])
-    r = PW.pathways_for_gene("MLH1")
-    assert r["status"] == "ok" and r["data"]["n"] == 2
-    assert r["data"]["pathways"][0]["stId"] == "R-HSA-5358565"
-
-
-def test_pathways_for_gene_empty_is_not_found(monkeypatch):
-    monkeypatch.setattr(PW, "reactome_version", lambda: "97")
-    monkeypatch.setattr(S, "http", lambda m, u, **k: [])
-    assert PW.pathways_for_gene("NOPE")["status"] == "not_found"
-
-
 def test_infer_mouse_pathway_labels_inferred(monkeypatch):
     monkeypatch.setattr(PW, "reactome_version", lambda: "97")
     monkeypatch.setattr(S, "http", lambda m, u, **k: {
@@ -138,6 +121,80 @@ def test_independent_sources_dedupes_shared_providers():
     assert out["providers"]["GTEx"] == ["opentargets_association", "gtex"]
 
 
+def test_hpa_pathology_identifier_only_is_not_found(monkeypatch):
+    """A matching gene row with no disease/cancer fields is not evidence (issue 2)."""
+    monkeypatch.setattr(S, "http", lambda m, u, **k: [
+        {"Gene": "X", "Ensembl": "ENSG1"}])  # row exists, no di / cancer RNA
+    r = S.hpa_pathology("ENSG1")
+    assert r["status"] == "not_found"
+    # a row with only cancer RNA -> ok, flagged has_cancer_rna
+    monkeypatch.setattr(S, "http", lambda m, u, **k: [
+        {"Ensembl": "ENSG1", "RNA cancer specificity": "Low cancer specificity"}])
+    r2 = S.hpa_pathology("ENSG1")
+    assert r2["status"] == "ok" and r2["data"]["has_cancer_rna"] is True
+    assert r2["data"]["has_disease_annotation"] is False
+
+
+def test_hpa_cell_lines_identifier_only_is_not_found(monkeypatch):
+    """Identifier-only cell-line row is not substantive evidence (issue 2)."""
+    monkeypatch.setattr(S, "http", lambda m, u, **k: [{"Gene": "X", "Ensembl": "ENSG1"}])
+    assert S.hpa_cell_lines("ENSG1")["status"] == "not_found"
+    # protein-only row is ok but flagged has_rna False
+    monkeypatch.setattr(S, "http", lambda m, u, **k: [
+        {"Ensembl": "ENSG1", "Subcellular location": ["Nucleoplasm"]}])
+    r = S.hpa_cell_lines("ENSG1")
+    assert r["status"] == "ok" and r["data"]["has_rna"] is False and r["data"]["has_protein"] is True
+
+
+def test_patients_status_reflects_actual_availability():
+    """patients is 'gap' when no substantive HPA pathology, 'cohort_only' when present (issue 1)."""
+    def pkg(sym, pat_status):
+        return {"gene": {"data": {"symbol": sym}},
+                "sources": {"ensembl_orthology": {}, "impc": {"status": "skipped"},
+                            "hpa_pathology": {"status": pat_status}}}
+    pr = S.result("reactome_pathway", "ok", {}, data={"genes": []})
+    mr = S.result("reactome_orthology", "ok", {}, data={"inferred": True})
+    # all skipped (e.g. eval) -> gap, not cohort_only
+    agg = PW.aggregate_pathway("R", "d", "eval", "r",
+                               [pkg("A", "skipped"), pkg("B", "not_found")], pr, mr)
+    assert agg["summary"]["patients"]["status"] == "gap"
+    assert agg["summary"]["patients"]["n_genes_with_disease_background"] == 0
+    # some substantive -> cohort_only
+    agg2 = PW.aggregate_pathway("R", "d", "explore", "r",
+                                [pkg("A", "ok"), pkg("B", "not_found")], pr, mr)
+    assert agg2["summary"]["patients"]["status"] == "cohort_only"
+    assert agg2["summary"]["patients"]["n_genes_with_disease_background"] == 1
+
+
+def test_hpa_pathology_is_patient_cohort_and_leaks_in_eval():
+    """HPA pathology fills the patient context at cohort level; disease-linked → leaks."""
+    e = R.SOURCES["hpa_pathology"]
+    assert e["context"] == "patient"
+    assert "cohort" in e["limitations"].lower()
+    assert R.eval_allows("hpa_pathology") is False  # disease-linked, skipped in eval
+
+
+def test_annotate_package_makes_dimensions_explicit():
+    """Every source result carries §6 dims — including HPA/DepMap context=in_vitro."""
+    pkg = {
+        "gene": {"status": "ok", "data": {"symbol": "MLH1"}},
+        "sources": {
+            "ensembl_orthology": {"mus_musculus": {"status": "ok"}},
+            "opentargets": {"status": "ok"},
+            "hpa_cell_lines": {"status": "ok"},
+            "opentargets_depmap": {"status": "ok"}}}
+    R.annotate_package(pkg)
+    assert pkg["gene"]["evidence"]["species"] == "human"
+    assert pkg["sources"]["ensembl_orthology"]["mus_musculus"]["evidence"]["context"] == "orthology"
+    # package key 'opentargets' maps to the association registry entry
+    assert pkg["sources"]["opentargets"]["evidence"]["context"] == "target_disease_association"
+    # the two in-vitro sources are no longer unset
+    assert pkg["sources"]["hpa_cell_lines"]["evidence"]["context"] == "in_vitro"
+    assert pkg["sources"]["hpa_cell_lines"]["evidence"]["modality"] == ["rna", "protein"]
+    assert pkg["sources"]["opentargets_depmap"]["evidence"]["context"] == "in_vitro"
+    assert pkg["sources"]["opentargets_depmap"]["evidence"]["modality"] == "crispr_fitness"
+
+
 def test_eval_policy_association_leaks_baseline_allowed():
     assert R.eval_allows("opentargets_association") is False  # disease link leaks
     assert R.eval_allows("gtex") is True                      # baseline expression ok
@@ -192,22 +249,3 @@ def test_aggregate_in_vitro_counts():
     assert iv["hpa"]["n_genes"] == 2
     assert iv["depmap"]["n_genes_with_data"] == 2 and iv["depmap"]["n_essential"] == 1
     assert iv["depmap"]["essential_genes"] == ["MLH1"]
-
-
-def test_aggregate_anchor_gene_surfaced():
-    """Entry B: the anchor gene is highlighted within its own program."""
-    pathway_res = S.result("reactome_pathway", "ok", {}, data={"genes": [
-        {"symbol": "MSH2", "shared_participant": False},
-        {"symbol": "PCNA", "shared_participant": True}]})
-    mouse_res = S.result("reactome_orthology", "ok", {}, data={"inferred": True})
-    pkgs = [_pkg("MSH2", "ortholog_one2one", True),
-            _pkg("PCNA", "ortholog_one2many", False)]
-    agg = PW.aggregate_pathway("R-HSA-T", "d", "explore", "r",
-                               pkgs, pathway_res, mouse_res, anchor_gene="MSH2")
-    a = agg["anchor"]
-    assert a["symbol"] == "MSH2" and a["shared_participant"] is False
-    assert a["in_vivo"]["orthology"]["mus_musculus"] == "one2one"
-    assert a["in_vivo"]["impc_phenotyped"] is True
-    # no anchor when none requested
-    assert PW.aggregate_pathway("R-HSA-T", "d", "explore", "r",
-                                pkgs, pathway_res, mouse_res)["anchor"] is None

@@ -26,18 +26,6 @@ Auto-generated from `registry.py` (v3 §4.5). One row per evidence source: its c
 - **Source dependencies**: Reactome
 - **Eval**: allowed
 
-## reactome_gene_pathways
-
-- **Purpose**: Human Reactome pathways a gene participates in (entry B: gene -> pathway).
-- **Eligible inputs**: human gene symbol
-- **Output meaning**: candidate pathways (stId + name) the gene belongs to
-- **Limitations**: a gene maps to many pathways; the caller picks which to assess
-- **Failure behavior**: not_found if the gene maps to no human pathway; error on failure
-- **Version**: Reactome ContentService (graph DB version recorded per call)
-- **Evidence** — role: background; origin: published_retrieved; measured/inferred: n/a; species: human; context: pathway_definition; modality: pathway_membership
-- **Source dependencies**: Reactome
-- **Eval**: allowed
-
 ## reactome_orthology
 
 - **Purpose**: Reactome's computationally inferred mouse pathway for a human pathway.
@@ -133,6 +121,18 @@ Auto-generated from `registry.py` (v3 §4.5). One row per evidence source: its c
 - **Evidence** — role: background; origin: published_retrieved; measured/inferred: measured; species: human; context: in_vitro; modality: crispr_fitness
 - **Source dependencies**: DepMap, Open Targets
 - **Eval**: allowed
+
+## hpa_pathology
+
+- **Purpose**: HPA cancer/disease evidence (TCGA-derived) at the patient/disease context.
+- **Eligible inputs**: human Ensembl gene id
+- **Output meaning**: disease involvement, cancer RNA specificity/distribution
+- **Limitations**: COHORT-level summary; no per-patient variation or matched measurements
+- **Failure behavior**: not_found if gene absent; error on technical failure
+- **Version**: HPA search-api (Pathology Atlas)
+- **Evidence** — role: background; origin: published_retrieved; measured/inferred: measured; species: human; context: patient; modality: rna
+- **Source dependencies**: Human Protein Atlas, TCGA
+- **Eval**: skipped (leaks answers)
 
 ## pubmed
 

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "cross-context-biology": {
+      "type": "http",
+      "url": "https://minoj--xctx-research-api.modal.run/mcp/"
+    }
+  }
+}
