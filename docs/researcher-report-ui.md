@@ -16,7 +16,7 @@ raw arrays or study-count ratios as the default report.
   names, PubMed article links, and study/participant/sample identifiers when supplied.
   Missing identifiers say **Not supplied by this source**. Internal evidence IDs are
   never substituted for study IDs. PubMed search hits are not screened study evidence.
-- **What we need to answer** explains the requested measurements and whether the criteria
+- **What we needed to answer** explains the requested measurements and whether the criteria
   came from the submitted request or were proposed by the model. A requested measurement
   is not a claim about what a source measured.
 - Raw checks, events, internal IDs and the original JSON remain under **Technical details
