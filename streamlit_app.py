@@ -152,11 +152,11 @@ model_ready = bool(st.session_state.get("visitor_api_key", "").strip() and st.se
 
 if experience == "Try the tutorial":
     st.subheader("See an investigation from question to report")
-    st.write("These teaching examples show how a question becomes a report: what evidence was needed, what was found, and why the results disagree or leave a gap. All study observations in these examples are synthetic.")
+    st.caption("Choose a teaching case, then explore its findings and sources. All study observations are synthetic.")
     case = st.radio("Choose an example", ["Disagreement across contexts", "Missing patient evidence"], horizontal=True, key="tutorial_case")
     name = "cross-context-conflict" if case == "Disagreement across contexts" else "missing-evidence"
     state = tutorial(name)
-    with st.expander("Walk through this case", expanded=True):
+    with st.expander("Walk through this case"):
         st.markdown("**1 · Research question**")
         st.write(state.request.question)
         st.markdown("**2 · Review the question** — open What we needed to answer to see the species, contexts and measurements being requested.")

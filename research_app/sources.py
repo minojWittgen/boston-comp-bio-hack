@@ -161,6 +161,15 @@ def source_view(record):
                                    "Disease annotation": display(screen.get("diseaseFromSource")), "CRISPR gene-effect score": screen.get("geneEffect"),
                                    "RNA expression (units not supplied)": screen.get("expression")})
         view.summary = f"Cell-line screen results returned: {len(view.table)} across {display(data.get('n_tissues'))} tissue groups."
+        if view.table:
+            first = view.table[0]
+            values = []
+            if first['RNA expression (units not supplied)'] is not None:
+                values.append(f"RNA expression {first['RNA expression (units not supplied)']} (units not supplied)")
+            if first['CRISPR gene-effect score'] is not None:
+                values.append(f"CRISPR gene-effect score {first['CRISPR gene-effect score']}")
+            if values:
+                view.summary += f" Example returned screen, {first['Cell line']}: " + "; ".join(values) + "."
         view.limitation = "Cell-line names and returned screen values are shown below. Repeated names can represent multiple screens, not independent studies. The response does not specify study IDs, expression units or treatment-versus-control contrasts; gene-effect scores describe CRISPR fitness dependency."
     elif record.source == "reactome_pathway":
         view.summary = "Pathway membership was retrieved."

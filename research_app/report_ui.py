@@ -2,8 +2,11 @@
 import streamlit as st
 
 from research_app.presentation import (CONCLUSIONS, assistant_summary, collection_notes,
-    comparison_views, context_coverage, is_synthetic, requirement_rows, search_status)
+    comparison_views, context_coverage, is_synthetic, requirement_rows, search_status,
+    CONTEXT_LABELS, readable)
 from research_app.sources import source_view
+from research_app.report_outline import (COVERAGE_LABELS, comparison_outline,
+    context_outline, named_references, preview_records)
 from research_app.explanations import (comparison_explanations, criteria_origin,
     overview_explanation, requirement_explanations, source_contributions)
 
@@ -24,15 +27,15 @@ def show_reasoning(state):
     if criteria:
         st.table(criteria)
     st.caption("This is a minimum for the software's descriptive comparison, not a scientific sample-size calculation or proof that one study is sufficient. Study IDs are counted once per requirement; one study may contribute to more than one context. More database rows do not increase this count.")
-    st.markdown("**What makes a study qualify?**")
-    st.write("It must be supplied as a study observation with a study ID and source reference, and match the requested gene, species, context, measurement type and outcome name. Any specified disease, tissue or host species must also match. The comparison then needs compatible measurements and a shared comparison group with a reported direction of change.")
-    st.caption("The current checker compares supplied labels exactly. It does not independently validate study quality, sample size, effect magnitude, units, statistical significance or scientific equivalence.")
-    st.markdown("**What we found and how it relates to the question**")
+    with st.expander("What makes a study qualify?"):
+        st.write("It must be supplied as a study observation with a study ID and source reference, and match the requested gene, species, context, measurement type and outcome name. Any specified disease, tissue or host species must also match. The comparison then needs compatible measurements and a shared comparison group with a reported direction of change.")
+        st.caption("The current checker compares supplied labels exactly. It does not independently validate study quality, sample size, effect magnitude, units, statistical significance or scientific equivalence.")
     contributions = source_contributions(state)
     if contributions:
-        st.table([{"Source": row["title"], "Finding in the returned data": row["finding"],
-                   "What this can—and cannot—answer": row["role"]} for row in contributions])
-        st.caption("These statements describe the retrieved records. Open Sources for the linked database entries, papers and full returned measurements.")
+        with st.expander("What we found and how it relates to the question"):
+            st.table([{"Source": row["title"], "Finding in the returned data": row["finding"],
+                       "What this can—and cannot—answer": row["role"]} for row in contributions])
+            st.caption("These statements describe the retrieved records. Open Sources for the linked database entries, papers and full returned measurements.")
     else:
         st.write("No source records are available yet.")
     st.markdown("**What needs to happen next?**")
@@ -116,16 +119,21 @@ def _source_markdown(state):
     return "\n".join(lines)
 
 
-def render_source(record):
+def render_source(record, finding=None):
     view = source_view(record)
-    with st.container(border=True):
-        st.markdown(f"**{view.title}**")
+    with st.expander(view.title):
         st.write(view.summary)
+        st.caption(view.limitation)
+        if finding is not None and finding.summary != view.summary:
+            st.markdown("**Full research finding**")
+            st.write(finding.summary)
+            for limitation in finding.limitations:
+                if limitation != view.limitation:
+                    st.caption(limitation)
         primary = [link for link in view.links if not link[0].startswith("PubMed article")]
         for label, url, _ in primary[:3]:
             st.link_button(label, url)
-        with st.expander("Source details, measurements and identifiers"):
-            st.caption(view.limitation)
+        with st.container():
             st.markdown("**Study and sample traceability**")
             for label, value in view.identities.items():
                 st.text(f"{label}: {value}")
@@ -257,8 +265,10 @@ def _show_investigation_report(state):
     a, b = st.columns([1, 2])
     a.metric("Source search", search_status(state))
     b.metric("Investigation", "Complete" if investigation.criteria_met else "Collection incomplete")
-    st.write(investigation.completion_reason)
-    for col, row in zip(st.columns(3), context_coverage(state)):
+    with st.expander("What does this status mean?"):
+        st.write(investigation.completion_reason)
+        st.caption("A finished investigation means the source review is done. It does not establish a biological claim.")
+    for col, row in zip(st.columns(3), context_outline(state)):
         with col.container(border=True):
             st.markdown(f"**{row['label']}**")
             st.write(row["detail"])
@@ -266,45 +276,58 @@ def _show_investigation_report(state):
     findings, comparisons, sources, question = st.tabs(["Findings", "Comparisons", "Sources", "What we needed to answer"])
     with findings:
         st.subheader("What we found")
-        st.write(overview_explanation(state))
-        contributions = source_contributions(state)
-        for row in contributions:
+        preview = preview_records(state)
+        st.caption(f"Showing {len(preview)} of {len(records)} returned records, selected to cover the question and different contexts. This is a preview, not a ranking of study quality. All records are in Sources.")
+        for record in preview:
+            view = source_view(record)
             with st.container(border=True):
-                st.markdown(f"**{row['title']}**")
-                st.write(row["finding"])
-                if row["role"]:
-                    st.caption(row["role"])
-                for label, url, _ in row["links"][:3]:
+                st.markdown(f"**{view.title}**")
+                st.write(view.summary)
+                st.caption(view.limitation)
+                for label, url, _ in view.links[:1]:
                     st.markdown(f"[{label}]({url.replace('(', '%28').replace(')', '%29')})")
-        if not contributions:
+        if not preview:
             st.info("No source records have been returned. The coverage and next steps explain the remaining search work.")
-        if investigation.limitations:
-            st.markdown("**Uncertainties and limitations**")
-            for limitation in investigation.limitations:
-                st.write(limitation)
+        _show_notes("What remains uncertain", [named_references(state, note) for note in investigation.limitations])
         notes = collection_notes(state)
         if notes:
             with st.expander("Source availability and search limits"):
                 for note in notes:
                     st.write(note)
-        st.markdown("**Next steps**")
-        for step in investigation.next_steps:
-            st.write(step)
+        _show_notes("What to do next", [named_references(state, note) for note in investigation.next_steps])
         if not investigation.next_steps:
             st.write("Review the linked sources and refine the research question if you want to investigate further.")
 
     with comparisons:
         st.subheader("Similarities, differences and open questions")
-        views = comparison_views(state)
-        for view in views:
+        comparisons_to_show = investigation.comparisons
+        labels = {c.id: " ↔ ".join(row["Requested context"] for row in comparison_outline(state, c)) for c in comparisons_to_show}
+        if len(comparisons_to_show) > 1:
+            selected = st.selectbox("Choose a comparison", list(labels), format_func=labels.get)
+            comparisons_to_show = [c for c in comparisons_to_show if c.id == selected]
+        for comparison in comparisons_to_show:
             with st.container(border=True):
-                st.markdown(f"**{view['title']}**")
-                st.write(view["detail"])
-                for limitation in view["limitations"]:
-                    st.caption(limitation)
-                if view["records"]:
-                    st.caption("Sources: " + "; ".join(dict.fromkeys(source_view(r).title for r in view["records"])))
-        if not views:
+                st.table(comparison_outline(state, comparison))
+                st.caption("Source coverage describes what was retrieved. It does not establish agreement or count independent studies.")
+                for col, side, ids in zip(st.columns(2), ("First context", "Second context"),
+                                         (comparison.left_evidence_ids, comparison.right_evidence_ids)):
+                    with col:
+                        st.markdown(f"**{side} · example source**")
+                        available = [r for r in records if r.id in ids]
+                        available.sort(key=lambda r: r.source in {"mygene", "ensembl_orthology"})
+                        if available:
+                            record = available[0]
+                            source = source_view(record)
+                            st.markdown(f"**{source.title}**")
+                            st.write(source.summary)
+                            st.caption(f"Returned context: {readable(record.species)} · {CONTEXT_LABELS.get(record.context, readable(record.context))} · {record.modality or 'Measurement not specified'}")
+                            st.caption(source.limitation)
+                        else:
+                            st.write("No source record was returned for this side.")
+                _show_notes("Limits of this comparison", comparison.limitations)
+                with st.expander("Full comparison explanation and source references"):
+                    st.write(named_references(state, comparison.summary))
+        if not comparisons_to_show:
             st.write("No cross-context comparison was requested or returned. The retrieved findings are available in Findings and Sources.")
         if state.assessment and any(r.level == "observation" for r in records):
             with st.expander("Optional comparison of supplied study observations"):
@@ -322,9 +345,10 @@ def _show_investigation_report(state):
 
     with sources:
         st.subheader("Where the information comes from")
-        st.write("Inspect the retrieved measurements, annotations and article links here. Source details preserve the reported context and available identifiers.")
+        st.write("Open a source for the full finding, measurements, article links and available study or sample identifiers.")
+        full_findings = {f.evidence_id: f for f in investigation.findings}
         for record in records:
-            render_source(record)
+            render_source(record, full_findings.get(record.id))
         if not records:
             st.info("No source results have been returned.")
 
@@ -334,7 +358,8 @@ def _show_investigation_report(state):
         st.write(criteria_origin(state))
         rows = requirement_rows(state)
         if rows:
-            st.table([{key: row[key] for key in ("Question to answer", "Context", "Evidence available", "What the sources answer")} for row in rows])
+            st.table([{"Question to answer": row["Question to answer"], "Context": row["Context"],
+                       "Source coverage": COVERAGE_LABELS.get(row["Evidence available"].lower(), row["Evidence available"])} for row in rows])
             for row in rows:
                 with st.expander(f"{row['Question to answer']} · {row['Evidence available']}"):
                     for key, value in row.items():
@@ -357,3 +382,16 @@ def _show_investigation_report(state):
                  "collection_limits": [g.model_dump() for g in state.evidence.gaps] if state.evidence else [],
                  "events": state.events, "plan_sha256": state.plan_sha256}, expanded=False)
         st.download_button("Download all original data (JSON)", state.model_dump_json(indent=2), file_name=f"investigation-{state.run_id}.json", mime="application/json")
+
+
+def _show_notes(title, notes, limit=2):
+    notes = list(dict.fromkeys(note.strip() for note in notes if note.strip()))
+    if not notes:
+        return
+    st.markdown(f"**{title}**")
+    for note in notes[:limit]:
+        st.write("• " + note)
+    if len(notes) > limit:
+        with st.expander(f"{title} · {len(notes) - limit} more"):
+            for note in notes[limit:]:
+                st.write("• " + note)

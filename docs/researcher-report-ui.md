@@ -4,6 +4,31 @@ The website presents the research question, comparisons, source contents and mis
 study information. It no longer uses coordinator status codes, evidence record IDs,
 raw arrays or study-count ratios as the default report.
 
+## Compact presentation for the updated coordinator
+
+Schema 0.2 research reports now begin with a short completion message, context coverage
+counts and a preview of at most three source records. The preview favors sources matching
+the saved scope and then varies the entity/context; it is not a ranking of biological
+strength. Every returned record remains available in **Sources**. Source summaries keep
+their interpretation limits next to the finding.
+
+Long completion explanations, additional limitations and next steps are expandable.
+**Comparisons** displays one selected comparison at a time, with a small scope/coverage
+table and the full explanation available underneath. Internal evidence references in
+that explanation are displayed as source names. Counts are source records, not studies
+or biological agreement. The source details retain the full coordinator finding,
+measurements, URLs and study/sample identifiers. The question tab retains its label
+**What we needed to answer** and keeps detailed scope information in expanders.
+
+Historical schema 0.1 reports retain their original interpretation. Their long source
+contribution table and detailed qualification rules can be expanded. Neither format
+changes a saved plan, assessment or result. Markdown and JSON downloads remain complete;
+the UI uses no extra model call. The tutorial walkthrough starts collapsed so the report
+appears sooner. The three-page Introduction / Research workspace / References navigation
+and session-only credentials continue to work as documented in [the demo story](demo-story.md).
+
+The sections below record the earlier report improvements and their historical checks.
+
 ## What changed
 
 - **Source search** says Finished, In progress, Some sources unavailable or Could not
