@@ -30,7 +30,7 @@ _LIMITATIONS = [
     "Unpaired cohorts cannot establish within-patient agreement.",
     "Descriptive agreement does not establish causality or clinical efficacy.",
     "RNA abundance, protein abundance, and protein activity are distinct endpoints.",
-    "Missing biological evidence remains an unmet criterion or gap, not a positive finding.",
+    "Missing biological evidence is a reported research gap, not a positive finding or automatic investigation failure.",
 ]
 
 
@@ -97,7 +97,7 @@ def _annotate_inferences(request: InvestigationRequest, plan: ResearchPlan, gene
         assumptions.append(f"Disease scope inferred from the question: {plan.disease}; this interpretation requires review.")
     if not request.requirements:
         assumptions.extend(
-            f"Proposed criterion {item.id}: entity={item.entity}; species={item.species}; context={item.context}; modality={item.modality}; endpoint={item.endpoint}; condition={item.condition}; tissue={item.tissue}; host_species={item.host_species}; min_studies={item.min_studies}; required={item.required}. These choices are unverified interpretations of intent, not evidence."
+            f"Proposed criterion {item.id}: entity={item.entity}; species={item.species}; context={item.context}; modality={item.modality}; endpoint={item.endpoint}; condition={item.condition}; tissue={item.tissue}; host_species={item.host_species}; min_studies={item.min_studies}; required={item.required}. These choices define research scope, not evidence. The study minimum applies only to optional supplied-observation diagnostics, not investigation completion."
             for item in plan.requirements
         )
     if not request.comparisons:

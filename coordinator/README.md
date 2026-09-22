@@ -1,73 +1,69 @@
 # Cross-context investigation coordinator
 
-This service turns a research request into fixed evidence criteria, collects the current
-pipeline's reference packages, checks separately supplied observations, and returns a
-traceable report. Its present scientific result is **descriptive comparison of declared
-observations**, not a new experimental analysis or independent biological validation.
+This service investigates what existing biological sources report about a question.
+It collects source packages, explains their reported findings, compares species,
+modalities and experimental contexts, and records unresolved questions and collection
+limits. Investigation completion does **not** require proving a biological hypothesis.
 
-The frontend can start an investigation and poll its state through HTTP. The CLI and
-Modal worker use the same coordinator and contracts.
-
-**Real empirical observations are not connected yet.** The included observations are
-explicitly synthetic fixtures. A real dataset/analysis adapter is still needed before
-the service can answer a biological question using measured data.
+The frontend, HTTP API, CLI and Modal worker share the same coordinator. Database
+results (including GTEx medians, IMPC phenotypes, DepMap screens and HPA cohort
+summaries) are usable findings at their reported scope. Their existing `background`
+label is retained for compatibility; it does not exclude them from the investigation.
+Source records are never silently promoted to normalized experimental observations.
 
 ## Execution and scientific meaning
 
 ```mermaid
 flowchart TD
-    Input["Submission: request + optional observations"] --> Intent["Intent planning: explicit criteria or one Claude call"]
-    Intent --> Freeze["Freeze ResearchPlan and SHA-256 digest"]
-    Freeze --> Preflight["Preflight: record collector capability and supplied observation count"]
-    Preflight --> Collect["Collect reference packages for requested genes"]
-    Collect --> Adapt["Preserve raw packages; adapt reference facts as background only"]
-    Input --> Observations["Separately supplied observation records"]
-    subgraph Contexts["Observation scope: experimental context × species × modality"]
-        Vitro["in_vitro: cells / organoids"]
-        Vivo["in_vivo: animal or other living model"]
-        Patient["patient: human patient observations"]
-        Axes["Each record: measured species, DNA / RNA / protein / phenotype / clinical endpoint; optional condition, tissue, host species"]
-        Vitro --> Axes
-        Vivo --> Axes
-        Patient --> Axes
-    end
-    Observations --> Vitro
-    Observations --> Vivo
-    Observations --> Patient
-    Adapt --> Check["Check fixed scope, provenance fields, study coverage and comparability"]
-    Axes --> Check
-    Check --> Result["Assess descriptive direction: supported / conflicting / inconclusive / not_assessable"]
-    Result --> Retry{"Retryable collection failure, unmet criteria and retry budget left?"}
-    Retry -->|Yes: at most one follow-up| Collect
-    Retry -->|No| Finish["Persist complete / partial / failed; return report, evidence IDs and gaps"]
+    Input[Research question and optional supplied observations] --> Intent[Define and freeze research scope]
+    Intent --> Collect[Collect existing published source results]
+    Collect --> Findings[Summarize findings with source records]
+    Findings --> Compare[Explain species, modality and context differences]
+    Compare --> Review[Account for scope, uncertainty and collection limits]
+    Review --> Retry{Recoverable collection error and budget left?}
+    Retry -->|Yes, at most once| Collect
+    Retry -->|No| Report[Research report and next steps]
+    Input --> Diagnostic[Optional supplied-observation checks]
+    Diagnostic -. separate diagnostic, no completion gate .-> Report
 ```
 
-`in_vitro`, `in_vivo`, and `patient` describe **experimental context**. They are not
-species or modalities. A human xenograft in a mouse can have
-`species="homo_sapiens"`, `context="in_vivo"`, and `host_species="mus_musculus"`.
-Requirements can also specify `condition` and `tissue`; generated scope remains an
-interpretation requiring review.
-
-The current preflight records known capabilities and the number of supplied
-observations. It does not estimate dataset feasibility or execute a scientific feasibility
-analysis. The follow-up loop retries technical collection failures for affected genes;
-it does not discover missing experiments, revise biological criteria, or rerun a
-single-cell analysis. A missing biological observation remains a gap.
+`RunState.investigation` is the primary result in schema **0.2**. It contains grounded
+`findings`, research `coverage`, descriptive `comparisons`, `limitations`, `next_steps`,
+and deterministic research-completion `checks` / `criteria_met`.
 
 | Execution status | Meaning |
 | --- | --- |
-| `queued` | Accepted and awaiting execution. |
-| `running` | Planning, collection, or checking is in progress. |
-| `complete` | Mandatory declared evidence checks pass and requested comparisons are assessable. |
-| `partial` | Execution finished but some mandatory evidence or comparison prerequisites are missing. |
-| `failed` | Planning, scheduling, execution, or a contract check prevented completion. |
+| `queued` / `running` | Investigation has not finished. |
+| `complete` | Bounded research work is accounted for, findings and limits are reported. Biology may remain unresolved. |
+| `partial` | Collection or scope coverage remains incomplete; available findings are still reported. |
+| `failed` | A planning, scheduling, execution or contract failure prevented the investigation. |
 
-`complete`, `partial`, and `failed` are terminal statuses. Scientific meaning is in
-`assessment.conclusion`, separately from `status`. An investigation can be **complete
-and conflicting**: both contexts have sufficient comparable observations, and their
-directions disagree. `criteria_met` is calculated by the checker; it does not mean the
-user's biological hypothesis is true. With no comparisons, coverage checks can finish
-as complete while the biological conclusion remains `not_assessable`.
+`coverage.status` (`addressed`, `limited`, `unavailable`) describes the material found
+for a research question. It is **not** a true/false biological verdict. A search that
+returns no hits can be a completed search when that outcome is recorded; it is not
+proof that evidence does not exist. Technical errors, malformed packages, unsearched
+entities and truncated collection remain visible limitations. No percentage is used
+as a universal biological confidence score.
+
+The original `assessment` field remains available for explicitly supplied observation
+checks and historical clients. Its `criteria_met`, study minimum and `conclusion` do
+**not** determine investigation completion. It does not count retrieved database
+summaries as independent studies or independently certify their scientific validity.
+Old saved states without `investigation` remain readable with their original meaning.
+
+Species, host species, in-vitro/in-vivo/patient context and modality remain separate.
+Cohort summaries cannot resolve individual patient variation. RNA, protein location,
+sequence identity, CRISPR fitness and clinical outcomes retain their own meanings.
+Describing them together does not establish equal effects or enable numeric pooling.
+
+This patch uses deterministic, source-specific summaries and bounded technical retries.
+It adds no post-retrieval model call, autonomous literature-reading tool, raw-data
+analysis or discovery of new experiments. The existing provider still fetches genes;
+versioned pathway membership remains scope, not activity. Multi-pathway execution
+is not added here. These limits must stay visible in handoffs and benchmarking.
+
+See [the investigation-first handoff](../docs/investigation-first-handoff.md) for
+migration and benchmark changes.
 
 ## Run locally
 
@@ -111,9 +107,8 @@ Replay the two supplied demonstrations using the same environment variables:
 .venv/bin/python -m coordinator.cli coordinator/examples/cross-context-conflict.json
 ```
 
-These are software demonstration fixtures, not biological findings. Local CLI runs were
-verified as `partial` / `not_assessable` for the first and `complete` / `conflicting` for
-the second. The CLI prints the full `RunState` JSON. Its exit status is nonzero
+These are software demonstration fixtures, not biological findings. Both include explicit collection limits; inspect `investigation` for research completion and
+`assessment` only for the separate supplied-observation diagnostic. The CLI prints the full `RunState` JSON. Its exit status is nonzero
 only for `failed`; callers must inspect the result to distinguish partial evidence from
 completed comparison.
 
@@ -174,8 +169,8 @@ When `COORDINATOR_API_TOKEN` is configured, all investigation endpoints require
 `Authorization: Bearer <token>`. Local development can omit it; Modal deployment requires
 it. `XCTX_ALLOWED_ORIGINS` accepts comma-separated frontend origins and defaults to
 `http://localhost:3000,http://127.0.0.1:3000`. Poll until a terminal status and display
-the execution status, evidence conclusion, unmatched criteria, and comparison limits
-separately. A failed run may have no report; show its `error` and event history.
+the investigation findings, coverage, limitations and next steps first; expose optional
+observation diagnostics separately. A failed run may have no report; show its `error` and event history.
 
 ## Module responsibilities and integration interfaces
 
@@ -184,8 +179,9 @@ separately. A failed run may have no report; show its `error` and event history.
 | `models.py` / shared contracts | `Submission`, `InvestigationRequest`, `ResearchPlan`, `EvidenceRecord`, `RunState` | All API and worker schemas; coordinate changes across teams. Extra fields are rejected. |
 | `planner.py`, `prompts/intent.md` / intent planning | `Planner.plan(request) -> ResearchPlan`; `ExplicitPlanner`; `ClaudePlanner(model=None, client=None)` | Intent only; no evidence input. Exact structured scope is preserved. |
 | `evidence.py` / collection integration | `EvidenceProvider.fetch(symbol, disease, mode, run_id) -> dict`; `adapt_packages(packages) -> EvidenceBundle` | Resolve real packages, preserve raw payload/provenance, retain collection gaps. |
+| `investigation.py` / research synthesis | `investigate(plan, bundle) -> InvestigationAssessment` | Use returned findings, preserve scope differences, account for collection limits; determine research completion. |
 | `checks.py` / declared-evidence checks | `assess(plan, bundle) -> Assessment` | Deterministic scope and comparability checks; never modify criteria or infer missing evidence. |
-| `engine.py` / orchestration | `Coordinator.create(submission)`; `execute(run_id, submission)`; `render_report(state)` | Freeze plan, persist events, collect, assess, bounded technical retry, report. |
+| `engine.py` / orchestration | `Coordinator.create(submission)`; `execute(run_id, submission)`; `render_report(state)` | Freeze plan, persist events, collect, synthesize, independently check optional observations, bounded technical retry, report. |
 | `runtime.py` / configuration | `build_coordinator(store=None)`; `AutoPlanner.plan(request)` | Explicit criteria choose the model-free planner; evidence directory selects replay. |
 | `store.py` / persistence | `save(state)`, `get(run_id)`; Modal job ID storage | Atomic local JSON snapshots or shared Modal Dict. |
 | `api.py` / frontend integration | `create_app(coordinator=None, dispatch=None, api_token=None, refresh=None)` | HTTP submission, polling, reports, authentication, and CORS. |

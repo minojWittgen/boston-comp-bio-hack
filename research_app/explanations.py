@@ -7,6 +7,9 @@ from research_app.sources import source_view
 
 
 def criteria_origin(state):
+    if getattr(state, "investigation", None) is not None:
+        return ("The research scope came from your submitted request." if state.request.requirements else
+                "The model proposed this research scope from your question. The findings below explain what the retrieved sources address.")
     if state.request.requirements:
         return "The study minimum and scope below came from the submitted research request."
     return "The model proposed the study minimum and scope from your question; you did not explicitly choose these thresholds."
@@ -19,6 +22,16 @@ def _studies(records, ids):
 def requirement_explanations(state):
     if not state.plan:
         return []
+    investigation = getattr(state, "investigation", None)
+    if investigation is not None:
+        coverage = {c.requirement_id: c for c in investigation.coverage}
+        return [{"id": r.id, "title": r.title, "required": r.required,
+                 "scope": f"{r.entity}; {readable(r.species)}; {CONTEXT_LABELS[r.context]}; {r.modality}",
+                 "measurement": readable(r.endpoint),
+                 "status": coverage[r.id].status if r.id in coverage else "pending",
+                 "detail": coverage[r.id].detail if r.id in coverage else "Coverage is being prepared.",
+                 "evidence_ids": coverage[r.id].evidence_ids if r.id in coverage else []}
+                for r in state.plan.requirements]
     checks = {c.id: c for c in state.assessment.checks} if state.assessment else {}
     records = state.evidence.records if state.evidence else []
     result = []
@@ -38,9 +51,14 @@ def requirement_explanations(state):
 def source_contributions(state):
     """What each reference establishes at its reported level, not a clinical inference."""
     result = []
+    investigation = getattr(state, "investigation", None)
+    findings = {f.evidence_id: f for f in investigation.findings} if investigation is not None else {}
     for record in (state.evidence.records if state.evidence else []):
         view = source_view(record)
-        if record.level == "observation":
+        finding = findings.get(record.id)
+        if investigation is not None:
+            role = " ".join(finding.limitations) if finding and finding.limitations else view.limitation
+        elif record.level == "observation":
             role = "A supplied study measurement; inclusion in a comparison depends on the saved checks."
         else:
             role = {
@@ -55,7 +73,7 @@ def source_contributions(state):
                 "hpa_pathology": "Provides cancer-cohort categories and annotations, not the requested study-level RNA measurements and comparison groups.",
                 "reactome_pathway": "Defines pathway membership and source coverage, not measured pathway activity.",
             }.get(record.source, view.limitation)
-        result.append({"title": view.title, "finding": view.summary, "role": role, "links": view.links,
+        result.append({"title": view.title, "finding": finding.summary if finding else view.summary, "role": role, "links": view.links,
                        "record_id": record.id, "entity": record.entity})
     return result
 
@@ -65,6 +83,11 @@ def overview_explanation(state):
     observations = [r for r in records if r.level == "observation"]
     if state.status == "failed":
         return "The search did not finish. The returned material cannot be treated as a completed evidence review."
+    investigation = getattr(state, "investigation", None)
+    if investigation is not None:
+        return (investigation.completion_reason + " "
+                f"The investigation explains {len(investigation.findings)} retrieved findings, their source coverage and limitations. "
+                "Database results contribute at their reported level; uncertainty remains visible in the findings and next steps.")
     if not state.assessment:
         return "The evidence checks have not finished yet."
     if records and not observations:
