@@ -56,6 +56,7 @@ Open the local website with the same `?report=` link. Tests cover source links, 
 and supplied identifiers, real numeric source fields, synthetic-result labeling,
 collection failures versus evidence gaps, report exports, session switching, and
 reopening reports without a paid model call. They use local fixtures and fake clients.
+The combined suite passed **192 tests and 40 subtests** (one existing dependency deprecation warning).
 The real saved MLH1 result was also replayed with Streamlit AppTest and in a browser.
 
 The source adapters from main at `e77ec59` are included. The team updated the HPA test fixture
