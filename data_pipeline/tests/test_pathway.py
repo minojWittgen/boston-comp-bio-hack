@@ -47,6 +47,39 @@ def test_resolve_pathway_empty_is_not_found(monkeypatch):
     assert r["status"] == "not_found"
 
 
+def test_pathway_details_extracts_pmids_and_hierarchy(monkeypatch):
+    """Pathway-level details: description, defining PMIDs, GO, hierarchy (issue: pathway study IDs)."""
+    monkeypatch.setattr(PW, "reactome_version", lambda: "97")
+
+    def http(method, url, **k):
+        if "/query/" in url:
+            return {"displayName": "Mismatch Repair",
+                    "summation": [{"text": "MMR corrects base mismatches."}],
+                    "literatureReference": [{"pubMedIdentifier": 23572416},
+                                            {"pubMedIdentifier": 16464007}],
+                    "goBiologicalProcess": {"displayName": "mismatch repair"},
+                    "isInDisease": False}
+        if "/ancestors" in url:
+            return [[{"displayName": "Mismatch Repair"}, {"displayName": "DNA Repair"}]]
+        raise AssertionError(url)
+    monkeypatch.setattr(S, "http", http)
+    r = PW.pathway_details("R-HSA-5358508")
+    assert r["status"] == "ok"
+    assert r["data"]["pmids"] == ["23572416", "16464007"]
+    assert r["data"]["go_biological_process"] == "mismatch repair"
+    assert r["data"]["hierarchy"] == ["Mismatch Repair", "DNA Repair"]
+
+
+def test_aggregate_pathway_only_carries_details_without_members():
+    """Pathway-only view (no member packages) still returns pathway details."""
+    pr = S.result("reactome_pathway", "ok", {}, data={"genes": []})
+    mr = S.result("reactome_orthology", "ok", {}, data={"inferred": True})
+    dr = S.result("reactome_pathway_details", "ok", {}, data={"pmids": ["1"], "name": "X"})
+    agg = PW.aggregate_pathway("R", "", "explore", "r", [], pr, mr, dr)
+    assert agg["pathway_details"]["data"]["pmids"] == ["1"]
+    assert agg["summary"]["n_genes"] == 0
+
+
 def test_infer_mouse_pathway_labels_inferred(monkeypatch):
     monkeypatch.setattr(PW, "reactome_version", lambda: "97")
     monkeypatch.setattr(S, "http", lambda m, u, **k: {
@@ -119,6 +152,18 @@ def test_independent_sources_dedupes_shared_providers():
     # IMPC appears in both impc and opentargets -> counted once
     assert out["providers"]["IMPC"] == ["impc", "opentargets_association"]
     assert out["providers"]["GTEx"] == ["opentargets_association", "gtex"]
+
+
+def test_cache_version_bump_invalidates_legacy_entries(tmp_path, monkeypatch):
+    """A pre-fix cached entry (old CACHE_VERSION) is not served after the bump (issue 1)."""
+    q = {"ensg": "ENSG1"}
+    legacy = S.result("hpa_pathology", "ok", q, data={})  # old empty-ok, no has_cancer_rna
+    monkeypatch.setattr(C, "CACHE_VERSION", "v1")
+    c = C.JsonCache(tmp_path)
+    c.put("hpa_pathology", q, legacy)
+    assert c.get("hpa_pathology", q) is not None          # served under v1
+    monkeypatch.setattr(C, "CACHE_VERSION", "v2")
+    assert c.get("hpa_pathology", q) is None               # miss after bump -> re-fetch
 
 
 def test_hpa_pathology_identifier_only_is_not_found(monkeypatch):

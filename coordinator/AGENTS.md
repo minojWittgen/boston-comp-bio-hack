@@ -34,9 +34,15 @@ with the people working on the frontend, evidence integration, and scientific ch
 - Imported observations and comparison bases are declared metadata. Existing checks
   validate structure and consistency, not source truth, normalization validity,
   independence, statistical significance, causal claims, or clinical efficacy.
-- `complete` is an execution/evidence-coverage status. `supported`, `conflicting`,
+- `RunState.investigation` is the primary research result. Use all returned source
+  findings at their reported scope, including records labeled background. Research
+  completion is checked against performed research, traceability, coverage and disclosed
+  limitations; a biological verdict is not required.
+- `assessment` is the optional declared-observation diagnostic. Its study-count and
+  comparison gates must never determine investigation completion or stop retries.
+- `complete` is a bounded investigation-completion status. `supported`, `conflicting`,
   `inconclusive`, and `not_assessable` are separate conclusions. A complete conflicting
-  investigation is a valid result. Keep this distinction in APIs, tests, and UI text.
+  investigation is a valid result. Keep this distinction in APIs, tests, and UI text. Present investigation findings first.
 - Preserve study-based counts and evidence IDs; pair counts or duplicate rows are not
   independent replicates. Keep species separate from host species for xenografts.
 
@@ -47,6 +53,7 @@ with the people working on the frontend, evidence integration, and scientific ch
 | Shared schemas | `models.py`; coordinate any contract change before dependent edits. |
 | Intent planning | `planner.py`, `prompts/intent.md`; `Planner.plan(request) -> ResearchPlan`. |
 | Package retrieval and adaptation | `evidence.py`; `EvidenceProvider.fetch(...) -> dict`, `adapt_packages(...)`. |
+| Research synthesis | `investigation.py`; `investigate(plan, bundle) -> InvestigationAssessment`. |
 | Declared-evidence checks | `checks.py`; `assess(plan, bundle) -> Assessment`. |
 | Investigation lifecycle and reporting | `engine.py`; `Coordinator.create/execute`, `render_report`. |
 | Configuration and persistence | `runtime.py`, `store.py`. |

@@ -11,7 +11,9 @@ import os
 from pathlib import Path
 from typing import Callable
 
-CACHE_VERSION = "v1"
+# v2: HPA fetchers now return not_found for identifier-only rows and carry has_* flags.
+# v3: opentargets rows now include datasourceScores provenance.
+CACHE_VERSION = "v3"
 CACHEABLE = {"ok", "not_found"}
 
 

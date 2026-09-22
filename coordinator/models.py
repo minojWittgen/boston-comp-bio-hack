@@ -20,7 +20,7 @@ class EvidenceRequirement(Contract):
     condition: str | None = None
     tissue: str | None = None
     host_species: str | None = None
-    min_studies: int = Field(default=1, ge=1, le=10)
+    min_studies: int = Field(default=1, ge=1, le=10, description="Minimum for optional supplied-observation diagnostics; not an investigation completion threshold.")
     required: bool = True
 
 
@@ -55,7 +55,7 @@ class ResearchPlan(Contract):
     question: str = Field(min_length=5)
     genes: list[str] = Field(min_length=1, max_length=10)
     disease: str = ""
-    requirements: list[EvidenceRequirement] = Field(min_length=1, max_length=30)
+    requirements: list[EvidenceRequirement] = Field(min_length=1, max_length=30, description="Research scope to discuss, including known gaps; not a requirement to prove a biological effect.")
     comparisons: list[ComparisonSpec] = Field(default_factory=list, max_length=20)
     assumptions: list[str] = Field(default_factory=list)
     claims_to_avoid: list[str] = Field(default_factory=lambda: [
@@ -163,8 +163,43 @@ class Assessment(Contract):
     gaps: list[Gap] = Field(default_factory=list)
 
 
+class ResearchFinding(Contract):
+    evidence_id: str
+    entity: str
+    source: str
+    summary: str
+    limitations: list[str] = Field(default_factory=list)
+
+
+class ResearchCoverage(Contract):
+    requirement_id: str
+    status: Literal["addressed", "limited", "unavailable"]
+    evidence_ids: list[str] = Field(default_factory=list)
+    detail: str
+
+
+class ResearchComparison(Contract):
+    id: str
+    left_evidence_ids: list[str] = Field(default_factory=list)
+    right_evidence_ids: list[str] = Field(default_factory=list)
+    summary: str
+    limitations: list[str] = Field(default_factory=list)
+
+
+class InvestigationAssessment(Contract):
+    """Research completion and grounded synthesis, independent of biological proof."""
+    criteria_met: bool
+    checks: list[CheckResult] = Field(default_factory=list)
+    findings: list[ResearchFinding] = Field(default_factory=list)
+    coverage: list[ResearchCoverage] = Field(default_factory=list)
+    comparisons: list[ResearchComparison] = Field(default_factory=list)
+    limitations: list[str] = Field(default_factory=list)
+    next_steps: list[str] = Field(default_factory=list)
+    completion_reason: str
+
+
 class RunState(Contract):
-    schema_version: str = "0.1"
+    schema_version: str = "0.2"
     run_id: str
     status: Literal["queued", "running", "complete", "partial", "failed"] = "queued"
     stage: str = "queued"
@@ -173,6 +208,7 @@ class RunState(Contract):
     plan_sha256: str | None = None
     evidence: EvidenceBundle | None = None
     assessment: Assessment | None = None
+    investigation: InvestigationAssessment | None = None
     events: list[dict[str, Any]] = Field(default_factory=list)
     attempts: int = 0
     report: str | None = None

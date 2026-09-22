@@ -227,16 +227,47 @@ def _adapt_pathway_package(package: dict, bundle: EvidenceBundle, seen: set[str]
     output so it is not rejected as malformed. The full multi-pathway request/collection
     route remains a separate coordinator integration.
     """
-    pathway = package.get("pathway") if isinstance(package.get("pathway"), dict) else {}
+    pathway = package.get("pathway") if isinstance(package.get("pathway"), dict) else None
+    summary = package.get("summary") if isinstance(package.get("summary"), dict) else None
     run = package.get("run") if isinstance(package.get("run"), dict) else {}
+    if pathway is None or summary is None:
+        _gap(bundle, "malformed_package", f"Package {index}: pathway package missing a pathway or summary object")
+        return
     pdata = pathway.get("data") if isinstance(pathway.get("data"), dict) else {}
     reactome_id = _text(pdata.get("reactome_id")) or _text(run.get("reactome_id"))
     if not reactome_id:
         _gap(bundle, "malformed_package", f"Package {index}: pathway package missing a reactome_id")
         return
-    identity = {"pathway": reactome_id, "summary": package.get("summary")}
+    # Propagate the pathway resolution failure as a structured gap instead of masking it
+    # as background. Technical errors stay retryable; do not emit a membership record.
+    status = pathway.get("status")
+    if status != "ok":
+        meanings = {"not_found": "no pathway record", "error": "technical retrieval failure",
+                    "skipped": "pathway not resolved"}
+        code = f"pathway_{status}" if status in ("not_found", "error", "skipped") else "malformed_source"
+        _gap(bundle, code, f"{reactome_id}: pathway resolution {meanings.get(status, status)}",
+             "reactome_pathway", reactome_id, retryable=status == "error")
+        return
+    # Propagate mouse-inference and member-source failures so they are not lost.
+    mouse = package.get("mouse_inference") if isinstance(package.get("mouse_inference"), dict) else {}
+    if mouse.get("status") not in (None, "ok"):
+        _gap(bundle, f"pathway_mouse_inference_{mouse.get('status')}",
+             f"{reactome_id}: mouse pathway inference {mouse.get('status')}",
+             "reactome_orthology", reactome_id, retryable=mouse.get("status") == "error")
+    for miss in (package.get("missing") or []):
+        if isinstance(miss, dict) and miss.get("status") in ("error", "not_found", "skipped", "partial"):
+            _gap(bundle, f"pathway_member_{miss.get('status')}",
+                 f"{reactome_id}/{miss.get('source')}: {miss.get('status')} ({miss.get('reason')})",
+                 str(miss.get("source")), reactome_id, retryable=miss.get("status") == "error")
+    # Identity: versioned membership + source version distinguish distinct evidence with
+    # equal coverage counts; timestamps are excluded so identical evidence deduplicates.
+    members = sorted(
+        [(g.get("symbol"), g.get("shared_participant")) for g in (pdata.get("genes") or [])
+         if isinstance(g, dict)], key=lambda x: str(x[0]))
+    identity = {"pathway": reactome_id, "source_version": pathway.get("source_version"),
+                "members": members, "summary": summary}
     digest = hashlib.sha256(json.dumps(identity, sort_keys=True, ensure_ascii=True,
-                                       allow_nan=False).encode()).hexdigest()[:24]
+                                       allow_nan=False, default=str).encode()).hexdigest()[:24]
     record = EvidenceRecord(
         id=f"pathway-{digest}", source="reactome_pathway", entity=reactome_id, level="background",
         context="reference", endpoint="pathway_membership_and_coverage",

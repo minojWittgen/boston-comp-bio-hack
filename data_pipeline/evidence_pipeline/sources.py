@@ -162,7 +162,11 @@ query T($id: String!) {
     id approvedSymbol approvedName biotype
     associatedDiseases(page: {index: 0, size: 25}) {
       count
-      rows { score disease { id name } }
+      rows {
+        score
+        disease { id name }
+        datasourceScores { id score }
+      }
     }
   }
 }"""

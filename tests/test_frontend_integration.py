@@ -58,9 +58,12 @@ def test_frontend_examples_use_real_coordinator_and_report(tmp_path, name, statu
         assert RunState.model_validate(client.get(response.json()['status_url']).json()) == state
         cards = context_coverage(state)
         assert [r['total'] for r in cards] == [1, 1, 2]
-        assert cards[2]['passed'] == (2 if status == 'complete' else 0)
+        assert state.investigation.criteria_met == (status == 'complete')
+        assert cards[2]['passed'] == sum(c.status == 'addressed' for c in state.investigation.coverage
+                                       if c.requirement_id in {r.id for r in state.plan.requirements if r.context == 'patient'})
         summary = assistant_summary(state)
-        assert status in summary and conclusion.replace('_', ' ') in summary
+        assert ('Investigation complete' if status == 'complete' else 'Collection incomplete') in summary
+        assert 'not enough comparable evidence' not in summary
         assert 'synthetic' in summary.lower()
 
 
