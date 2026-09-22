@@ -10,7 +10,7 @@ cd boston-comp-bio-hack
 git switch -c your-name/short-task
 ```
 
-The project idea and application stack are still to be decided. Setup and run instructions will go here once the team selects them.
+The current prototype collects target-reference knowledge and checks declared observations across species, experimental contexts, and modalities. Setup, API, and run instructions are linked below.
 
 ## Work together
 
@@ -21,6 +21,14 @@ The project idea and application stack are still to be decided. Setup and run in
 - Keep datasets, model weights, and generated results outside Git; document their source and retrieval steps.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the contribution workflow.
+
+## Investigation coordinator
+
+The coordinator builds on the data-pipeline branch and connects research intent,
+fixed success criteria, evidence comparison and bounded follow-up. See the
+[coordinator integration guide](coordinator/README.md),
+[build plan and work boundaries](docs/plans/2026-09-22-coordinator-build.md), and
+[offline synthetic examples](coordinator/examples/README.md).
 
 ## Team decisions
 
