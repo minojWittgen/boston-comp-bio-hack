@@ -75,16 +75,7 @@ def assistant_summary(state: RunState):
     investigation = getattr(state, "investigation", None)
     if investigation is not None:
         text = "**Investigation complete.** " if investigation.criteria_met else "**Collection incomplete.** "
-        text += investigation.completion_reason
-        if investigation.findings:
-            requirements = state.plan.requirements if state.plan else state.request.requirements
-            orthology_requested = any(r.modality == "DNA" or r.context == "reference"
-                                     or "ortholog" in r.endpoint.lower() for r in requirements)
-            relevant_ids = {evidence_id for c in investigation.coverage for evidence_id in c.evidence_ids}
-            findings = [f for f in investigation.findings if f.source != "mygene"
-                        and (f.source != "ensembl_orthology" or orthology_requested)]
-            findings = sorted(findings, key=lambda f: f.evidence_id not in relevant_ids) or investigation.findings
-            text += " " + " ".join(f.summary for f in findings[:2])
+        text += f"The report brings together {len(investigation.findings)} source findings, comparisons and open questions."
         if is_synthetic(state):
             text += " **This is a synthetic teaching example, not a biological finding.**"
         return text

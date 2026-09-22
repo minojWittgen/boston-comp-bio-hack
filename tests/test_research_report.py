@@ -102,6 +102,13 @@ def test_study_and_sample_ids_are_preserved_when_supplied():
     assert view.facts['Measured outcome'] == 'RNA abundance'
 
 
+def test_pathway_publication_references_are_clickable_without_inventing_a_study_identity():
+    view = source_view(record('reactome_pathway', provenance=['PMID:42770890', 'PMID:invalid']))
+    assert ('Source reference · PMID 42770890', 'https://pubmed.ncbi.nlm.nih.gov/42770890/', 'identifier') in view.links
+    assert view.identities['Study ID'] == MISSING
+    assert all('invalid' not in url for _, url, _ in view.links)
+
+
 @pytest.mark.parametrize('url', ['javascript:alert(1)', 'https://user:secret@example.org', 'http://example.org', 'https://[invalid', 'https://example.org/\npath'])
 def test_only_safe_https_source_links_are_clickable(url):
     assert safe_url(url) is None
