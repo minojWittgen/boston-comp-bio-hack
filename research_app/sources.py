@@ -91,17 +91,29 @@ def source_view(record):
         view.title += f" · {readable(species)}"
         orthologs = rows(data.get("orthologs"))
         view.summary = f"Returned {len(orthologs)} related {'gene' if len(orthologs) == 1 else 'genes'} for {readable(species)}."
+        examples = []
+        for row in orthologs[:3]:
+            target, query_identity = row.get("perc_id_target"), row.get("perc_id_source")
+            if isinstance(target, (int, float)) and isinstance(query_identity, (int, float)):
+                examples.append(f"{display(row.get('target_symbol'))}: {target:.2f}% identity in the other-species sequence and {query_identity:.2f}% in the queried-gene sequence")
+        if examples:
+            view.summary += " " + "; ".join(examples) + "."
         view.limitation = "Sequence similarity does not establish conserved expression, pathway activity or disease effects."
+        view.facts["How to read sequence identity"] = "Target means the other-species sequence; source means the queried-gene sequence. Each percentage describes identical sequence positions relative to that side. Neither is a probability, an evidence score, nor an RNA-abundance measurement."
+        view.links.append(("Ensembl guide to identity percentages", "https://grch37.ensembl.org/Help/View?id=578", "definition"))
         for row in orthologs:
             view.table.append({"Gene": display(row.get("target_symbol")), "Species": readable(row.get("species")),
                                "Ensembl gene ID": display(row.get("target_id")), "Relationship": readable(row.get("type")),
-                               "Sequence identity, target (%)": row.get("perc_id_target"), "Sequence identity, source (%)": row.get("perc_id_source")})
+                               "Other-species sequence identity (%)": row.get("perc_id_target"), "Queried-gene sequence identity (%)": row.get("perc_id_source")})
             target = row.get("target_id", "")
             if isinstance(target, str) and re.fullmatch(r"ENS[A-Z]*G\d+", target):
                 view.links.append((f"Ensembl {target}", f"https://www.ensembl.org/id/{target}", "identifier"))
     elif record.source == "gtex":
         view.table = [{"Tissue / cell type": readable(r.get("tissue")), "Median RNA (TPM)": r.get("median_tpm")} for r in rows(data.get("tissues"))]
         view.summary = f"Median RNA expression was returned for {len(view.table)} tissue or cell-type groups."
+        examples = [f"{r['Tissue / cell type']}: {r['Median RNA (TPM)']:.2f} TPM" for r in view.table[:3] if isinstance(r['Median RNA (TPM)'], (int, float))]
+        if examples:
+            view.summary += " Examples from the returned reference dataset: " + "; ".join(examples) + "."
         view.limitation = "Group medians are reference expression levels, not patient-level measurements or disease-versus-control effects. TPM means transcripts per million."
         if ensg:
             view.links.append(("GTEx gene page", f"https://gtexportal.org/home/gene/{ensg}", "identifier"))

@@ -86,7 +86,7 @@ def test_only_safe_https_source_links_are_clickable(url):
 @pytest.mark.parametrize('source', ['mygene', 'ensembl_orthology', 'gtex', 'impc', 'opentargets', 'pubmed', 'hpa_cell_lines', 'hpa_pathology', 'opentargets_depmap', 'unrecognized'])
 def test_missing_source_fields_never_invent_an_identity_or_break_the_report(source):
     view = source_view(record(source, {'tissues': None, 'orthologs': None, 'pmids': None}))
-    assert not view.links
+    assert all(kind == 'definition' for _, _, kind in view.links)
     assert view.identities['Study ID'] == MISSING
 
 
@@ -114,7 +114,7 @@ def test_saved_report_renders_links_and_reopens_without_key_or_new_run():
         app.run()
         assert not app.exception
         assert [m.value for m in app.metric] == ['Finished', 'Not enough comparable evidence']
-        assert [t.label for t in app.tabs] == ['Comparisons', 'Sources', 'What we need to answer']
+        assert [t.label for t in app.tabs] == ['Why this result?', 'Comparisons', 'Sources', 'What we need to answer']
         assert any('PMID 42770890' in link.label for link in app.get('link_button'))
         assert any('Participant / subject ID: Not supplied' in text.value for text in app.text)
         assert not app.text_input[0].value
