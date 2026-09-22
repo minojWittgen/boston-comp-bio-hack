@@ -294,3 +294,12 @@ def test_aggregate_in_vitro_counts():
     assert iv["hpa"]["n_genes"] == 2
     assert iv["depmap"]["n_genes_with_data"] == 2 and iv["depmap"]["n_essential"] == 1
     assert iv["depmap"]["essential_genes"] == ["MLH1"]
+
+
+def test_pubmed_emits_pmids_as_provenance(monkeypatch):
+    """gene-level study IDs: PubMed carries PMIDs in the structured provenance field."""
+    monkeypatch.setattr(S, "http", lambda m, u, **k: {
+        "esearchresult": {"count": "2", "idlist": ["111", "222"]}})
+    r = S.pubmed_search("MLH1", "cancer")
+    assert r["status"] == "ok"
+    assert r["provenance"] == ["PMID:111", "PMID:222"]

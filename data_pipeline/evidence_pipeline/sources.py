@@ -32,9 +32,11 @@ def now() -> str:
 
 
 def result(source: str, status: str, query: dict, data: Any = None,
-           error: str | None = None, version: str | None = None) -> dict:
+           error: str | None = None, version: str | None = None,
+           provenance: list | None = None) -> dict:
     return {"source": source, "status": status, "query": query, "data": data,
-            "error": error, "source_version": version, "retrieved_at": now()}
+            "error": error, "source_version": version, "retrieved_at": now(),
+            "provenance": provenance or []}
 
 
 def http(method: str, url: str, *, params=None, json=None, max_tries: int = 4) -> Any:
@@ -205,7 +207,8 @@ def pubmed_search(symbol: str, disease: str = "", retmax: int = 20) -> dict:
         count, ids = int(d.get("count", 0)), d.get("idlist", [])
         if count == 0:
             return result("pubmed", "not_found", q, data={"count": 0})
-        return result("pubmed", "ok", q, data={"count": count, "pmids": ids})
+        return result("pubmed", "ok", q, data={"count": count, "pmids": ids},
+                      provenance=[f"PMID:{p}" for p in ids])
     except Exception as e:  # noqa: BLE001
         return result("pubmed", "error", q, error=repr(e))
 
