@@ -47,6 +47,10 @@ def clear_conversation():
         st.session_state.pop(key, None)
 
 
+def clear_model_key():
+    st.session_state.visitor_api_key = ""
+
+
 if st.session_state.get("coordinator_ui_version") != 2:
     clear_conversation()
     st.session_state.coordinator_ui_version = 2
@@ -62,7 +66,10 @@ def submit(prompt=None, demo=None):
             prompt = "Show the synthetic missing-evidence example." if demo == "missing-evidence" else "Show the synthetic cross-context disagreement example."
         else:
             parent = None if st.session_state.get("demo_run") else st.session_state.get("run_id")
-            result = client.chat(prompt, parent)
+            with st.spinner("Framing your question with your model account…"):
+                result = client.chat(prompt, parent,
+                                     api_key=st.session_state.get("visitor_api_key", ""),
+                                     model=st.session_state.get("visitor_model", ""))
         st.session_state.setdefault("messages", []).append({"role": "user", "content": prompt})
         st.session_state.run_id = result["run_id"]
         st.session_state.demo_run = bool(demo)
@@ -86,6 +93,15 @@ with st.sidebar:
     st.divider()
     st.write("One question. Every context.")
     st.caption("In vitro · In vivo · Patients")
+    st.markdown("**Model settings**")
+    st.text_input("Your Anthropic API key", type="password", key="visitor_api_key",
+                  placeholder="sk-ant-…", help="Used only for your chat planning calls. Never included in investigation downloads.")
+    st.text_input("Anthropic model ID", key="visitor_model", placeholder="e.g. claude-sonnet-4-6",
+                  help="Enter a model available to your Anthropic API account.")
+    st.caption("Chat uses your Anthropic account and credits. Your key stays in this browser session's server memory and is sent to Anthropic for planning. It is not saved in investigations.")
+    st.button("Clear API key", on_click=clear_model_key, width="stretch",
+              disabled=not st.session_state.get("visitor_api_key"))
+    st.divider()
     if st.button("New conversation", width="stretch"):
         clear_conversation()
         st.rerun()
@@ -103,6 +119,19 @@ with st.sidebar:
 st.markdown('<div class="eyebrow">Boston computational biology hackathon</div>', unsafe_allow_html=True)
 st.title("Follow the evidence across contexts.")
 st.write("Ask a research question. Inspect the plan, the evidence, and the comparisons that remain unresolved.")
+
+model_ready = bool(st.session_state.get("visitor_api_key", "").strip() and st.session_state.get("visitor_model", "").strip())
+if model_ready:
+    st.caption("Your model settings are entered. They will be checked when you send a question.")
+else:
+    st.info("To chat, add your Anthropic API key and model ID in the sidebar. You can try the synthetic examples or use MCP without a separate model key.")
+
+with st.expander("Use this through MCP · no separate model API key"):
+    st.write("Connect your MCP-compatible assistant to the investigation service. Your assistant turns the research question into explicit criteria; our coordinator collects evidence, checks comparisons, and returns a traceable report.")
+    st.code(api_url.rstrip("/") + "/mcp/", language=None)
+    st.markdown("1. Add this Streamable HTTP endpoint in a client that supports custom servers and bearer authentication.\n2. Supply the team access code as the bearer token when required.\n3. Ask your assistant to define the criteria, call `start_investigation`, and poll `get_investigation`.")
+    st.caption("Our MCP tools make no model API calls. Your assistant's subscription or usage charges still apply, and server hosting and evidence collection have costs. Keep API keys out of tool arguments and chat messages.")
+    st.markdown("[MCP setup and example](https://github.com/minojWittgen/boston-comp-bio-hack/blob/main/docs/mcp.md)")
 
 
 def show_report(state):
@@ -219,7 +248,8 @@ else:
 
 snapshot = st.session_state.get("run_snapshot")
 pending = "run_id" in st.session_state and (not snapshot or snapshot.status not in TERMINAL)
-if prompt := st.chat_input("Ask a research question or clarify the scope…", disabled=pending, max_chars=4000):
+if prompt := st.chat_input("Ask a research question or clarify the scope…" if model_ready else "Add your key and model in the sidebar to chat…",
+                           disabled=pending or not model_ready, max_chars=4000):
     if len(prompt.strip()) < 5:
         st.info("Please add a little more detail to your message.")
     else:
