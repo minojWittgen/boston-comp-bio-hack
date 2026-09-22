@@ -1,61 +1,77 @@
-"""Current architecture, distilled from the integration and coordinator guides."""
+"""Render the repository's canonical Mermaid figures without rewriting their graphs."""
+from pathlib import Path
+import re
 
-STYLES = """<style>
-.xctx-figure .architecture-node {text-align:left;padding:18px 16px;}
-.xctx-figure .architecture-node strong {font-size:17px;margin:0;}
-.xctx-figure .architecture-node small {letter-spacing:.04em;margin-bottom:10px;}
-.xctx-figure .architecture-entry + .architecture-entry {border-top:1px solid #d6dfd3;margin-top:15px;padding-top:15px;}
-.xctx-figure .architecture-core {background:#e9f0e5;border-color:#b5c9b9;}
-.xctx-figure .architecture-output {margin-top:20px;}
-.xctx-figure .architecture-output p {font-size:12px;font-weight:400;color:#edf3ed;}
-.xctx-figure .workflow-step strong {display:block;margin-bottom:6px;}
-.xctx-figure .workflow-step span {font-size:12px;}
-.xctx-figure .workflow-note {margin-top:16px;padding:12px 15px;border:1px dashed #d9c9aa;
-  border-radius:8px;background:#f5efe4;color:#735c38;font-size:12px;line-height:1.5;}
-@media(max-width:700px) {
-  .xctx-figure .research-workflow {flex-direction:column;gap:20px;}
-  .xctx-figure .research-workflow .flow-step:not(:last-child)::after {content:'↓';right:calc(50% - 5px);top:auto;bottom:-20px;font-size:17px;}
-}
-</style>"""
+import streamlit as st
+
+ROOT = Path(__file__).resolve().parents[1]
+REPOSITORY = "https://github.com/minojWittgen/boston-comp-bio-hack"
+FIGURES = (
+    {
+        "tab": "Coordinator workflow",
+        "title": "Figure 1. Investigation execution and diagnostic separation",
+        "document": "coordinator/README.md",
+        "anchor": "execution-and-scientific-meaning",
+        "block": 0,
+        "status": "IMPLEMENTED COORDINATOR",
+        "caption": "Research scope is fixed before collection. Source-grounded findings are compared across species, modalities and experimental contexts. Recoverable collection errors permit at most one retry within budget. Supplied-observation checks form a separate diagnostic path and do not determine investigation completion.",
+    },
+    {
+        "tab": "Research framework",
+        "title": "Figure 2. Proposed framework for cross-context evidence assessment",
+        "document": "cross-context-biology-agent.md",
+        "anchor": "2-architecture",
+        "block": 0,
+        "status": "CONCEPTUAL DESIGN · BROADER THAN THE CURRENT PROTOTYPE",
+        "caption": "The design separates experimental context, species, modality and individual identity. In-vitro, in-vivo and patient evidence converge on a comparison with explicit criteria and bounded follow-up. This figure describes the broader research framework; Figure 1 documents the current execution protocol.",
+    },
+    {
+        "tab": "Data pipeline",
+        "title": "Figure 3. Gene and pathway evidence retrieval",
+        "document": "data_pipeline/PIPELINE.md",
+        "anchor": "flow",
+        "block": 0,
+        "status": "IMPLEMENTED PIPELINE · GENE COLLECTION CONNECTED TO THE COORDINATOR",
+        "caption": "Gene queries yield source packages with in-vitro and cohort annotations. Pathway queries retrieve Reactome membership, definitions and labeled mouse inference; per-member gene collection is optional. The pathway branch is available in the pipeline and is not yet an automatic pathway-wide coordinator workflow.",
+    },
+    {
+        "tab": "Evidence contexts",
+        "title": "Figure 4. Evidence organization and unresolved patient-level information",
+        "document": "data_pipeline/PIPELINE.md",
+        "anchor": "evidence-organized-by-context--mirrors-the-v3-12-boxes",
+        "block": 1,
+        "status": "PIPELINE EVIDENCE MODEL · SOURCE COVERAGE VARIES BY QUERY",
+        "caption": "Source records retain their biological setting and measurement meaning. Human reference data and disease cohorts remain distinct. Cohort-level summaries do not resolve individual or matched-patient variation; unavailable measurements and identifiers remain explicit gaps.",
+    },
+)
 
 
-def architecture_diagram():
-    return """<figure class="xctx-figure" aria-label="Website chat and Claude MCP share a coordinator connected to the evidence pipeline">
-<div class="fig-kicker">01 / ONE RESEARCH SYSTEM, TWO WAYS IN</div>
-<div class="context-bridge">
-  <div class="context-node architecture-node">
-    <small>CHOOSE YOUR INTERFACE</small>
-    <div class="architecture-entry"><strong>Website chat</strong><p>Streamlit + API<br>Your question → model-assisted research plan, using your key.</p></div>
-    <div class="architecture-entry"><strong>Claude via MCP</strong><p>Claude app or Code<br>Your assistant supplies the research scope through MCP tools.</p></div>
-  </div>
-  <div class="bridge-arrow" aria-hidden="true">↔</div>
-  <div class="context-node architecture-node architecture-core">
-    <small>SHARED SERVICE · MODAL</small><strong>Investigation coordinator</strong>
-    <p>Keep the research scope.<br>Request source evidence.<br>Explain findings and differences.<br>Record gaps and next steps.</p>
-    <div class="context-tags"><span>API + MCP adapter</span><span>Background jobs</span></div>
-  </div>
-  <div class="bridge-arrow" aria-hidden="true">↔</div>
-  <div class="context-node architecture-node">
-    <small>EVIDENCE PIPELINE · MODAL</small><strong>Public data → evidence packages</strong>
-    <p>Retrieve gene information from GTEx, HPA, DepMap, IMPC, Ensembl, Open Targets and PubMed.</p>
-    <p>Preserve source links, biological context and collection limits.</p>
-  </div>
-</div>
-<div class="report-root architecture-output">The coordinator returns a traceable report<p>Findings · Comparisons · Sources · Open questions<br>Saved results can be read through the website or MCP.</p></div>
-<figcaption>Current live-question architecture. Models frame the question; the coordinator uses source-specific rules for findings and comparisons, with no additional model call after retrieval. Guided examples use cached synthetic evidence.</figcaption>
-</figure>"""
+def diagram_source(figure):
+    document = (ROOT / figure["document"]).read_text(encoding="utf-8")
+    blocks = re.findall(r"^```mermaid\s*\n(.*?)^```\s*$", document, flags=re.MULTILINE | re.DOTALL)
+    return blocks[figure["block"]].strip()
 
 
-def investigation_diagram():
-    return """<figure class="xctx-figure" aria-label="Research scope, collection, comparison, review and report, with bounded collection retries">
-<div class="fig-kicker">02 / FROM A QUESTION TO AN EXPLAINABLE REPORT</div>
-<ol class="fig-flow research-workflow">
-  <li class="flow-step workflow-step"><strong>Define scope</strong><span>Question, species, settings and measurements</span></li>
-  <li class="flow-step workflow-step"><strong>Collect sources</strong><span>Reported values, source records and metadata</span></li>
-  <li class="flow-step workflow-step"><strong>Compare findings</strong><span>Keep differences in what was measured visible</span></li>
-  <li class="flow-step workflow-step"><strong>Review gaps</strong><span>Account for missing information and search limits</span></li>
-  <li class="flow-step workflow-step"><strong>Report &amp; next steps</strong><span>Explain what we found and what still needs evidence</span></li>
-</ol>
-<div class="workflow-note">↶ A recoverable collection error can trigger one retry within the run budget. Unavailable evidence and technical failures remain visible.</div>
-<figcaption>A finished investigation can leave the biological question open. Species, experimental setting, measurement type and available study or sample identifiers stay attached to the evidence.</figcaption>
-</figure>"""
+def show_structure():
+    # Preserve the wide source graph at its natural text size rather than
+    # shrinking all three context subgraphs into unreadable labels.
+    st.html("""<style>
+    .st-key-source-figure-4 [data-testid="stMermaidChart"] {display:block;overflow:auto;}
+    .st-key-source-figure-4 [data-testid="stMermaidChart"] img {
+      width:auto;max-width:none;max-height:none;
+    }
+    </style>""")
+    tabs = st.tabs([figure["tab"] for figure in FIGURES])
+    for number, (tab, figure) in enumerate(zip(tabs, FIGURES), start=1):
+        with tab:
+            source = diagram_source(figure)
+            st.caption(figure["status"])
+            if number == 4:
+                st.caption("Scroll horizontally to inspect this wide figure at its original text size.")
+            with st.container(border=True, key=f"source-figure-{number}"):
+                st.mermaid_chart(source)
+            st.markdown(f"**{figure['title']}.** {figure['caption']}")
+            st.markdown(f"Source: [{figure['document']}]({REPOSITORY}/blob/main/{figure['document']}#{figure['anchor']}). "
+                        "Node labels, connections and branches are rendered directly from the Markdown source.")
+            with st.expander("View original Mermaid source"):
+                st.code(source, language="mermaid")

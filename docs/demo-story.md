@@ -75,20 +75,23 @@ can call the same research tools. The server does not require a separate Anthrop
 API key; the connected client's subscription or model charges still apply.
 
 Finish with **References & structure** so people can inspect our rationale, sources
-and code. Its two diagrams in `research_app/structure_diagrams.py` explain:
+and code. Four figure tabs render the original Mermaid blocks directly from the
+Markdown files, using Streamlit's bundled renderer. `research_app/structure_diagrams.py`
+adds numbered captions and source links without changing node labels, edges or branches:
 
-1. **One research system, two ways in.** Website chat and Claude MCP use the same
-   coordinator, which collects gene evidence through the separately hosted pipeline
-   and returns saved reports. Website chat uses the visitor's model key for planning;
-   MCP accepts the connected assistant's structured scope. Source synthesis adds no
-   post-retrieval model call. This follows the [integration guide](frontend-integration.md),
-   [MCP guide](mcp.md) and [pipeline flow](../data_pipeline/PIPELINE.md).
-2. **From a question to a report.** Define scope, collect sources, compare findings,
-   review gaps and report next steps. Recoverable collection failures can trigger at
-   most one retry within the budget. This follows the current
-   [coordinator workflow](../coordinator/README.md#execution-and-scientific-meaning) and
-   [investigation-first contract](investigation-first-handoff.md), rather than treating
-   the broader design document as fully implemented.
+1. **Coordinator workflow:** the [execution protocol](../coordinator/README.md#execution-and-scientific-meaning),
+   including the retry decision, bounded return to collection, and the independent
+   supplied-observation diagnostic path to the report.
+2. **Research framework:** the [broader design](../cross-context-biology-agent.md#2-architecture),
+   explicitly labeled conceptual rather than a claim that every proposed step is implemented.
+3. **Data pipeline:** the original [gene and pathway flow](../data_pipeline/PIPELINE.md#flow),
+   preserving the optional per-member evidence collection branch.
+4. **Evidence contexts:** the pipeline's second figure, distinguishing in-vitro,
+   in-vivo, patient-cohort and human-reference material, with patient-level gaps explicit.
+
+The first figure is the default. Each tab includes its implementation status, a
+concise academic caption, and expandable original Mermaid source. The deployment
+bundles the source documents so rendering needs no GitHub request or external script.
 
 The expandable scope note distinguishes gene collection from the pipeline's separate
 pathway support and the future work of raw-data analysis and matched-patient comparisons.
