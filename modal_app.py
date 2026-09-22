@@ -15,25 +15,27 @@ image = (modal.Image.debian_slim(python_version="3.11")
          .add_local_file(ROOT / ".streamlit/config.toml", "/workspace/.streamlit/config.toml")
          .env({"PYTHONPATH": "/workspace"}))
 app = modal.App("xctx-research")
-# Honor explicit configuration; the team's ClaudePlanner has no guessed fallback model.
-settings = {"ANTHROPIC_MODEL": os.environ["ANTHROPIC_MODEL"]} if os.environ.get("ANTHROPIC_MODEL") else {}
-required_keys = ["ANTHROPIC_API_KEY"] + ([] if settings else ["ANTHROPIC_MODEL"])
-secrets = [modal.Secret.from_name(os.environ.get("COORDINATOR_SECRET_NAME", "xctx-research-secrets"), required_keys=required_keys)]
+# Only a team access token is required. Model calls use visitor credentials in /chat.
+secrets = [modal.Secret.from_name(os.environ.get("COORDINATOR_SECRET_NAME", "xctx-research-secrets"))]
 artifacts = modal.Volume.from_name("xctx-investigation-artifacts", create_if_missing=True)
 
 
-@app.function(image=image, secrets=secrets, env=settings, volumes={"/artifacts": artifacts},
+@app.function(image=image, volumes={"/artifacts": artifacts},
               cpu=1, memory=2048, timeout=600, max_containers=4, retries=0)
-def run_investigation(run_id: str, submission: dict, demo: str | None = None):
-    from coordinator.models import Submission
-    from coordinator.runtime import build_coordinator
+def run_investigation(run_id: str, submission: dict, demo: str | None = None, plan: dict | None = None):
+    from coordinator.models import ResearchPlan, Submission
     from coordinator.store import ModalRunStore
+    from research_app.planning import public_coordinator, with_prepared_plan
     from research_app.service import demo_coordinator, demo_submission
     store = ModalRunStore()
     parsed = Submission.model_validate(submission)
     if demo and parsed != demo_submission(demo):
         raise ValueError("Demonstration input must match the declared server fixture")
-    engine = demo_coordinator(store) if demo else build_coordinator(store)
+    engine = demo_coordinator(store) if demo else public_coordinator(store)
+    if plan is not None:
+        if demo:
+            raise ValueError("Demonstrations use only their explicit fixture plan")
+        engine = with_prepared_plan(engine, parsed.request, ResearchPlan.model_validate(plan))
     final = engine.execute(run_id, parsed)
     artifacts.reload()
     (Path("/artifacts") / f"{run_id}.json").write_text(final.model_dump_json(indent=2))
@@ -42,22 +44,23 @@ def run_investigation(run_id: str, submission: dict, demo: str | None = None):
     return final.model_dump(mode="json")
 
 
-@app.function(image=image, secrets=secrets, env=settings, cpu=1, memory=1024,
+@app.function(image=image, secrets=secrets, cpu=1, memory=1024,
               timeout=300, max_containers=2)
 @modal.concurrent(max_inputs=30)
 @modal.asgi_app()
 def api():
     from coordinator.jobs import reconcile_job
-    from coordinator.runtime import build_coordinator
     from coordinator.store import ModalRunStore
     from research_app.api import create_app, configured_token
+    from research_app.planning import public_coordinator
     from research_app.service import RunService
     token = configured_token()
     if not token:
         raise RuntimeError("Configure COORDINATOR_API_TOKEN (or INVESTIGATION_API_TOKEN) before deployment")
-    engine = build_coordinator(ModalRunStore())
-    def dispatch(run_id, submission, demo=None):
-        call = run_investigation.spawn(run_id, submission.model_dump(mode="json"), demo)
+    engine = public_coordinator(ModalRunStore())
+    def dispatch(run_id, submission, demo=None, plan=None):
+        call = run_investigation.spawn(run_id, submission.model_dump(mode="json"), demo,
+                                      plan.model_dump(mode="json") if plan is not None else None)
         try:
             engine.store.save_job(run_id, call.object_id)
         except Exception:

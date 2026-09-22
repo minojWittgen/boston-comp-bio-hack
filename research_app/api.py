@@ -12,6 +12,8 @@ from pydantic import ValidationError
 
 from coordinator.api import create_app as coordinator_app
 from coordinator.models import Submission
+from coordinator.planner import PlanningError
+from research_app.planning import ModelSetupError, PlanningCredentials
 from research_app.service import ChatMessage, DemoRequest, RunService
 
 
@@ -23,19 +25,24 @@ def create_app(service=None, api_token=None):
     service = service or RunService()
     token = configured_token() if api_token is None else api_token
     app = coordinator_app(service.coordinator, dispatch=service.dispatch,
-                          api_token=token, refresh=service.refresh)
+                          api_token=token, refresh=service.refresh, submit=service.start)
     mcp = MCPServer("cross-context-investigator", instructions=
-        "Start a research investigation and poll the returned run_id. Use a prompt, a nested Submission, or an "
-        "explicit synthetic demo request. Research planning and checks use the same coordinator as the frontend. "
+        "Start a research investigation and poll the returned run_id. Use a nested Submission with explicit "
+        "research requirements, or an explicit synthetic demo request. Your host assistant frames the criteria; "
+        "this MCP server makes no model API calls and needs no separate Anthropic API key. "
+        "Ask the researcher to clarify missing scope; never invent observations, pathway membership or comparison bases. "
         "Execution status and assessment.conclusion are separate: complete can mean conflicting. "
         "Generated plan assumptions need researcher review. Reference records are background, not observations.")
 
     @mcp.tool(structured_output=True, description=
-              "Start a background job. Pass {prompt, previous_investigation_id?}, a nested {request, observations} "
+              "Start a model-free background job. Pass a nested {request, observations} "
               "Submission, or {demo: 'missing-evidence' | 'cross-context-conflict'} for labeled synthetic fixtures. "
-              "Returns run_id and status_url. A prompt is framed by the team's ClaudePlanner.")
-    async def start_investigation(request: Submission | ChatMessage | DemoRequest) -> dict[str, Any]:
-        handler = service.chat if isinstance(request, ChatMessage) else service.demo if isinstance(request, DemoRequest) else service.start
+              "For a Submission, request.requirements and genes (or versioned pathway genes) must be explicit. "
+              "Draft criteria from the researcher's intent before retrieval and obtain their agreement to inferred scope. "
+              "Return only declared observations with provenance; omit observations when none are supplied. "
+              "Returns run_id and status_url. Never send API keys in tool arguments.")
+    async def start_investigation(request: Submission | DemoRequest) -> dict[str, Any]:
+        handler = service.demo if isinstance(request, DemoRequest) else service.start
         return await run_in_threadpool(handler, request)
 
     @mcp.tool(structured_output=True, description=
@@ -67,9 +74,12 @@ def create_app(service=None, api_token=None):
         return await call_next(request)
 
     @app.post("/chat", status_code=202)
-    def chat(message: ChatMessage):
+    def chat(message: ChatMessage, request: Request):
         try:
-            return service.chat(message)
+            credentials = PlanningCredentials.from_headers(request.headers)
+            return service.chat(message, credentials)
+        except (ModelSetupError, PlanningError) as exc:
+            raise HTTPException(422, str(exc)) from None
         except ValidationError as exc:
             raise HTTPException(422, "The combined research question is too long; start a new conversation.") from exc
         except KeyError:

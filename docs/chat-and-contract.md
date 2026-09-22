@@ -2,15 +2,21 @@
 
 The user writes a question. `POST /chat` wraps it in the team's canonical
 `Submission(request=InvestigationRequest(question=...))`. The coordinator's
-`AutoPlanner` selects `ClaudePlanner` for natural language, freezes the resulting
-`ResearchPlan` before collection, and performs its own evidence checks. No second
+`ClaudePlanner` frames natural language using the visitor’s key and model from
+`X-Anthropic-Api-Key` / `X-Anthropic-Model` headers. This bounded call finishes before
+the job is submitted. Only the validated `ResearchPlan` travels to the worker, which
+freezes it before collection and performs the coordinator’s own evidence checks. No second
 intake model or scientific schema is maintained by the frontend.
 
 ```json
 {"prompt": "Compare TYK2 RNA abundance in human cell cultures, mouse models and psoriasis patients."}
 ```
 
-The response is HTTP 202:
+Include both model headers; missing settings return HTTP 422 before creating a job.
+No shared environment model key is used. Provider errors are sanitized, and credentials
+are never part of a Submission, RunState, worker argument, report or download.
+The frontend keeps the key in session memory and provides a clear-key button.
+Allow up to 90 seconds for the planning request. The response is HTTP 202:
 
 ```json
 {"run_id": "<32-character identifier>", "status": "queued", "status_url": "/investigations/<id>"}
@@ -60,8 +66,9 @@ validation. See [coordinator/AGENTS.md](../coordinator/AGENTS.md).
 
 ## MCP and synthetic examples
 
-`start_investigation(request)` accepts a canonical nested Submission, a chat object,
-or an explicit demo object. `get_investigation(investigation_id)` returns the same
+`start_investigation(request)` accepts a canonical nested Submission with explicit
+requirements and gene scope, or an explicit demo object. Free-text chat objects are
+not accepted over MCP: the host assistant frames the criteria with its own model. `get_investigation(investigation_id)` returns the same
 canonical state as HTTP.
 
 ```json
@@ -73,5 +80,7 @@ supported fixture is `missing-evidence`. The server loads the team's examples an
 its directory evidence provider. Fixture selection is explicit and labeled; an ordinary
 chat or structured request never triggers this fallback.
 
-Natural planning needs both `ANTHROPIC_API_KEY` and an explicitly configured
-`ANTHROPIC_MODEL`. Explicit criteria and the two fixtures need no model credentials.
+Website planning needs a visitor’s API key and explicit model ID in Model settings.
+Explicit criteria and the two fixtures need no model credentials. See [MCP setup](mcp.md).
+The standalone team coordinator retains its own environment-based configuration;
+the combined frontend/MCP deployment uses visitor-funded planning only.

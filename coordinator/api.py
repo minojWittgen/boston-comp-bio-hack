@@ -14,7 +14,7 @@ from .runtime import build_coordinator
 
 
 def create_app(coordinator=None, dispatch: Callable | None = None, api_token: str | None = None,
-               refresh: Callable | None = None):
+               refresh: Callable | None = None, submit: Callable | None = None):
     coordinator = coordinator or build_coordinator()
     token = api_token if api_token is not None else os.environ.get("COORDINATOR_API_TOKEN")
     app = FastAPI(title="Cross-context investigation coordinator", version="0.1.0")
@@ -39,6 +39,13 @@ def create_app(coordinator=None, dispatch: Callable | None = None, api_token: st
 
     @app.post("/investigations", status_code=202, dependencies=[Depends(authorize)])
     def start(submission: Submission, background: BackgroundTasks):
+        if submit:
+            try:
+                return submit(submission)
+            except ValueError as exc:
+                raise HTTPException(422, str(exc)) from None
+            except RuntimeError:
+                raise HTTPException(503, "Could not schedule the investigation") from None
         state = coordinator.create(submission)
         if dispatch:
             try:
