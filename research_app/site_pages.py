@@ -3,9 +3,11 @@ import streamlit as st
 
 from research_app.intro_diagrams import (MEASUREMENTS, STYLES, contexts_diagram,
     measurement_diagram, report_diagram, search_diagram, show_diagram)
+from research_app.structure_diagrams import (STYLES as STRUCTURE_STYLES,
+    architecture_diagram, investigation_diagram)
 
 REPOSITORY = "https://github.com/minojWittgen/boston-comp-bio-hack"
-PAGES = {"intro": "Introduction", "research": "Research workspace", "references": "References"}
+PAGES = {"intro": "Introduction", "research": "Research workspace", "references": "References & structure"}
 EXPERIENCES = {
     "Try the tutorial": "Guided examples",
     "Investigate with your key": "Ask your own question",
@@ -64,11 +66,28 @@ def introduction():
 
 
 def references():
-    st.title("References and acknowledgments")
+    st.title("References & structure")
     st.write(
-        "The ideas, data sources and project notes behind CoMEA. These references explain "
-        "what shaped the workflow and where its evidence comes from."
+        "How CoMEA connects your question to evidence, and the ideas and sources behind it."
     )
+    st.html(STYLES + STRUCTURE_STYLES)
+    st.subheader("How the pieces fit together")
+    st.write("The website and MCP share one research coordinator. The data pipeline retrieves source material; the coordinator organizes it into findings, comparisons and open questions.")
+    show_diagram(architecture_diagram())
+    st.markdown(f"Based on our [frontend and backend integration guide]({REPOSITORY}/blob/main/docs/frontend-integration.md), "
+                f"[MCP guide]({REPOSITORY}/blob/main/docs/mcp.md) and "
+                f"[pipeline diagram]({REPOSITORY}/blob/main/data_pipeline/PIPELINE.md).")
+
+    st.subheader("What happens during an investigation")
+    show_diagram(investigation_diagram())
+    st.markdown(f"Adapted from the [coordinator workflow]({REPOSITORY}/blob/main/coordinator/README.md#execution-and-scientific-meaning) "
+                f"and [current investigation contract]({REPOSITORY}/blob/main/docs/investigation-first-handoff.md).")
+    with st.expander("Current scope and the broader design"):
+        st.write("The shared coordinator currently collects gene evidence. The pipeline also offers pathway packages; automatic pathway-wide investigation is further integration work. Retrieved summaries retain their reported scope, and checks of separately supplied study measurements are optional.")
+        st.write("Extracting study measurements, harmonizing raw datasets and resolving matched patient samples are further work. The broader design describes those goals; the diagrams above describe the current prototype.")
+        st.markdown(f"[Read the broader scientific design]({REPOSITORY}/blob/main/cross-context-biology-agent.md)")
+
+    st.divider()
     st.subheader("Ideas that shaped the workflow")
     st.markdown(
         "**[AutoSciRub: Learning to Evaluate Before Improving](https://arxiv.org/abs/2608.31076)** · Research preprint, August 2026  \n"
