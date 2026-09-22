@@ -125,11 +125,11 @@ class MockPrimary:
              "conclusion": "supported" if up_a == up_b else "opposed",
              "statement": f"Study A TYK2 log2FC {a['log2FoldChange']} (IL-23 vs vehicle); study B Tyk2 log2FC {b['log2FoldChange']} (mouse IMQ vs vehicle dorsal skin, day 6). Same endpoint (mRNA), psoriasis-like inflammatory contrast in keratinocyte-rich tissue; one2one ortholog.",
              "citations": [{"file": "study_A_invitro/de_results.csv", "locator": "row:gene=TYK2"}, {"file": "study_B_mouse_imq/de_results.csv", "locator": "row:gene=Tyk2"},
-                           {"file": "study_B_mouse_imq/methods.md", "locator": "section:methods"}, {"file": "api/ensembl_homology_mus_musculus.json", "locator": "json:data/0/homologies/0/type"}]},
+                           {"file": "study_B_mouse_imq/methods.md", "locator": "section:methods"}, {"file": "api/ensembl_homology_TYK2_mus_musculus.json", "locator": "json:data/0/homologies/0/type"}]},
             {"comparison_id": "in_vitro_vs_patient_rna", "scope": {"species": ["Homo sapiens"], "context": ["in_vitro", "patient"], "modality": ["rna"]},
              "conclusion": "supported" if (dr or 0) > 0 else "opposed",
              "statement": f"Paired lesional−non-lesional TYK2 log2CPM mean difference {dr:.2f} across {len(pr)} participants.",
-             "citations": [{"file": "study_C_patient_cohort/rna_log2cpm.csv", "locator": "row:gene=TYK2;specimen_id=S-P01-L-rna"}, {"file": "study_C_patient_cohort/specimens.csv", "locator": "row:participant_id=P01;assay=rna"}]},
+             "citations": [{"file": "study_C_patient_cohort/rna_log2cpm.csv", "locator": "row:gene=TYK2;specimen_id=S-P01-L"}, {"file": "study_C_patient_cohort/specimens.csv", "locator": "row:specimen_id=S-P01-L"}]},
         ]
         overlap = pr & pp
         if self.careless or overlap:
@@ -137,12 +137,12 @@ class MockPrimary:
                           "conclusion": "supported", "within_person": True,
                           "statement": f"Protein lesional−non-lesional mean NPX difference {dp:.2f}; RNA difference {dr:.2f}." + ("" if overlap else " Cohort summaries identical, so treated as the same participants."),
                           "citations": [{"file": "study_C_patient_cohort/protein_npx.csv", "locator": "row:assay_target=TYK2"}, {"file": "study_C_patient_cohort/methods.md", "locator": "section:Study C"}]
-                                        + ([] if self.careless else [{"file": "study_C_patient_cohort/specimens.csv", "locator": "row:participant_id=P01;assay=protein"}])})
+                                        + ([] if self.careless else [{"file": "study_C_patient_cohort/specimens.csv", "locator": "row:specimen_id=S-P01-L"}])})
         else:
             comps.append({"comparison_id": "patient_rna_vs_patient_protein_within_person", "scope": {"species": ["Homo sapiens"], "context": ["patient"], "modality": ["rna", "protein"]},
                           "conclusion": "insufficient_evidence", "within_person": False,
                           "statement": f"RNA specimens map to participants {sorted(pr)[0]}..{sorted(pr)[-1]} and protein specimens to {sorted(pp)[0]}..{sorted(pp)[-1]} (specimens.csv): no shared participant_id, so within-person corroboration cannot be established. Population-level: both increase in lesional skin (independent groups).",
-                          "citations": [{"file": "study_C_patient_cohort/specimens.csv", "locator": "row:participant_id=Q01;assay=protein"}, {"file": "study_C_patient_cohort/specimens.csv", "locator": "row:participant_id=P01;assay=rna"}, {"file": "study_C_patient_cohort/protein_npx.csv", "locator": "row:assay_target=TYK2"}]})
+                          "citations": [{"file": "study_C_patient_cohort/specimens.csv", "locator": "row:specimen_id=T-Q01-L"}, {"file": "study_C_patient_cohort/specimens.csv", "locator": "row:specimen_id=S-P01-L"}, {"file": "study_C_patient_cohort/protein_npx.csv", "locator": "row:assay_target=TYK2"}]})
         ans = {"comparisons": comps, "limitations": ["synthetic corpus; single gene; GTEx/IMPC used as background only"],
                "unresolved": [] if overlap or self.careless else ["within-person RNA–protein relationship (no shared participants)"],
                "report_markdown": "# Report\n" + "\n".join(f"- **{c['comparison_id']}**: {c['conclusion']} — {c['statement']}" for c in comps)}
