@@ -1,67 +1,89 @@
-# Use Cross-context through MCP
+# Use Cross-context directly inside Claude
 
-Cross-context exposes the research workflow to an existing assistant. Your assistant
-frames the research question into explicit criteria; the server collects background
-evidence, checks declared observations, and returns a report with provenance and gaps.
+Our MCP server is hosted on Modal. Claude Code, a terminal MCP client, or the Claude
+app can call it directly. The website is an optional tutorial/chat interface.
 
-**No separate Anthropic API key is needed for these MCP tools.** The server does not
-call a model through MCP. Your assistant's own subscription or model usage charges
-still apply. Hosting and evidence collection also have costs for the deployment owner,
-so the hosted server retains its team access code.
+**You do not need an Anthropic API key or team access code for the hosted MCP.**
+Claude uses its own model to frame your question; our tools run the evidence workflow.
+Your Claude plan or client model usage still applies. The server makes no model calls.
 
-## Connect
+## Claude Code / terminal
 
-Use a client that supports **Streamable HTTP**, custom MCP servers and bearer tokens.
-The connection URL is the deployed API URL followed by `/mcp/`; the website's MCP
-introduction shows the exact URL. For local development use:
-
-```text
-http://127.0.0.1:8000/mcp/
+```bash
+claude mcp add --transport http cross-context-biology https://minoj--xctx-research-api.modal.run/mcp/
+claude mcp get cross-context-biology
 ```
 
-If the service requires a team access code, configure the header:
+Open Claude Code, inspect `/mcp`, and enable the tools when asked. If using this repo,
+its `.mcp.json` already declares the connector; approve that project configuration
+instead of adding a duplicate. No local Python server or pipeline installation is
+needed to connect to the hosted service.
 
-```text
-Authorization: Bearer <team-access-code>
+The command and transport follow the [official Claude Code MCP documentation](https://code.claude.com/docs/en/mcp).
+Other terminal clients can use the same Streamable HTTP URL with authentication unset.
+
+## Claude app / Desktop / web
+
+1. Open **Customize → Connectors → Add custom connector**.
+2. Name it **Cross-context biology** and enter:
+
+   ```text
+   https://minoj--xctx-research-api.modal.run/mcp/
+   ```
+
+3. Add the connector with no authentication, then enable it in your conversation.
+   Organization accounts may require an owner to add it first.
+
+Claude documents [remote custom connectors](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp)
+and supports [servers with no authentication](https://claude.com/docs/connectors/building/authentication).
+Availability also depends on your client's account and organization settings.
+
+## Start with the tutorial
+
+Paste this into Claude:
+
+> Use Cross-context biology to run the synthetic cross-context-conflict tutorial.
+> Call start_investigation, then get_investigation, and explain why a complete
+> investigation can have conflicting evidence.
+
+The tool arguments for the first call are:
+
+```json
+{"request": {"demo": "cross-context-conflict"}}
 ```
 
-This access code is not a model API key. Keep credentials out of prompts and tool
-arguments. Clients that require OAuth instead of bearer tokens need an OAuth adapter;
-this prototype does not provide one. A remote client cannot reach your localhost URL.
+Pass the returned `run_id` as `investigation_id` to `get_investigation`. Expect
+`complete / conflicting`. The `missing-evidence` tutorial returns
+`partial / not_assessable`. These cached fixtures need no live collection, API key
+or detached worker, and remain available after the public live allowance closes.
+The same cases appear on the [website](https://minoj--xctx-research-web.modal.run).
 
-## Ask your assistant
+## Investigate a real question
 
 > Help investigate TYK2 RNA abundance across human cell cultures, mouse models and
 > psoriasis patients. Propose explicit evidence requirements and clarify the scope
 > with me before starting. Do not invent observations or validated comparison bases.
 > Call start_investigation and then get_investigation to report evidence and gaps.
 
-The server advertises two tools with typed schemas:
+The tools advertise typed schemas:
 
-- `start_investigation`: accepts a canonical `{request, observations}` Submission.
-  `request.requirements` and genes (or versioned pathway genes) are required for
-  model-free planning. The host assistant creates this structure from the user's intent.
-- `get_investigation`: accepts `investigation_id` and returns the canonical state,
-  frozen plan, evidence, checks, separate execution/conclusion values and Markdown report.
-  Poll at least three seconds apart until `complete`, `partial` or `failed`.
+- `start_investigation`: accepts `{request, observations}`. Supply explicit
+  `request.requirements` and genes (or versioned pathway genes). The host assistant
+  drafts these from the researcher's intent; it must not invent empirical observations.
+- `get_investigation`: takes `investigation_id`; returns the frozen plan, evidence,
+  checks, separate execution/conclusion values and Markdown report. For live jobs,
+  poll at least three seconds apart until `complete`, `partial` or `failed`.
 
-Start a labeled, synthetic demonstration without source retrieval or any model call:
+Real source packages remain background references. Missing observations stay gaps.
+Current comparisons use declared observations, not new statistical inference or
+clinical validation. Public run IDs grant access to results; use public data.
 
-```json
-{"request": {"demo": "cross-context-conflict"}}
-```
+The hosted demo has a limited live investigation allowance because Modal/evidence
+compute still costs the owner. See [deployment limits](../README.md). If exhausted,
+use the tutorial or deploy the same server in your own workspace.
 
-Use that as the arguments for `start_investigation`; pass its `run_id` as
-`investigation_id` to `get_investigation`. Expect execution `complete` and evidence
-conclusion `conflicting`. The other fixture is `missing-evidence`.
+## Optional website chat
 
-For real requests, source packages are background references, not experimental
-measurements. Missing observations remain gaps. The current server compares supplied,
-declared observations; it does not fabricate them or establish clinical efficacy.
-
-## Website chat
-
-The website is an alternative interface. It needs the visitor's Anthropic API key and
-model ID because the server performs one bounded planning call on that visitor's behalf.
-Enter these in **Model settings**, not in chat. No owner model key is used as fallback.
-The resulting research engine and reports are the same as those used by MCP.
+Choose **Investigate with your key** on the website only if you want the server to
+frame free text for you. That path asks for your Anthropic API key and model ID.
+The tutorial and MCP paths never require this separate model key.

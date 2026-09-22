@@ -39,9 +39,10 @@ def demo_coordinator(store):
 
 
 class RunService:
-    def __init__(self, coordinator=None, dispatch=None, refresh=None, plan_chat=None):
+    def __init__(self, coordinator=None, dispatch=None, refresh=None, plan_chat=None, budget=None):
         self.coordinator = coordinator or public_coordinator()
         self.plan_chat = plan_chat or plan_with_credentials
+        self.budget = budget
         self.cloud_dispatch = dispatch
         self.refresh = refresh
         self.executor = None if dispatch else ThreadPoolExecutor(max_workers=4, thread_name_prefix="investigation")
@@ -67,6 +68,8 @@ class RunService:
             raise ValueError("Supply explicit research requirements for model-free HTTP/MCP use, or use website chat with your own model key.")
         if plan is None:
             ExplicitPlanner().plan(submission.request)
+        if self.budget:
+            self.budget.reserve()
         state = self.coordinator.create(submission)
         try:
             self.dispatch(state.run_id, submission, demo, plan)
@@ -78,6 +81,10 @@ class RunService:
         return {"run_id": state.run_id, "status": "queued", "status_url": f"/investigations/{state.run_id}"}
 
     def get(self, run_id):
+        from research_app.tutorials import tutorial_for_id
+        example = tutorial_for_id(run_id)
+        if example is not None:
+            return example
         state = self.coordinator.store.get(run_id)
         return self.refresh(state) if self.refresh else state
 
@@ -90,12 +97,17 @@ class RunService:
             # Only researcher-authored intent goes back to the planner; never its evidence or conclusions.
             question = f"{parent.request.question}\n\nResearcher clarification: {message.prompt}"
         submission = Submission(request=InvestigationRequest(question=question))
+        if self.budget:
+            self.budget.check()
         # Planning finishes in this HTTP request; no secret is sent to a job or store.
         plan = self.plan_chat(submission.request, credentials)
         return self.start(submission, plan=plan)
 
     def demo(self, request: DemoRequest):
-        return self.start(demo_submission(request.demo), demo=request.demo)
+        from research_app.tutorials import tutorial
+        state = tutorial(request.demo)
+        return {"run_id": state.run_id, "status": state.status,
+                "status_url": f"/investigations/{state.run_id}"}
 
     def close(self):
         if self.executor:

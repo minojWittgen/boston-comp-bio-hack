@@ -10,6 +10,22 @@ experimental measurements or run a new statistical analysis. Real empirical data
 still needs the team's observation/analysis adapter. Source retrieval is background,
 not biological validation.
 
+## Try it without setup
+
+Open the [hosted app](https://minoj--xctx-research-web.modal.run). It opens directly
+in **Try the tutorial** with a complete evidence/report walkthrough. No access code
+or API key is needed. Choose **Investigate with your key** only for website chat,
+or **Connect through MCP** to use Claude's existing interface and model.
+
+```bash
+claude mcp add --transport http cross-context-biology https://minoj--xctx-research-api.modal.run/mcp/
+claude mcp get cross-context-biology
+```
+
+Claude app users can add that URL under Customize → Connectors → Add custom connector.
+The hosted MCP requires no authentication. This repository also includes a `.mcp.json`
+configuration for Claude Code; approve it when the client asks. See [MCP setup](docs/mcp.md).
+
 ## Run the integrated app locally
 
 From the repository root after pulling `main`:
@@ -26,19 +42,20 @@ In a second terminal:
 .venv/bin/python -m streamlit run streamlit_app.py
 ```
 
-Open **http://127.0.0.1:8501**. The sidebar offers two explicit synthetic examples:
+Open **http://127.0.0.1:8501**. **Try the tutorial** offers two explicit synthetic cases:
 
 | Example | Execution | Evidence conclusion |
 | --- | --- | --- |
 | Disagreement across contexts | complete | conflicting |
 | Missing observations | partial | not_assessable |
 
-Both run the team's coordinator with its own declared fixtures and directory provider.
-They require no model credentials and do not contact live sources. An ordinary chat
+Both use cached outputs from the team's coordinator and its declared fixtures.
+The tutorial works with only Streamlit running: it needs no backend, credentials or
+live collection. An ordinary chat
 request never silently falls back to these fixtures.
 
 For real free-text questions, enter **your Anthropic API key and model ID** in the
-frontend sidebar under **Model settings**. Each visitor pays for their own planning
+**Investigate with your key** sidebar under **Model settings**. Each visitor pays for their own planning
 calls. The combined app never falls back to a host model key, even if one exists in
 the environment. Keys stay in the visitor’s session and the planning HTTP request;
 they are excluded from background jobs, stored investigations and downloads. Use
@@ -60,7 +77,8 @@ match the request's gene, disease and mode. See the [coordinator guide](coordina
   Planning completes before HTTP 202; allow up to 90 seconds for the request.
 - `GET /investigations/{run_id}` returns the canonical **`RunState`** unchanged.
 - `GET /investigations/{run_id}/report` returns Markdown, or HTTP 409 before available.
-- `POST /demos` explicitly selects one of the two documented synthetic fixtures.
+- `POST /demos` selects one of two cached synthetic fixtures without creating a worker
+  or consuming the public live-run allowance. Its returned status can already be terminal.
 - `/mcp/` exposes `start_investigation` and `get_investigation` over Streamable HTTP.
   The connected assistant supplies explicit criteria; no separate model key is needed.
   See the [MCP introduction and connection guide](docs/mcp.md).
@@ -80,18 +98,9 @@ Read the [frontend/backend integration guide](docs/frontend-integration.md),
 The existing pipeline must be available in the selected workspace: app `xctx-evidence`,
 function `build_one`, volume `xctx-cache`.
 
-Configure Modal secret **`xctx-research-secrets`** with:
-
-- `COORDINATOR_API_TOKEN` (a random shared team access code)
-
-No host model key or model setting is required. Visitors enter their own in the UI.
-MCP uses the caller’s assistant to frame criteria and makes no model API calls.
-
-The earlier `INVESTIGATION_API_TOKEN` name remains supported if the canonical token
-name is absent. Keep its value out of Git. The generated local access code, if present,
-is in the ignored `.env.demo` file. `COORDINATOR_SECRET_NAME=xctx-coordinator` can select
-the team's existing secret instead. Shared model credentials in a secret are ignored
-by the combined application; the background worker receives no model secrets.
+The combined demo requires no shared model key or access-code secret. Website chat
+uses visitor credentials; MCP uses the connected assistant's model. Former secrets
+can remain in the workspace, but this deployment does not attach them.
 
 ```bash
 .venv/bin/modal deploy modal_app.py
@@ -105,13 +114,28 @@ Finished artifacts also go to `xctx-investigation-artifacts`.
 
 The separate `coordinator/modal_app.py` remains the team's standalone HTTP deployment.
 Use the root `modal_app.py` for this combined chat/MCP frontend. Both run the same engine.
-The hosted UI and API require the same team access code; this is shared demo access,
-not per-user authorization or OAuth. OAuth-only MCP clients need a separate adapter.
+The combined deployment is public. Old team runs remain in `xctx-investigations`;
+new public runs use `xctx-public-investigations`. Run IDs grant access to their results,
+so use public research questions/data. There is no account-based privacy or run listing.
+Standalone/local API deployments can still explicitly configure a bearer token.
 
-**Visitors fund their model calls, but Modal hosting and evidence collection still
-use the deployment owner’s account.** Keep the access code enabled to control access.
-The two synthetic examples are model-free. The MCP host’s own model subscription or
-usage charges remain separate. Live-provider verification requires a visitor’s key.
+**Visitors fund website model calls; Modal hosting and evidence collection still use
+the deployment owner's account.** The public deployment permits **12 live starts**
+by default, shared by chat, structured HTTP and MCP. Atomic reservations in
+`xctx-public-run-budget` survive redeployments. Tutorials use cached fixtures and do
+not consume this allowance or launch detached workers.
+
+The live allowance closes at **2026-09-29 00:00 UTC**; tutorials remain available.
+This fixed window prevents Modal Dict's seven-day inactivity expiry from reopening
+the allowance after the hackathon. The owner can explicitly configure
+`XCTX_PUBLIC_RUN_LIMIT` and `XCTX_PUBLIC_UNTIL` when deploying, or set the limit to zero
+to stop new live runs. Extending beyond the initial window requires accounting for
+Dict expiry; this is a demo allowance, not a durable billing system. Reservations
+are not refunded on worker/dispatch failure. Existing runs can still be read.
+These controls bound new investigations, not all public HTTP hosting costs.
+
+The model has no shared-key fallback. A paid live model call still requires a visitor's
+key. The MCP host's own subscription/usage charges are separate.
 
 ## Verify
 
