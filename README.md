@@ -3,7 +3,7 @@
 Research chat, API and MCP for the team's cross-context investigation coordinator.
 Scientific behavior comes from [`coordinator/`](coordinator/README.md), integrated from
 `codex/investigation-coordinator` at `f7578e7`. Frontend and transport adapters live in
-`research_app/`; there is one planner, evidence adapter, checker and research engine.
+`research_app/`; there is one scientific planner, evidence adapter, checker and research engine.
 
 The coordinator compares **declared observations**. It currently does not generate
 experimental measurements or run a new statistical analysis. Real empirical data
@@ -37,8 +37,12 @@ Both run the team's coordinator with its own declared fixtures and directory pro
 They require no model credentials and do not contact live sources. An ordinary chat
 request never silently falls back to these fixtures.
 
-For real free-text questions, configure `ANTHROPIC_API_KEY` and `ANTHROPIC_MODEL` in the
-API server environment. The model is explicitly selected; there is no default model.
+For real free-text questions, enter **your Anthropic API key and model ID** in the
+frontend sidebar under **Model settings**. Each visitor pays for their own planning
+calls. The combined app never falls back to a host model key, even if one exists in
+the environment. Keys stay in the visitor’s session and the planning HTTP request;
+they are excluded from background jobs, stored investigations and downloads. Use
+**Clear API key** when finished. The model is explicitly selected; there is no default.
 Leave `XCTX_EVIDENCE_DIR` unset to use the Modal evidence collector. Modal authentication
 and access to `xctx-evidence` / `xctx-cache` are also required for live collection.
 For an intentional local replay, use an absolute `XCTX_EVIDENCE_DIR` with packages that
@@ -47,13 +51,19 @@ match the request's gene, disease and mode. See the [coordinator guide](coordina
 ## Integration contract
 
 - `POST /investigations` accepts the team's nested **`Submission`**: `request` and
-  optional `observations`. It returns `run_id`, `status`, and `status_url`.
+  optional `observations`. The combined app requires explicit `request.requirements`
+  and genes (or versioned pathway genes), so structured requests never call a model.
+  It returns `run_id`, `status`, and `status_url`.
 - `POST /chat` accepts `prompt` and optional `previous_investigation_id`. It wraps
   researcher-authored text in a canonical request and uses the same coordinator.
+  Supply `X-Anthropic-Api-Key` and `X-Anthropic-Model` headers on this route only.
+  Planning completes before HTTP 202; allow up to 90 seconds for the request.
 - `GET /investigations/{run_id}` returns the canonical **`RunState`** unchanged.
 - `GET /investigations/{run_id}/report` returns Markdown, or HTTP 409 before available.
 - `POST /demos` explicitly selects one of the two documented synthetic fixtures.
 - `/mcp/` exposes `start_investigation` and `get_investigation` over Streamable HTTP.
+  The connected assistant supplies explicit criteria; no separate model key is needed.
+  See the [MCP introduction and connection guide](docs/mcp.md).
 - `/openapi.json` and `coordinator/models.py` are the contract sources of truth.
 
 The Python frontend imports these schemas directly; it does not maintain a copy.
@@ -72,15 +82,16 @@ function `build_one`, volume `xctx-cache`.
 
 Configure Modal secret **`xctx-research-secrets`** with:
 
-- `ANTHROPIC_API_KEY`
-- `ANTHROPIC_MODEL` (an explicitly chosen provider model)
 - `COORDINATOR_API_TOKEN` (a random shared team access code)
+
+No host model key or model setting is required. Visitors enter their own in the UI.
+MCP uses the caller’s assistant to frame criteria and makes no model API calls.
 
 The earlier `INVESTIGATION_API_TOKEN` name remains supported if the canonical token
 name is absent. Keep its value out of Git. The generated local access code, if present,
 is in the ignored `.env.demo` file. `COORDINATOR_SECRET_NAME=xctx-coordinator` can select
-the team's existing secret instead. A deployment-time `ANTHROPIC_MODEL` can explicitly
-override the secret's model setting.
+the team's existing secret instead. Shared model credentials in a secret are ignored
+by the combined application; the background worker receives no model secrets.
 
 ```bash
 .venv/bin/modal deploy modal_app.py
@@ -97,8 +108,10 @@ Use the root `modal_app.py` for this combined chat/MCP frontend. Both run the sa
 The hosted UI and API require the same team access code; this is shared demo access,
 not per-user authorization or OAuth. OAuth-only MCP clients need a separate adapter.
 
-**This integration has been verified locally; the integrated cloud app is not deployed.**
-As of this handoff, the workspace's model key and model setting are still missing.
+**Visitors fund their model calls, but Modal hosting and evidence collection still
+use the deployment owner’s account.** Keep the access code enabled to control access.
+The two synthetic examples are model-free. The MCP host’s own model subscription or
+usage charges remain separate. Live-provider verification requires a visitor’s key.
 
 ## Verify
 

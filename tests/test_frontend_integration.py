@@ -14,6 +14,7 @@ from research_app.api import create_app
 from research_app.presentation import assistant_summary, context_coverage
 from research_app.service import ChatMessage, DemoRequest, EXAMPLES, RunService, demo_submission
 
+MODEL_HEADERS = {'X-Anthropic-Api-Key': 'test-visitor-key', 'X-Anthropic-Model': 'test-model'}
 
 class RecordingPlanner:
     def __init__(self):
@@ -27,7 +28,8 @@ class RecordingPlanner:
 
 def service(tmp_path, planner=None, provider=None, dispatch=None):
     engine = Coordinator(planner or ExplicitPlanner(), provider or DirectoryEvidenceProvider(EXAMPLES / 'packages'), FileRunStore(tmp_path))
-    return RunService(engine, dispatch=dispatch)
+    fake_planner = planner or RecordingPlanner()
+    return RunService(engine, dispatch=dispatch, plan_chat=lambda request, credentials: fake_planner.plan(request))
 
 
 def wait(service, run_id):
@@ -101,20 +103,21 @@ def test_chat_refuses_pending_parent_and_never_silently_uses_fixture(tmp_path):
     with pytest.raises(ValueError, match='finish'):
         svc.chat(ChatMessage(prompt='Focus on skin tissue', previous_investigation_id=pending['run_id']))
     with TestClient(create_app(svc)) as client:
-        assert client.post('/chat', json={'prompt': 'Focus on skin', 'previous_investigation_id': 'a'*32}).status_code == 404
+        assert client.post('/chat', json={'prompt': 'Focus on skin', 'previous_investigation_id': 'a'*32}, headers=MODEL_HEADERS).status_code == 404
         assert client.get(f"/investigations/{pending['run_id']}/report").status_code == 409
 
 
-def test_failed_planning_has_visible_error_without_report(tmp_path):
+def test_failed_planning_returns_visible_error_before_creating_job(tmp_path):
+    from coordinator.planner import PlanningError
     class Fail:
         def plan(self, request):
-            raise ValueError('Configure the model before running chat')
+            raise PlanningError('The research plan does not satisfy the required schema.')
     svc = service(tmp_path, Fail())
-    state = wait(svc, svc.chat(ChatMessage(prompt='Investigate TYK2 in psoriasis'))['run_id'])
-    assert state.status == 'failed'
-    assert state.report is None
-    assert 'Configure the model' in assistant_summary(state)
-    svc.close()
+    with TestClient(create_app(svc)) as client:
+        response = client.post('/chat', json={'prompt': 'Investigate TYK2 in psoriasis'}, headers=MODEL_HEADERS)
+        assert response.status_code == 422
+        assert 'required schema' in response.json()['detail']
+        assert not list(tmp_path.glob('*.json'))
 
 
 def test_dispatch_failure_is_persisted_and_returned(tmp_path):
@@ -122,7 +125,7 @@ def test_dispatch_failure_is_persisted_and_returned(tmp_path):
         raise RuntimeError('do not expose provider credential')
     svc = service(tmp_path, dispatch=fail)
     with TestClient(create_app(svc)) as client:
-        assert client.post('/chat', json={'prompt': 'Investigate TYK2'}).status_code == 503
+        assert client.post('/chat', json={'prompt': 'Investigate TYK2'}, headers=MODEL_HEADERS).status_code == 503
         saved = list(tmp_path.glob('*.json'))
         state = RunState.model_validate_json(saved[0].read_text())
         assert state.status == 'failed'

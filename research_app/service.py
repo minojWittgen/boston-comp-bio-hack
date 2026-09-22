@@ -11,7 +11,7 @@ from coordinator.evidence import DirectoryEvidenceProvider
 from coordinator.jobs import TERMINAL
 from coordinator.models import InvestigationRequest, Submission
 from coordinator.planner import ExplicitPlanner
-from coordinator.runtime import build_coordinator
+from research_app.planning import plan_with_credentials, public_coordinator, with_prepared_plan
 
 EXAMPLES = Path(__file__).resolve().parents[1] / "coordinator" / "examples"
 DemoName = Literal["missing-evidence", "cross-context-conflict"]
@@ -39,18 +39,21 @@ def demo_coordinator(store):
 
 
 class RunService:
-    def __init__(self, coordinator=None, dispatch=None, refresh=None):
-        self.coordinator = coordinator or build_coordinator()
+    def __init__(self, coordinator=None, dispatch=None, refresh=None, plan_chat=None):
+        self.coordinator = coordinator or public_coordinator()
+        self.plan_chat = plan_chat or plan_with_credentials
         self.cloud_dispatch = dispatch
         self.refresh = refresh
         self.executor = None if dispatch else ThreadPoolExecutor(max_workers=4, thread_name_prefix="investigation")
         self.futures = {}
         self.lock = Lock()
 
-    def dispatch(self, run_id, submission, demo=None):
+    def dispatch(self, run_id, submission, demo=None, plan=None):
         if self.cloud_dispatch:
-            return self.cloud_dispatch(run_id, submission, demo)
+            return self.cloud_dispatch(run_id, submission, demo, plan)
         engine = demo_coordinator(self.coordinator.store) if demo else self.coordinator
+        if plan is not None:
+            engine = with_prepared_plan(engine, submission.request, plan)
         future = self.executor.submit(engine.execute, run_id, submission)
         with self.lock:
             self.futures[run_id] = future
@@ -59,10 +62,14 @@ class RunService:
                 self.futures.pop(run_id, None)
         future.add_done_callback(finished)
 
-    def start(self, submission, demo=None):
+    def start(self, submission, demo=None, plan=None):
+        if plan is None and not submission.request.requirements:
+            raise ValueError("Supply explicit research requirements for model-free HTTP/MCP use, or use website chat with your own model key.")
+        if plan is None:
+            ExplicitPlanner().plan(submission.request)
         state = self.coordinator.create(submission)
         try:
-            self.dispatch(state.run_id, submission, demo)
+            self.dispatch(state.run_id, submission, demo, plan)
         except Exception:
             state.status, state.stage = "failed", "dispatch_failed"
             state.error = "Could not schedule the investigation"
@@ -74,7 +81,7 @@ class RunService:
         state = self.coordinator.store.get(run_id)
         return self.refresh(state) if self.refresh else state
 
-    def chat(self, message: ChatMessage):
+    def chat(self, message: ChatMessage, credentials=None):
         question = message.prompt
         if message.previous_investigation_id:
             parent = self.get(message.previous_investigation_id)
@@ -83,7 +90,9 @@ class RunService:
             # Only researcher-authored intent goes back to the planner; never its evidence or conclusions.
             question = f"{parent.request.question}\n\nResearcher clarification: {message.prompt}"
         submission = Submission(request=InvestigationRequest(question=question))
-        return self.start(submission)
+        # Planning finishes in this HTTP request; no secret is sent to a job or store.
+        plan = self.plan_chat(submission.request, credentials)
+        return self.start(submission, plan=plan)
 
     def demo(self, request: DemoRequest):
         return self.start(demo_submission(request.demo), demo=request.demo)

@@ -3,14 +3,20 @@
 ## Integration decision
 
 Use the system on `codex/investigation-coordinator` (currently `f7578e7`) as the
-scientific backend. Its `coordinator/` directory is imported unchanged. Replace the
+scientific backend. Its scientific engine, planner and schemas are unchanged.
+`coordinator/api.py` has one optional submission callback so the integrated app can
+validate model-free requests before creating a job; standalone behavior is unchanged. Replace the
 earlier frontend branch's separate numerical coordinator with thin adapters around
 this implementation. The old engine, examples and tests remain available in Git
 history at `09505fc`; they are not a second runtime option.
 
 The user approved connecting the team's first draft and adapting the UI to its
 contract. No model weights are hosted: the team's ClaudePlanner calls the Anthropic
-SDK for intent planning. The remainder is the team's deterministic research workflow.
+SDK for intent planning. The combined app now injects a visitor-specific SDK client
+for each website chat request. It ignores host model credentials, and passes only
+the resulting validated plan into background execution. MCP requires explicit criteria
+from the connected assistant and never calls a model. The remainder is the team’s
+deterministic research workflow.
 
 ## Boundaries for future updates
 
@@ -73,7 +79,18 @@ failures are not mistaken for biological or worker failure.
 The integrated API protects chat, MCP, schema and investigation routes with the same
 token; `/health` is public and does not indicate model readiness. Prefer
 `COORDINATOR_API_TOKEN`; the previous `INVESTIGATION_API_TOKEN` alias is accepted only
-when the canonical name is absent. The frontend keeps credentials server-side.
+when the canonical name is absent. Visitor model keys are password inputs in the
+Streamlit session. `/chat` receives them in dedicated headers and uses them only for
+one bounded planning call; they never enter worker arguments or saved runs. The
+model setting has no environment fallback. Clearing the key prevents further chat
+calls until it is reentered. It does not cancel an already submitted investigation.
+
+The SDK client is per request, uses the official Anthropic endpoint, and closes after
+planning. Never set process-wide environment variables for visitor credentials.
+The frontend refuses to send keys over non-local HTTP or follow redirects. Do not
+enable request-header logging on the API or reverse proxy. Missing settings and safe
+provider errors return HTTP 422 without creating a job. Auth remains separate from
+model billing: the owner still pays Modal/evidence compute, so retain the access gate.
 
 ## Verified in this integration
 
@@ -85,6 +102,8 @@ when the canonical name is absent. The frontend keeps credentials server-side.
 - MCP uses the same jobs/results; actual local Streamable HTTP smoke test.
 - Coordinator and pipeline offline suites, plus adapter-specific tests.
 
-Live Claude execution and the integrated cloud deployment are not verified. The Modal
-workspace lacks `ANTHROPIC_API_KEY` and `ANTHROPIC_MODEL`. Existing pipeline deployment
-verification from the preceding turn does not verify this new cloud coordinator.
+Visitor-key tests cover concurrent SDK clients, missing-key refusal even with host
+credentials set, sanitized provider errors, credential-free dispatch and saved state,
+key-free structured MCP, and isolated/clearable frontend settings. Live Claude calls
+require a visitor key and are not claimed by the offline test suite. Cloud deployment
+and transport checks are documented separately when performed.
