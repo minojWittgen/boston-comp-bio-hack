@@ -2,7 +2,7 @@
 
 **Co**ntext-aware **M**ulti-modal & Multi-species **E**vidence **A**ssessment
 
-Created by **Minwoo Jung, Jaeeun Park, and Priya Mandala**.
+Created by **Minwoo Jung and Jaeeun Park (WittGen)** · **Priya Mandala (Northeastern University)**.
 
 Boston Computational Biology Hackathon — Team Workspace.
 

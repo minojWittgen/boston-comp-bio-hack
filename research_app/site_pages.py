@@ -22,7 +22,7 @@ def open_workspace(experience="Try the tutorial"):
 def introduction():
     st.html(STYLES)
     st.markdown("**CoMEA** — **Co**ntext-aware **M**ulti-modal & Multi-species **E**vidence **A**ssessment")
-    st.caption("Created by Minwoo Jung, Jaeeun Park, and Priya Mandala")
+    st.caption("Created by Minwoo Jung and Jaeeun Park (WittGen) · Priya Mandala (Northeastern University)")
     st.title("Follow the evidence across contexts.")
     st.markdown("### A promising finding is a beginning. Where else does it hold?")
     st.write(
