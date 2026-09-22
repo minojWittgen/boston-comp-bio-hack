@@ -3,8 +3,7 @@ import streamlit as st
 
 from research_app.intro_diagrams import (MEASUREMENTS, STYLES, contexts_diagram,
     measurement_diagram, report_diagram, search_diagram, show_diagram)
-from research_app.structure_diagrams import (STYLES as STRUCTURE_STYLES,
-    architecture_diagram, investigation_diagram)
+from research_app.structure_diagrams import show_structure
 
 REPOSITORY = "https://github.com/minojWittgen/boston-comp-bio-hack"
 PAGES = {"intro": "Introduction", "research": "Research workspace", "references": "References & structure"}
@@ -68,20 +67,11 @@ def introduction():
 def references():
     st.title("References & structure")
     st.write(
-        "How CoMEA connects your question to evidence, and the ideas and sources behind it."
+        "System architecture, execution protocol and evidence provenance, with diagrams "
+        "from the project's source documents and references to the methods that informed the design."
     )
-    st.html(STYLES + STRUCTURE_STYLES)
-    st.subheader("How the pieces fit together")
-    st.write("The website and MCP share one research coordinator. The data pipeline retrieves source material; the coordinator organizes it into findings, comparisons and open questions.")
-    show_diagram(architecture_diagram())
-    st.markdown(f"Based on our [frontend and backend integration guide]({REPOSITORY}/blob/main/docs/frontend-integration.md), "
-                f"[MCP guide]({REPOSITORY}/blob/main/docs/mcp.md) and "
-                f"[pipeline diagram]({REPOSITORY}/blob/main/data_pipeline/PIPELINE.md).")
-
-    st.subheader("What happens during an investigation")
-    show_diagram(investigation_diagram())
-    st.markdown(f"Adapted from the [coordinator workflow]({REPOSITORY}/blob/main/coordinator/README.md#execution-and-scientific-meaning) "
-                f"and [current investigation contract]({REPOSITORY}/blob/main/docs/investigation-first-handoff.md).")
+    st.subheader("Architecture and execution")
+    show_structure()
     with st.expander("Current scope and the broader design"):
         st.write("The shared coordinator currently collects gene evidence. The pipeline also offers pathway packages; automatic pathway-wide investigation is further integration work. Retrieved summaries retain their reported scope, and checks of separately supplied study measurements are optional.")
         st.write("Extracting study measurements, harmonizing raw datasets and resolving matched patient samples are further work. The broader design describes those goals; the diagrams above describe the current prototype.")
