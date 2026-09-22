@@ -13,7 +13,8 @@ from typing import Callable
 
 # v2: HPA fetchers now return not_found for identifier-only rows and carry has_* flags.
 # v3: opentargets rows now include datasourceScores provenance.
-CACHE_VERSION = "v3"
+# v4: SourceResults carry a top-level `provenance` list (PubMed emits PMIDs).
+CACHE_VERSION = "v4"
 CACHEABLE = {"ok", "not_found"}
 
 
