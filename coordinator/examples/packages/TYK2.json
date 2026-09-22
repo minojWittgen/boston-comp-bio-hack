@@ -1,0 +1,96 @@
+{
+  "schema_version": "0.1",
+  "run": {
+    "run_id": "synthetic-demo",
+    "mode": "explore",
+    "disease_query": "synthetic disease",
+    "enabled_sources": [],
+    "built_at": "2026-09-22T00:00:00Z"
+  },
+  "gene": {
+    "source": "mygene",
+    "status": "ok",
+    "query": {
+      "symbol": "TYK2"
+    },
+    "data": {
+      "symbol": "TYK2",
+      "ensembl_primary": "SYNTHETIC_ID",
+      "ambiguous": false
+    },
+    "error": null,
+    "source_version": "synthetic-1",
+    "retrieved_at": "2026-09-22T00:00:00Z"
+  },
+  "sources": {
+    "ensembl_orthology": {
+      "mus_musculus": {
+        "source": "ensembl_orthology",
+        "status": "skipped",
+        "query": {},
+        "data": null,
+        "error": "Synthetic fixture; live source not queried",
+        "source_version": "synthetic-1",
+        "retrieved_at": "2026-09-22T00:00:00Z"
+      },
+      "rattus_norvegicus": {
+        "source": "ensembl_orthology",
+        "status": "skipped",
+        "query": {},
+        "data": null,
+        "error": "Synthetic fixture; live source not queried",
+        "source_version": "synthetic-1",
+        "retrieved_at": "2026-09-22T00:00:00Z"
+      },
+      "macaca_mulatta": {
+        "source": "ensembl_orthology",
+        "status": "skipped",
+        "query": {},
+        "data": null,
+        "error": "Synthetic fixture; live source not queried",
+        "source_version": "synthetic-1",
+        "retrieved_at": "2026-09-22T00:00:00Z"
+      }
+    },
+    "gtex": {
+      "source": "gtex",
+      "status": "skipped",
+      "query": {},
+      "data": null,
+      "error": "Synthetic fixture; live source not queried",
+      "source_version": "synthetic-1",
+      "retrieved_at": "2026-09-22T00:00:00Z"
+    },
+    "impc": {
+      "source": "impc",
+      "status": "skipped",
+      "query": {},
+      "data": null,
+      "error": "Synthetic fixture; live source not queried",
+      "source_version": "synthetic-1",
+      "retrieved_at": "2026-09-22T00:00:00Z"
+    },
+    "opentargets": {
+      "source": "opentargets",
+      "status": "skipped",
+      "query": {},
+      "data": null,
+      "error": "Synthetic fixture; live source not queried",
+      "source_version": "synthetic-1",
+      "retrieved_at": "2026-09-22T00:00:00Z"
+    },
+    "pubmed": {
+      "source": "pubmed",
+      "status": "skipped",
+      "query": {},
+      "data": null,
+      "error": "Synthetic fixture; live source not queried",
+      "source_version": "synthetic-1",
+      "retrieved_at": "2026-09-22T00:00:00Z"
+    }
+  },
+  "summary": {
+    "synthetic": true
+  },
+  "missing": []
+}

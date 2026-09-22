@@ -1,0 +1,4 @@
+streamlit==1.64.0
+mcp==2.2.0
+requests==2.34.2
+httpx2==2.13.0
