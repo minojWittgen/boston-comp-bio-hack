@@ -35,6 +35,24 @@ Start with Introduction: **“One finding raises a question: where else does it 
 Point to cell cultures, animal models and patients. Explain that the measurements and
 experimental settings must be understood before evidence can be compared.
 
+The introduction uses four diagrams in `research_app/intro_diagrams.py`:
+
+1. **Paper-focused search versus evidence with context.** A workflow that stops at
+   publication summaries can leave measured values, experimental conditions, species
+   differences and patient variation out of view. This is a comparison of workflows,
+   not a claim that all LLMs are restricted to papers. The prototype inspects source
+   records and metadata; raw-data reanalysis remains further work.
+2. **Cell cultures ↔ animal models ↔ patients.** Connections represent research
+   questions requiring evidence, not automatic biological translation.
+3. **Measurement × context map.** Select DNA, RNA, Protein or Function to highlight
+   the corresponding research questions. The map is conceptual, not a live inventory
+   of retrieved data. Each measurement retains its own biological meaning.
+4. **Agreement, differences and gaps.** A useful report makes the next research
+   question visible and keeps sources traceable.
+
+The diagrams use local HTML/CSS and inline vector icons, with accessible text and
+responsive layouts. They require no external assets, model calls or new dependencies.
+
 Open **Explore a guided example**. The default example deliberately disagrees across
 contexts. Show **Findings**, **Comparisons**, **Sources**, and **What we needed
 to answer**. The supplied measurement comparison is expandable inside Comparisons;
