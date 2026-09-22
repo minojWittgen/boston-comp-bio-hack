@@ -1,6 +1,9 @@
 """Public introduction and attribution, grounded in the repository's design documents."""
 import streamlit as st
 
+from research_app.intro_diagrams import (MEASUREMENTS, STYLES, contexts_diagram,
+    measurement_diagram, report_diagram, search_diagram, show_diagram)
+
 REPOSITORY = "https://github.com/minojWittgen/boston-comp-bio-hack"
 PAGES = {"intro": "Introduction", "research": "Research workspace", "references": "References"}
 EXPERIENCES = {
@@ -17,57 +20,41 @@ def open_workspace(experience="Try the tutorial"):
 
 
 def introduction():
+    st.html(STYLES)
     st.title("Follow the evidence across contexts.")
     st.markdown("### A promising finding is a beginning. Where else does it hold?")
     st.write(
-        "A result in a cell culture can open a new biological question. Understanding what it means "
-        "for an organism or a patient takes more evidence—from other experiments, other measurements, "
-        "and other people. Cross-context is a research prototype built around that next question."
+        "A result in cells raises a bigger question: does it hold in an organism, in patients, "
+        "and across different measurements? That takes evidence with its context intact."
     )
+    st.subheader("A paper summary is only the starting point")
+    st.write("When an LLM workflow stops at finding and summarizing papers, the underlying measurements and experimental differences can stay out of view.")
+    show_diagram(search_diagram())
     st.button("Explore a guided example", type="primary", on_click=open_workspace, width="content")
     st.caption("No sign-up or API key needed. The examples use clearly labeled synthetic data.")
 
     st.subheader("The same question, in different settings")
-    for col, title, explanation in zip(st.columns(3),
-            ("In cell cultures", "In animal models", "In patients"),
-            ("What happens in a controlled experiment? The cell type and experimental conditions matter.",
-             "Does the finding carry over to a living organism? Species, tissue and model differences matter.",
-             "What is observed in disease? Variation between people, samples and treatments matters.")):
-        with col.container(border=True):
-            st.markdown(f"**{title}**")
-            st.write(explanation)
-    st.write(
-        "Different measurements add different pieces of the picture. DNA, RNA, protein and functional "
-        "experiments answer different questions; combining them requires understanding what each one measured. "
-        "Agreement is useful, disagreement is informative, and missing evidence tells us what to investigate next."
-    )
+    show_diagram(contexts_diagram())
 
-    st.subheader("From finding papers to examining the evidence")
-    st.write(
-        "A list of relevant papers is a starting point. To assess a claim across contexts, we also need "
-        "the underlying data, the study conditions, and a reason those measurements can be compared. "
-        "Our goal is an agent-guided workflow that follows a question into published data and makes "
-        "that reasoning visible."
-    )
-    for title, explanation in (
-        ("Define what would answer the question", "Specify the species, setting and measurements needed before looking at the results."),
-        ("Collect evidence with its context", "Keep source links, measurement types and available study and sample identifiers attached to the evidence."),
-        ("Explain agreement, disagreement and gaps", "Show what was found, what can be compared and what still needs to be measured or checked."),
-    ):
-        st.markdown(f"**{title}**  \n{explanation}")
+    st.subheader("More kinds of evidence. Different meanings.")
+    selected = st.radio("Explore a measurement type", list(MEASUREMENTS), index=1,
+                        horizontal=True, key="intro_measurement")
+    show_diagram(measurement_diagram(selected))
+    st.write(MEASUREMENTS[selected][3])
+
+    st.subheader("A clearer answer—or a clearer next experiment")
+    show_diagram(report_diagram())
 
     with st.container(border=True):
         st.markdown("**What you can try today**")
         st.write(
-            "Walk through two guided reports, search public gene references with your own question, "
-            "or use the same research tools inside Claude through MCP. Each report explains source findings, "
-            "differences between contexts, uncertainties and next research steps."
+            "Explore two guided reports, search public gene sources with your own question, "
+            "or use the same research tools inside Claude through MCP."
         )
         st.caption(
-            "Today’s reports interpret retrieved database findings at their reported scope. Finishing a search "
-            "does not mean the biological question is settled. The workflow can also compare directions of "
-            "change in separately supplied study observations. Extracting real study measurements, harmonizing "
-            "datasets and running new numerical analyses are further steps toward the broader research goal."
+            "Available now: source findings, descriptive comparisons, traceable reports, and checks of "
+            "separately supplied study observations. Further work: extracting study measurements, harmonizing "
+            "datasets and running new numerical analyses."
         )
     st.button("Ask your own research question", on_click=open_workspace,
               args=("Investigate with your key",), width="content")
