@@ -136,7 +136,7 @@ def show_report(state):
         with col.container(border=True):
             st.markdown(f"**{row['label']}**")
             st.write(row["detail"])
-    reasoning, findings, sources, question = st.tabs(["Why this result?", "Comparisons", "Sources", "What we need to answer"])
+    reasoning, findings, sources, question = st.tabs(["Why this result?", "Comparisons", "Sources", "What we needed to answer"])
     with reasoning:
         show_reasoning(state)
     with findings:

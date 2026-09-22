@@ -142,7 +142,7 @@ if experience == "Try the tutorial":
     with st.expander("Walk through this case", expanded=True):
         st.markdown("**1 · Research question**")
         st.write(state.request.question)
-        st.markdown("**2 · Review the question** — open What we need to answer to see the species, contexts and measurements being requested.")
+        st.markdown("**2 · Review the question** — open What we needed to answer to see the species, contexts and measurements being requested.")
         st.markdown("**3 · Inspect sources** — open Sources to see study observations, database summaries, source links and sample identifiers.")
         st.markdown("**4 · Read the conclusion** — completing the workflow can reveal conflicting evidence; missing evidence stays a gap.")
     show_report(state)
