@@ -1,113 +1,118 @@
-# Evidence Pipeline
+# Evidence Pipeline (Person A)
 
-Target-knowledge retrieval for the cross-context biology agent. Given **one human
-gene symbol**, it queries five sources and returns **one deterministic
-evidence-package JSON** — the factual substrate the AI agent reasons over. It makes
-**judgments nowhere**: every field is a retrieved fact or an explicit gap.
+Target-knowledge retrieval for the cross-context biology agent. Builds **deterministic,
+context-tagged evidence packages** — the factual substrate Person B's agent reasons over
+to produce a verdict. **This layer makes no judgments and computes no scores** (v3 §9):
+every field is a retrieved fact or an explicit gap.
 
-Sources: **Open Targets** (GraphQL), **Ensembl** orthology (REST), **GTEx v8**,
-**IMPC** (Solr), **PubMed** (E-utilities). Gene IDs are normalized via **MyGene**.
+Two levels of input:
 
-See [`PIPELINE.md`](PIPELINE.md) for the full data-flow diagrams.
+| Level | Input | Command |
+|-------|-------|---------|
+| **Gene** | gene symbols | `modal run app.py --genes MLH1,MSH2 --disease "colorectal cancer"` |
+| **Pathway A** | Reactome id | `modal run app.py::pathway --reactome-id R-HSA-5358508` |
+| **Pathway B** | gene → its pathway | `modal run app.py::pathway --gene MLH1` |
 
-## What the backend / AI-agent side calls
+Pathway is the top-level unit (v3 §1/§8.2: "fix the pathway/program definition, then
+assess"). Entry B anchors on a known target gene, resolves its Reactome pathway(s), and
+surfaces that gene within its program (`anchor` block).
 
-Two entry points, same computation:
+## The three contexts (v3 §1/§2)
 
-### 1. MCP tool (for the agent)
-`mcp_server.py` exposes one stdio tool:
+Every evidence package tracks **context × species × modality × individual**. Unavailable
+contexts stay as **visible gaps**, never silently dropped (v3 §1).
 
-```
-build_evidence_package(symbol: str, disease: str = "", mode: str = "explore") -> dict
-```
+| Context | Sources | Modalities | Status |
+|---------|---------|-----------|--------|
+| **in vitro** | HPA cell lines, DepMap (Open Targets) | RNA, protein, CRISPR fitness | ✅ |
+| **in vivo** | Ensembl orthology, IMPC, Reactome mouse inference* | phenotype/functional, orthology | ✅ |
+| **human reference** | GTEx baseline, Open Targets association, PubMed | RNA, association, literature | ✅ |
+| **patients** | — | individual variation | ⛔ **explicit gap** |
 
-It calls the deployed Modal function and returns a **build receipt**:
-`{ "symbol", "path", "missing" }` — where `path` is the package location on the
-`xctx-cache` Modal volume and `missing` lists any source not `ok`.
+\* Reactome mouse pathway is **computationally inferred** and labeled as such — not an
+independent cross-species experiment (v3 §4.4).
 
-```bash
-python mcp_server.py        # serves the tool over stdio
-```
+**Patients gap**: real per-patient/disease-cohort data (GEO / CELLxGENE Census / GDC)
+needs dataset download+analysis, out of this retrieval layer's scope. The package marks
+it explicitly (`summary.patients.status = "gap"`, `individual_variation = "not resolved"`)
+with the unmet requirement and candidate sources.
 
-Register it with your MCP client (Claude Desktop / agent runtime) pointing at
-`python /path/to/data_pipeline/mcp_server.py`.
+## What Person B / Person C call
 
-### 2. Modal function (for backend / batch)
-The app is deployed as **`xctx-evidence`** with function **`build_one`**. Call it
-directly from Python, or fan out a gene list from the CLI:
+Same computation, two entry points:
+
+### MCP tools (`mcp_server.py`, stdio)
+- `build_evidence_package(symbol, disease, mode)` — one gene
+- `build_pathway_evidence(reactome_id | gene, disease, mode)` — one pathway
+
+### Modal functions (deployed app `xctx-evidence`)
+- `build_one(symbol, disease, mode, run_id)` — one gene → package
+- `build_pathway(reactome_id, disease, mode, run_id, gene)` — pathway fan-out → aggregate
 
 ```python
 import modal
-build_one = modal.Function.from_name("xctx-evidence", "build_one")
-receipt = build_one.remote("TYK2", "psoriasis", "explore", run_id="...")
+modal.Function.from_name("xctx-evidence", "build_pathway").remote(
+    "", "colorectal cancer", "explore", "run1", "MLH1")   # entry B
 ```
 
-```bash
-cd evidence_pipeline
-modal run app.py --genes TYK2,CD28 --disease psoriasis --mode explore
-# packages land on volume xctx-cache under runs/<run_id>/<gene>.json
-modal volume get xctx-cache runs/<run_id> .      # pull results locally
-```
+Packages land on Modal volume `xctx-cache` under `runs/<run_id>/`.
 
-## Output shape
+## Sources & contracts
 
-Each package (`runs/<run_id>/<gene>.json` on the volume) contains:
+Every fetcher returns a `SourceResult` and **never raises**. Four statuses, never conflated:
 
-- `gene` — normalized identity (symbol, Ensembl ID, entrez)
-- `sources` — raw per-source results, each tagged with one of four statuses
-- `summary` — counts and top items only, **no interpretation**
-- `missing` — every source that was not `ok`, with its status and reason
-
-### The four statuses (never conflated)
 | Status | Meaning |
 |--------|---------|
 | `ok` | record found |
-| `not_found` | query succeeded, source has no record (a database fact, **not** a biological negative) |
+| `not_found` | query succeeded, no record (a database fact, not a biological negative) |
 | `error` | technical failure — never cached, retried next run |
 | `skipped` | disabled by mode, or an upstream step failed |
 
-**Modes**: `explore` queries all five sources. `eval` disables PubMed and Open
-Targets (both `skipped`) so benchmark answers cannot leak; cross-species sources
-(orthology, GTEx, IMPC) stay on.
+**[`tools.md`](tools.md)** is the machine-readable contract for every source (purpose,
+inputs, output meaning, limitations, failure behavior, version, and evidence dimensions) —
+auto-generated from `registry.py` for the agent to read (v3 §4.5).
 
-## Setup
+**Independence** (v3 §1/§3): sources declare `source_dependencies`; a direct IMPC query and
+Open Targets' IMPC-derived evidence share the `IMPC` provider and are **not** counted as two
+independent replications (`registry.independent_sources`).
+
+**Modes**: `explore` runs everything. `eval` skips answer-leaking sources — Open Targets
+**association** (disease link) and PubMed — but keeps baseline expression, HPA, and DepMap
+fitness (not disease association, so no leak; v3 §5/§9).
+
+## Pathway aggregation (no scores)
+
+`build_pathway` resolves participants, fans out `build_one`, and rolls up **counts only**:
+per-species ortholog coverage (one2one / one2many / many2many / no_ortholog), IMPC
+phenotyped ratio, DepMap essential counts, and **shared vs exclusive participants**
+(a gene also in DNA replication — PCNA, RPA, POLD — is flagged `shared_participant`, counted
+separately from pathway-exclusive genes like MLH1, MSH2).
+
+## Files
+
+| Path | Role |
+|------|------|
+| `evidence_pipeline/sources.py` | per-source fetchers (Open Targets, Ensembl, GTEx, IMPC, PubMed, HPA, DepMap) |
+| `evidence_pipeline/cache.py` | content-addressed cache (`ok`/`not_found` only) |
+| `evidence_pipeline/package.py` | one gene → one package (pure Python, unchanged core) |
+| `evidence_pipeline/invitro.py` | in-vitro enrichment (HPA + DepMap) layered onto a package |
+| `evidence_pipeline/pathway.py` | Reactome participants / mouse inference / gene→pathway / aggregation |
+| `evidence_pipeline/registry.py` | source registry (§4.5 + §6) + eval policy + independence + tools.md |
+| `evidence_pipeline/app.py` | Modal app `xctx-evidence`: `build_one`, `build_pathway`, entrypoints |
+| `mcp_server.py` | MCP tools for the agent |
+| `tests/` | stub-based unit tests (no network) |
+
+## Setup & test
 
 ```bash
 pip install -r requirements.txt
-modal setup                                   # first time only
-# optional, raises PubMed rate limit:
-#   modal secret create ncbi-api-key NCBI_API_KEY=...   then run with USE_NCBI_SECRET=1
-modal deploy evidence_pipeline/app.py         # publishes xctx-evidence / build_one
-```
-
-## Files
-| Path | Role |
-|------|------|
-| `evidence_pipeline/sources.py` | per-source fetchers; never raise, always return a `SourceResult` |
-| `evidence_pipeline/cache.py` | content-addressed JSON cache (`ok`/`not_found` only) |
-| `evidence_pipeline/package.py` | one gene → one evidence package (pure Python, runs without Modal) |
-| `evidence_pipeline/app.py` | Modal app `xctx-evidence`; `build_one` fanned out with `starmap` |
-| `mcp_server.py` | MCP tool `build_evidence_package` → deployed `build_one` |
-| `tests/` | stub-based unit tests (status branches, cache rules, eval gating) |
-
-## Tests
-
-```bash
-pytest tests/ -v      # 7 tests, no network (all fetchers stubbed)
+modal setup                       # first time
+modal deploy evidence_pipeline/app.py
+pytest tests/ -v                  # 23 tests, no network
 ```
 
 ## Verified (2026-09-22)
-Ran live against all five APIs and through Modal:
-
-| Gene | explore | eval |
-|------|---------|------|
-| TYK2 | all 5 sources `ok`, `missing=[]` | PubMed + Open Targets `skipped` |
-| CD28 | rat ortholog `not_found` (legit), rest `ok`; mouse one2one → IMPC | + PubMed + Open Targets `skipped` |
-
-## Notes / limitations
-- `mcp` resolves to 2.x here, where `FastMCP` was renamed `MCPServer`; the server uses
-  the new API (see the fallback note atop `mcp_server.py` for mcp 1.x).
-- The MCP tool returns a receipt with the volume path, not the full package body; pull
-  the package from the volume (or read it backend-side) to consume the evidence.
-- Out of scope by design: drug-response prediction and imputing missing data. Missing
-  data is reported explicitly, never inferred.
+Live end-to-end for **Mismatch Repair (R-HSA-5358508)** and via entry B (`--gene MLH1` →
+R-HSA-5358565): 14 participants built in one pass; in-vitro (HPA + DepMap, 7 essential),
+in-vivo (13/14 mouse one2one, IMPC 4/4 phenotyped, mouse inference labeled), human-reference
+(GTEx), patients marked as gap; 9 shared / 5 exclusive participants. `pytest`: 23 passed.
