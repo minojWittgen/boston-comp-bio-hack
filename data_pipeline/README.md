@@ -43,6 +43,7 @@ Same computation, two entry points:
 
 ### MCP tools (`mcp_server.py`, stdio)
 - `build_evidence_package(symbol, disease, mode)` — one gene
+- `read_evidence_package(path)` — read a gene package using a receipt path issued in the same MCP session
 - `build_pathway_evidence(reactome_id | gene, disease, mode)` — one pathway
 
 ### Modal functions (deployed app `xctx-evidence`)
@@ -116,3 +117,11 @@ Live end-to-end for **Mismatch Repair (R-HSA-5358508)** and via entry B (`--gene
 R-HSA-5358565): 14 participants built in one pass; in-vitro (HPA + DepMap, 7 essential),
 in-vivo (13/14 mouse one2one, IMPC 4/4 phenotyped, mouse inference labeled), human-reference
 (GTEx), patients marked as gap; 9 shared / 5 exclusive participants. `pytest`: 23 passed.
+
+## Coordinator integration
+
+`build_one` returns its archived JSON in a `package` field as well as the original
+receipt. The team coordinator currently validates the receipt and reads the committed
+package from `xctx-cache`. The gene package read tool only accepts paths issued by its
+own session; it does not read pathway receipts. All retrieved records remain background
+evidence in the coordinator until an empirical observation adapter is provided.

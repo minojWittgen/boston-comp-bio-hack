@@ -1,0 +1,217 @@
+{
+  "request": {
+    "question": "SYNTHETIC DEMO: compare TYK2 relative-abundance directions across culture, animal and patient contexts, including paired patient RNA and protein.",
+    "genes": [
+      "TYK2"
+    ],
+    "disease": "synthetic disease",
+    "requirements": [
+      {
+        "id": "vitro_rna",
+        "title": "Cultured human-cell RNA",
+        "entity": "TYK2",
+        "species": "homo_sapiens",
+        "context": "in_vitro",
+        "modality": "RNA",
+        "endpoint": "relative_abundance",
+        "condition": "synthetic disease",
+        "tissue": "synthetic cell type",
+        "host_species": null,
+        "min_studies": 1,
+        "required": true
+      },
+      {
+        "id": "vivo_rna",
+        "title": "Mouse in-vivo RNA",
+        "entity": "TYK2",
+        "species": "mus_musculus",
+        "context": "in_vivo",
+        "modality": "RNA",
+        "endpoint": "relative_abundance",
+        "condition": "synthetic disease",
+        "tissue": "synthetic cell type",
+        "host_species": "mus_musculus",
+        "min_studies": 1,
+        "required": true
+      },
+      {
+        "id": "patient_rna",
+        "title": "Patient RNA",
+        "entity": "TYK2",
+        "species": "homo_sapiens",
+        "context": "patient",
+        "modality": "RNA",
+        "endpoint": "relative_abundance",
+        "condition": "synthetic disease",
+        "tissue": "synthetic cell type",
+        "host_species": null,
+        "min_studies": 1,
+        "required": true
+      },
+      {
+        "id": "patient_protein",
+        "title": "Matched patient protein",
+        "entity": "TYK2",
+        "species": "homo_sapiens",
+        "context": "patient",
+        "modality": "protein",
+        "endpoint": "relative_abundance",
+        "condition": "synthetic disease",
+        "tissue": "synthetic cell type",
+        "host_species": null,
+        "min_studies": 1,
+        "required": true
+      }
+    ],
+    "comparisons": [
+      {
+        "id": "vitro_to_vivo",
+        "left": "vitro_rna",
+        "right": "vivo_rna",
+        "require_matched_subjects": false,
+        "cross_species_basis": "SYNTHETIC fixture: declared TYK2 ortholog correspondence, not biological proof.",
+        "context_alignment_basis": "SYNTHETIC fixture: explicitly declared culture-to-animal context comparison."
+      },
+      {
+        "id": "vivo_to_patient",
+        "left": "vivo_rna",
+        "right": "patient_rna",
+        "require_matched_subjects": false,
+        "cross_species_basis": "SYNTHETIC fixture: declared TYK2 ortholog correspondence, not biological proof.",
+        "context_alignment_basis": "SYNTHETIC fixture: explicitly declared animal-to-patient context comparison."
+      },
+      {
+        "id": "patient_multimodal",
+        "left": "patient_rna",
+        "right": "patient_protein",
+        "require_matched_subjects": true,
+        "cross_species_basis": null,
+        "context_alignment_basis": null
+      }
+    ],
+    "pathway": null,
+    "max_revisions": 1
+  },
+  "observations": [
+    {
+      "id": "synthetic-vitro_rna",
+      "source": "synthetic-demonstration",
+      "source_version": "1",
+      "retrieved_at": null,
+      "provenance": [
+        "fixture://cross-context-demo/vitro_rna"
+      ],
+      "entity": "TYK2",
+      "species": "homo_sapiens",
+      "context": "in_vitro",
+      "modality": "RNA",
+      "endpoint": "relative_abundance",
+      "condition": "synthetic disease",
+      "tissue": "synthetic cell type",
+      "host_species": null,
+      "level": "observation",
+      "study_id": "synthetic-study-0",
+      "subject_id": null,
+      "specimen_id": null,
+      "timepoint": null,
+      "direction": "increase",
+      "contrast": "synthetic-disease-vs-control",
+      "unit": "direction",
+      "comparability_key": "synthetic-TYK2-relative-abundance",
+      "normalization_basis": "SYNTHETIC prescribed comparison of assay-specific abundance directions; not activity.",
+      "payload": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "synthetic-vivo_rna",
+      "source": "synthetic-demonstration",
+      "source_version": "1",
+      "retrieved_at": null,
+      "provenance": [
+        "fixture://cross-context-demo/vivo_rna"
+      ],
+      "entity": "TYK2",
+      "species": "mus_musculus",
+      "context": "in_vivo",
+      "modality": "RNA",
+      "endpoint": "relative_abundance",
+      "condition": "synthetic disease",
+      "tissue": "synthetic cell type",
+      "host_species": "mus_musculus",
+      "level": "observation",
+      "study_id": "synthetic-study-1",
+      "subject_id": null,
+      "specimen_id": null,
+      "timepoint": null,
+      "direction": "decrease",
+      "contrast": "synthetic-disease-vs-control",
+      "unit": "direction",
+      "comparability_key": "synthetic-TYK2-relative-abundance",
+      "normalization_basis": "SYNTHETIC prescribed comparison of assay-specific abundance directions; not activity.",
+      "payload": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "synthetic-patient_rna",
+      "source": "synthetic-demonstration",
+      "source_version": "1",
+      "retrieved_at": null,
+      "provenance": [
+        "fixture://cross-context-demo/patient_rna"
+      ],
+      "entity": "TYK2",
+      "species": "homo_sapiens",
+      "context": "patient",
+      "modality": "RNA",
+      "endpoint": "relative_abundance",
+      "condition": "synthetic disease",
+      "tissue": "synthetic cell type",
+      "host_species": null,
+      "level": "observation",
+      "study_id": "synthetic-patient-study",
+      "subject_id": "synthetic-person-1",
+      "specimen_id": "synthetic-sample-1",
+      "timepoint": "baseline",
+      "direction": "increase",
+      "contrast": "synthetic-disease-vs-control",
+      "unit": "direction",
+      "comparability_key": "synthetic-TYK2-relative-abundance",
+      "normalization_basis": "SYNTHETIC prescribed comparison of assay-specific abundance directions; not activity.",
+      "payload": {
+        "synthetic": true
+      }
+    },
+    {
+      "id": "synthetic-patient_protein",
+      "source": "synthetic-demonstration",
+      "source_version": "1",
+      "retrieved_at": null,
+      "provenance": [
+        "fixture://cross-context-demo/patient_protein"
+      ],
+      "entity": "TYK2",
+      "species": "homo_sapiens",
+      "context": "patient",
+      "modality": "protein",
+      "endpoint": "relative_abundance",
+      "condition": "synthetic disease",
+      "tissue": "synthetic cell type",
+      "host_species": null,
+      "level": "observation",
+      "study_id": "synthetic-patient-study",
+      "subject_id": "synthetic-person-1",
+      "specimen_id": "synthetic-sample-1",
+      "timepoint": "baseline",
+      "direction": "increase",
+      "contrast": "synthetic-disease-vs-control",
+      "unit": "direction",
+      "comparability_key": "synthetic-TYK2-relative-abundance",
+      "normalization_basis": "SYNTHETIC prescribed comparison of assay-specific abundance directions; not activity.",
+      "payload": {
+        "synthetic": true
+      }
+    }
+  ]
+}

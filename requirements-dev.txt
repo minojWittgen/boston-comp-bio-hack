@@ -1,0 +1,3 @@
+-r requirements.txt
+-r coordinator/requirements-dev.txt
+pytest-asyncio==1.4.0
