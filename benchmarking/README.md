@@ -80,10 +80,42 @@ is measured (every model call, every stage, every model id) into a harness-signe
 
 Grading (`held_out/primary_rubric.json`, frozen, independently reviewed, never under `primary/`):
 mechanical rows (integrity, execution, conclusion per comparison, citations resolve to real file
-locations, unsupported corroboration, task completion) plus **blind human review** on four
-dimensions — scoped conclusion correctness, evidence correctness, comparability & uncertainty,
-task completion. Reviewer decisions and blinding clues are preserved. No credit for JSON, for
-declaring criteria met, for tool use, or for abstaining when the evidence is assessable.
+locations, unsupported corroboration, task completion) plus **blind human review**.
+
+**Research quality is the review score, not the mechanical rows.** Per
+[`docs/investigation-first-handoff.md`](../docs/investigation-first-handoff.md), each run is scored
+blind on five dimensions, **0** (absent/wrong) · **1** (partial) · **2** (adequate):
+
+| Dimension | Question |
+|---|---|
+| `relevant_findings` | Does it use the available evidence to address the question? |
+| `faithfulness` | Do values, units and claims match the cited source material? |
+| `traceability` | Can material claims be traced to actual returned records? |
+| `context` | Are species, modality, in-vitro/in-vivo/patient and cohort/individual distinctions preserved? |
+| `uncertainty` | Does it explain disagreement, missing information and realistic next steps? |
+
+Four **critical errors** are answered true/false and reported *separately* — never averaged away,
+because one of them in an otherwise polished report is the finding: invented citation or value,
+cohort-to-individual claim, orthology-to-conservation claim, and technical failure presented as
+biological absence.
+
+No credit for JSON, for declaring criteria met, for tool use, for a longer report, for a conclusive
+answer, or for abstaining when the evidence is assessable. Reviewer decisions and blinding clues are
+preserved across regrades.
+
+### Two axes, since coordinator RunState 0.2
+
+The coordinator now reports **research completion** and **biological assessment** separately, and a
+run is routinely `complete` *and* `not_assessable` at the same time. That is the expected steady
+state, not a contradiction:
+
+- `status` / `investigation.*` — was the bounded research work done, and what was covered
+  (`addressed` · `limited` · `unavailable` per requirement).
+- `assessment.conclusion` — the optional supplied-observation diagnostic. It no longer gates status
+  or retries, and **must not be read as the score for the whole investigation.**
+
+The benchmark records both (`_system_internal.stages[].coordinate`) and scores neither from the
+other. `investigation.criteria_met` is a system's own claim about itself and earns nothing.
 
 ```bash
 pip install -r bench/requirements.txt

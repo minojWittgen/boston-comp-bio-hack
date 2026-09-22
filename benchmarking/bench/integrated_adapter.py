@@ -121,7 +121,16 @@ class IntegratedSystemAdapter:
             state = coord.execute(coord.create(sub).run_id, sub)
             usage.check_deadline()
             internal["run_state"] = state.model_dump(mode="json"); internal["plan_sha256"] = state.plan_sha256
-            internal["stages"].append({"stage": "coordinate", "status": state.status, "conclusion": state.assessment.conclusion if state.assessment else None, "attempts": state.attempts})
+            # Two axes since RunState 0.2: `status` is research completion; `assessment.conclusion` is the
+            # optional supplied-observation diagnostic. `complete` + `not_assessable` is the ordinary steady
+            # state, not a contradiction. Both are recorded; neither is scored from the other, and
+            # investigation.criteria_met earns no credit (docs/investigation-first-handoff.md).
+            inv = state.investigation
+            internal["stages"].append({"stage": "coordinate", "status": state.status, "attempts": state.attempts,
+                                       "observation_diagnostic_conclusion": state.assessment.conclusion if state.assessment else None,
+                                       "investigation_criteria_met": inv.criteria_met if inv else None,
+                                       "completion_reason": (inv.completion_reason if inv else None),
+                                       "coverage": {c.requirement_id: c.status for c in inv.coverage} if inv else {}})
             # -- stage 5: map to the public envelope (no repair)
             ans = _map(state, plan, limitations); status = "completed" if state.status in ("complete", "partial") else "error"
             if state.status == "failed": err = state.error
@@ -133,6 +142,23 @@ class IntegratedSystemAdapter:
         out = envelope(manifest, self.system, status, ans, tools, usage, err, limitations)
         out["_system_internal"].update(internal)
         return out
+
+
+def _documented_outcomes() -> frozenset[str]:
+    """The coordinator's own set of documented, non-blocking gap codes.
+
+    Imported rather than copied so the benchmark cannot drift from the definition it is mirroring;
+    falls back to an empty set (everything treated as unresolved, the conservative reading) if the
+    private name moves.
+    """
+    try:
+        from coordinator.investigation import _DOCUMENTED_OUTCOMES
+        return frozenset(_DOCUMENTED_OUTCOMES)
+    except Exception:  # noqa: BLE001
+        return frozenset()
+
+
+_DOCUMENTED_OUTCOMES = _documented_outcomes()
 
 
 def _map(state, plan, limitations: list[str]) -> dict:
@@ -156,7 +182,18 @@ def _map(state, plan, limitations: list[str]) -> dict:
         comps.append({"comparison_id": cid, "scope": {"species": sorted({L.species, R.species}), "context": sorted({L.context, R.context}), "modality": sorted({L.modality.lower(), R.modality.lower()})},
                       "conclusion": CONCLUSION_MAP[c.conclusion], "statement": c.detail[:1500], "citations": cites[:40],
                       "within_person": (c.conclusion in ("supported", "conflicting")) if spec.require_matched_subjects else None})
-    gaps = [f"{g.code}: {g.detail}" for g in (state.evidence.gaps if state.evidence else []) + state.assessment.gaps]
-    return {"comparisons": comps, "limitations": limitations + [f"coordinator execution status: {state.status}"] + [g for g in gaps if g.startswith(("declared_metadata", "descriptive_only"))],
-            "unresolved": [g for g in gaps if not g.startswith(("declared_metadata", "descriptive_only"))],
+    all_gaps = (state.evidence.gaps if state.evidence else []) + state.assessment.gaps
+    # Mirror the coordinator's own blocking/documented split instead of guessing from the code prefix.
+    # Without this, documented non-blocking outcomes (a genuine no-hit query, a source skipped by mode)
+    # land in `unresolved` and read as unfinished work.
+    documented = lambda g: (not getattr(g, "retryable", False)) and (  # noqa: E731
+        g.code in _DOCUMENTED_OUTCOMES or g.code.startswith(("declared_metadata", "descriptive_only")))
+    lim = [f"{g.code}: {g.detail}" for g in all_gaps if documented(g)]
+    uns = [f"{g.code}: {g.detail}" for g in all_gaps if not documented(g)]
+    inv = getattr(state, "investigation", None)
+    status_line = (f"coordinator research completion: {state.status}"
+                   f" (biological assessment: {state.assessment.conclusion if state.assessment else 'n/a'})")
+    return {"comparisons": comps,
+            "limitations": limitations + [status_line] + lim + list(inv.limitations if inv else []),
+            "unresolved": uns + list(inv.next_steps if inv else []),
             "report_markdown": (state.report or "")[:60000]}
