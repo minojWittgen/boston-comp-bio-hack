@@ -10,7 +10,8 @@ Two inputs:
 | Input | Command | Output |
 |-------|---------|--------|
 | **Gene** | `modal run app.py::main --genes MLH1,MSH2 --disease "colorectal cancer"` | per-gene evidence package |
-| **Pathway** | `modal run app.py::pathway --reactome-id R-HSA-5358508` | pathway-level rollup over all participant genes |
+| **Pathway** | `modal run app.py::pathway --reactome-id R-HSA-5358508` | pathway details (members, description, defining PMIDs, hierarchy, GO, mouse inference) + per-member evidence rollup |
+| **Pathway (light)** | `… --no-members-evidence` | pathway details only, no member-gene fan-out (fast) |
 
 Pathway is the top-level unit (v3 §1/§8.2: "fix the pathway/program definition, then
 assess").

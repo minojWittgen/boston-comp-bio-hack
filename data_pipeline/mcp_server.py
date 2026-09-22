@@ -43,18 +43,21 @@ def build_evidence_package(symbol: str, disease: str = "", mode: str = "explore"
 
 @server.tool(
     description="Build a PATHWAY-level evidence package from a Reactome stable id "
-    "(reactome_id='R-HSA-...'). Resolves participating human genes, fans out the "
-    "per-gene pipeline, and aggregates by species/context — counts only, no summed "
-    "score (v3 §9). mode='explore' runs all sources; mode='eval' skips answer-leaking "
-    "sources (disease association, literature) but keeps baseline/fitness evidence. "
-    "Returns a receipt: reactome_id, package path, per-context summary, and missing."
+    "(reactome_id='R-HSA-...'). Always returns cheap pathway-level info (participants, "
+    "description, defining PubMed IDs, hierarchy, GO, inferred mouse pathway). With "
+    "members_evidence=True (default) it also fans out the per-gene pipeline over members "
+    "and aggregates by species/context — counts only, no summed score (v3 §9); set False "
+    "for a pathway-only view (no gene fan-out). mode='explore' runs all sources; "
+    "mode='eval' skips answer-leaking sources. Returns a receipt: reactome_id, "
+    "pathway_details, package path, per-context summary, and missing."
 )
-def build_pathway_evidence(reactome_id: str, disease: str = "", mode: str = "explore") -> dict:
+def build_pathway_evidence(reactome_id: str, disease: str = "", mode: str = "explore",
+                           members_evidence: bool = True) -> dict:
     if mode not in VALID_MODES:
         raise ValueError(f"mode must be one of {sorted(VALID_MODES)}, got {mode!r}")
     run_id = dt.datetime.utcnow().strftime("%Y%m%dT%H%M%S") + f"-{mode}-pathway-mcp"
     build_pathway = modal.Function.from_name(APP_NAME, "build_pathway")
-    return build_pathway.remote(reactome_id, disease, mode, run_id)
+    return build_pathway.remote(reactome_id, disease, mode, run_id, members_evidence)
 
 
 if __name__ == "__main__":

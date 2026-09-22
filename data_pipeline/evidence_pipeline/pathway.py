@@ -136,6 +136,42 @@ def infer_mouse_pathway(reactome_id: str) -> dict:
         return S.result("reactome_orthology", "error", q, error=repr(e), version=version)
 
 
+# ---------------------------------------------------------------- pathway-level details
+def pathway_details(reactome_id: str) -> dict:
+    """Pathway-level annotation from Reactome (the pathway itself, not its member genes).
+
+    One or two calls per pathway (no gene fan-out): description, defining literature
+    (PubMed IDs — real study IDs at the pathway level), GO biological process, disease
+    flag, and the parent hierarchy. All background (definition/provenance, not activity).
+    """
+    q = {"reactome_id": reactome_id}
+    version = reactome_version()
+    try:
+        d = S.http("GET", f"{REACTOME}/data/query/{reactome_id}")
+        summ = d.get("summation") or []
+        pmids = [str(l["pubMedIdentifier"]) for l in (d.get("literatureReference") or [])
+                 if l.get("pubMedIdentifier")]
+        details = {
+            "name": d.get("displayName"),
+            "summation": (summ[0].get("text") if summ else None),
+            "pmids": pmids,
+            "go_biological_process": (d.get("goBiologicalProcess") or {}).get("displayName"),
+            "is_in_disease": d.get("isInDisease"),
+            "has_diagram": d.get("hasDiagram"),
+            "hierarchy": None}
+        try:  # parent hierarchy (best-effort second call)
+            anc = S.http("GET", f"{REACTOME}/data/event/{reactome_id}/ancestors")
+            if isinstance(anc, list) and anc:
+                details["hierarchy"] = [e.get("displayName") for e in anc[0]]
+        except Exception:  # noqa: BLE001
+            pass
+        return S.result("reactome_pathway_details", "ok", q, version=version, data=details)
+    except Exception as e:  # noqa: BLE001
+        if _status_404(e):
+            return S.result("reactome_pathway_details", "not_found", q, version=version)
+        return S.result("reactome_pathway_details", "error", q, error=repr(e), version=version)
+
+
 # ---------------------------------------------------------------- aggregation (no scores)
 ORTHO_CLASSES = ["one2one", "one2many", "many2many", "no_ortholog", "unavailable"]
 
@@ -159,7 +195,7 @@ def _classify_ortholog(ortho_result: dict) -> str:
 
 def aggregate_pathway(reactome_id: str, disease: str, mode: str, run_id: str,
                       gene_packages: list[dict], pathway_result: dict,
-                      mouse_result: dict) -> dict:
+                      mouse_result: dict, details_result: dict | None = None) -> dict:
     """Roll up per-gene evidence packages to the pathway level.
 
     NO summed score or probability (v3 §9). Only counts, gene lists and a phenotyped
@@ -257,6 +293,7 @@ def aggregate_pathway(reactome_id: str, disease: str, mode: str, run_id: str,
         "run": {"run_id": run_id, "mode": mode, "disease_query": disease,
                 "reactome_id": reactome_id, "built_at": S.now()},
         "pathway": pathway_result,
+        "pathway_details": details_result,
         "mouse_inference": mouse_result,
         "genes": [s for s in symbols if s],
         "summary": {
