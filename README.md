@@ -5,10 +5,15 @@ Scientific behavior comes from [`coordinator/`](coordinator/README.md), integrat
 `codex/investigation-coordinator` at `f7578e7`. Frontend and transport adapters live in
 `research_app/`; there is one scientific planner, evidence adapter, checker and research engine.
 
-The coordinator compares **declared observations**. It currently does not generate
-experimental measurements or run a new statistical analysis. Real empirical data
-still needs the team's observation/analysis adapter. Source retrieval is background,
-not biological validation.
+The coordinator investigates existing source findings across species, experimental
+contexts and modalities. It reports what was found, how results differ, source links,
+uncertainty and next research steps. **Completing the investigation does not require a
+conclusive biological verdict.** Existing database summaries are used at their stated
+scope; raw-data analysis is not required for this report.
+
+Schema 0.2 makes `RunState.investigation` the primary result. The earlier
+`assessment` remains a separate diagnostic for explicitly supplied observations.
+See the [implementation and benchmark handoff](docs/investigation-first-handoff.md).
 
 ## Try it without setup
 
@@ -85,8 +90,9 @@ match the request's gene, disease and mode. See the [coordinator guide](coordina
 - `/openapi.json` and `coordinator/models.py` are the contract sources of truth.
 
 The Python frontend imports these schemas directly; it does not maintain a copy.
-The UI shows execution status, scientific conclusion, all three contexts, proposed
-scope/assumptions, criterion evidence IDs, provenance, gaps and activity separately.
+The UI shows research findings, all three contexts, scope/assumptions, source evidence
+IDs, provenance, uncertainty, next steps and activity. Optional observation diagnostics
+remain separate from investigation completion.
 It provides Markdown and full-evidence downloads. No contract JSON editor is needed.
 
 Read the [frontend/backend integration guide](docs/frontend-integration.md),

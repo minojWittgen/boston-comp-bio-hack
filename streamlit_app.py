@@ -169,7 +169,7 @@ else:
         st.caption("Your model settings are entered. They will be checked when you send a question.")
     else:
         st.info("You can read saved reports without an API key. To ask a new question here, enter your Anthropic API key and model ID in the sidebar. The tutorial and MCP are also available without a separate API key.")
-    st.caption("Live investigations retrieve source references for the genes in your question. Unlike the synthetic tutorial, they do not come with prefilled experiment or patient observations, so the search may finish without enough comparable study evidence to answer the question.")
+    st.caption("Live investigations retrieve and explain published database findings for the genes in your question, compare their species and research contexts, and report uncertainties and next steps. Individual patient comparisons are only possible when the sources provide matched patient data.")
     if "run_id" not in st.session_state:
         with st.chat_message("assistant"):
             st.write("What biological question are you investigating? Include the gene or target, the disease or tissue, and what you want to compare.")

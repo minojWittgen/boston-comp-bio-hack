@@ -27,6 +27,22 @@ def search_status(state):
 
 
 def context_coverage(state: RunState):
+    investigation = getattr(state, "investigation", None)
+    if investigation is not None:
+        coverage = {c.requirement_id: c for c in investigation.coverage}
+        requirements = state.plan.requirements if state.plan else state.request.requirements
+        rows = []
+        for context in ("in_vitro", "in_vivo", "patient"):
+            scoped = [r for r in requirements if r.context == context]
+            entries = [coverage[r.id] for r in scoped if r.id in coverage]
+            addressed = sum(c.status == "addressed" for c in entries)
+            limited = sum(c.status == "limited" for c in entries)
+            detail = "Outside this question's scope." if not scoped else " ".join(c.detail for c in entries)
+            rows.append({"context": context, "label": CONTEXT_LABELS[context], "total": len(scoped),
+                         "passed": addressed, "addressed": addressed, "limited": limited,
+                         "unavailable": sum(c.status == "unavailable" for c in entries),
+                         "detail": detail or "Investigation coverage is being prepared."})
+        return rows
     checks = {c.id: c for c in state.assessment.checks} if state.assessment else {}
     requirements = state.plan.requirements if state.plan else state.request.requirements
     rows = []
@@ -56,6 +72,22 @@ def is_synthetic(state: RunState):
 def assistant_summary(state: RunState):
     if state.status == "failed":
         return "The search could not finish. " + (state.error or "See the error below for details.")
+    investigation = getattr(state, "investigation", None)
+    if investigation is not None:
+        text = "**Investigation complete.** " if investigation.criteria_met else "**Collection incomplete.** "
+        text += investigation.completion_reason
+        if investigation.findings:
+            requirements = state.plan.requirements if state.plan else state.request.requirements
+            orthology_requested = any(r.modality == "DNA" or r.context == "reference"
+                                     or "ortholog" in r.endpoint.lower() for r in requirements)
+            relevant_ids = {evidence_id for c in investigation.coverage for evidence_id in c.evidence_ids}
+            findings = [f for f in investigation.findings if f.source != "mygene"
+                        and (f.source != "ensembl_orthology" or orthology_requested)]
+            findings = sorted(findings, key=lambda f: f.evidence_id not in relevant_ids) or investigation.findings
+            text += " " + " ".join(f.summary for f in findings[:2])
+        if is_synthetic(state):
+            text += " **This is a synthetic teaching example, not a biological finding.**"
+        return text
     if state.assessment is None:
         return "The search is still running."
     text = "The search finished. " if search_status(state) == "Finished" else "The search ended with some sources unavailable. "
@@ -73,6 +105,17 @@ def assistant_summary(state: RunState):
 def requirement_rows(state):
     if not state.plan:
         return []
+    investigation = getattr(state, "investigation", None)
+    if investigation is not None:
+        coverage = {c.requirement_id: c for c in investigation.coverage}
+        return [{"Question to answer": r.title, "Gene / target": r.entity,
+                 "Context": CONTEXT_LABELS[r.context], "Species": readable(r.species),
+                 "Research topic": readable(r.endpoint),
+                 "Evidence available": coverage[r.id].status.capitalize() if r.id in coverage else "Pending",
+                 "What the sources answer": coverage[r.id].detail if r.id in coverage else "Coverage is being prepared.",
+                 "Disease / condition": r.condition or "Not specified", "Tissue": r.tissue or "Not specified",
+                 "Host species": readable(r.host_species) if r.host_species else "Not specified",
+                 "Priority": "Required" if r.required else "Optional"} for r in state.plan.requirements]
     checks = {c.id: c for c in state.assessment.checks} if state.assessment else {}
     rows = []
     for r in state.plan.requirements:
@@ -88,7 +131,21 @@ def requirement_rows(state):
     return rows
 
 
-def comparison_views(state):
+def comparison_views(state, *, observation_only=False):
+    investigation = getattr(state, "investigation", None)
+    if investigation is not None and not observation_only:
+        specs = {c.id: c for c in state.plan.comparisons} if state.plan else {}
+        requirements = {r.id: r for r in state.plan.requirements} if state.plan else {}
+        records = state.evidence.records if state.evidence else []
+        views = []
+        for comparison in investigation.comparisons:
+            spec = specs.get(comparison.id)
+            title = f"{requirements[spec.left].title} ↔ {requirements[spec.right].title}" if spec else readable(comparison.id)
+            ids = set(comparison.left_evidence_ids + comparison.right_evidence_ids)
+            views.append({"id": comparison.id, "title": title, "conclusion": "What the sources show",
+                          "detail": comparison.summary, "limitations": comparison.limitations,
+                          "records": [r for r in records if r.id in ids]})
+        return views
     if not state.plan or not state.assessment:
         return []
     requirements = {r.id: r for r in state.plan.requirements}

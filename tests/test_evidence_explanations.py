@@ -4,7 +4,8 @@ from streamlit.testing.v1 import AppTest
 
 from coordinator.checks import assess
 from coordinator.models import (ComparisonSpec, EvidenceBundle, EvidenceRecord,
-    EvidenceRequirement, InvestigationRequest, ResearchPlan, RunState)
+    EvidenceRequirement, InvestigationRequest, ResearchPlan, RunState, InvestigationAssessment,
+    ResearchCoverage, ResearchFinding)
 from research_app.explanations import (comparison_explanations, criteria_origin,
     overview_explanation, requirement_explanations, source_contributions)
 from research_app.report_ui import markdown_report
@@ -124,3 +125,23 @@ def test_why_tab_is_visible_without_a_model_call():
         assert 'model proposed' in text
         assert 'current evidence integration' in text
         assert any('Finding in the returned data' in table.value.columns for table in app.table)
+
+
+def test_investigation_explains_database_findings_without_a_study_count_gate():
+    s = state([reference('gtex', {'tissues': [{'tissue': 'Colon_Sigmoid', 'median_tpm': 23.9729}]})], proposed=True)
+    s.investigation = InvestigationAssessment(criteria_met=True,
+        completion_reason='Source research is complete within the declared scope.',
+        findings=[ResearchFinding(evidence_id='gtex', entity='MLH1', source='gtex',
+                    summary='GTEx reports 23.9729 TPM in sigmoid colon.', limitations=['Healthy reference tissue.'])],
+        coverage=[ResearchCoverage(requirement_id='patient', status='limited', evidence_ids=['gtex'],
+                    detail='Healthy reference abundance provides context for patient research.')])
+    before = s.model_dump_json()
+    contribution = source_contributions(s)[0]
+    assert contribution['finding'] == 'GTEx reports 23.9729 TPM in sigmoid colon.'
+    assert contribution['role'] == 'Healthy reference tissue.'
+    assert 'current evidence integration' not in overview_explanation(s)
+    assert 'study minimum' not in criteria_origin(s).lower()
+    coverage = requirement_explanations(s)[1]
+    assert coverage['status'] == 'limited' and coverage['evidence_ids'] == ['gtex']
+    assert 'minimum' not in coverage
+    assert s.model_dump_json() == before

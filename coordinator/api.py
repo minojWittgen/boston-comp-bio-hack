@@ -18,7 +18,7 @@ def create_app(coordinator=None, dispatch: Callable | None = None, api_token: st
                read: Callable | None = None):
     coordinator = coordinator or build_coordinator()
     token = api_token if api_token is not None else os.environ.get("COORDINATOR_API_TOKEN")
-    app = FastAPI(title="Cross-context investigation coordinator", version="0.1.0")
+    app = FastAPI(title="Cross-context investigation coordinator", version="0.2.0")
     origins = os.environ.get("XCTX_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000")
     app.add_middleware(CORSMiddleware, allow_origins=origins.split(","),
         allow_methods=["GET", "POST"], allow_headers=["Authorization", "Content-Type"])
@@ -38,7 +38,7 @@ def create_app(coordinator=None, dispatch: Callable | None = None, api_token: st
 
     @app.get("/health")
     def health():
-        return {"status": "ok", "schema_version": "0.1"}
+        return {"status": "ok", "schema_version": "0.2"}
 
     @app.post("/investigations", status_code=202, dependencies=[Depends(authorize)])
     def start(submission: Submission, background: BackgroundTasks):

@@ -37,8 +37,8 @@ def create_app(service=None, api_token=None):
         "research requirements, or an explicit synthetic demo request. Your host assistant frames the criteria; "
         "this MCP server makes no model API calls and needs no separate Anthropic API key. "
         "Ask the researcher to clarify missing scope; never invent observations, pathway membership or comparison bases. "
-        "Execution status and assessment.conclusion are separate: complete can mean conflicting. "
-        "Generated plan assumptions need researcher review. Reference records are background, not observations.")
+        "Read investigation.findings, coverage, comparisons, limitations and next_steps as the primary research result. Investigation completion does not require a biological verdict. "
+        "Generated plan assumptions need researcher review. Database results labeled background are useful at their reported scope; do not relabel them as normalized observations. assessment is a separate optional observation diagnostic.")
 
     @mcp.tool(structured_output=True, description=
               "Start a model-free background job. Pass a nested {request, observations} "
@@ -52,8 +52,8 @@ def create_app(service=None, api_token=None):
         return await run_in_threadpool(handler, request)
 
     @mcp.tool(structured_output=True, description=
-              "Retrieve the canonical RunState, including plan, evidence, assessment, gaps, events and Markdown report. "
-              "Poll at least three seconds apart until complete, partial or failed; inspect assessment.conclusion separately.")
+              "Retrieve the canonical RunState, including plan, evidence, investigation findings and limits, optional observation assessment, events and Markdown report. "
+              "Poll at least three seconds apart until complete, partial or failed; use investigation as the primary result and assessment only for supplied-observation diagnostics.")
     async def get_investigation(investigation_id: str) -> dict[str, Any]:
         try:
             return (await run_in_threadpool(service.get, investigation_id)).model_dump(mode="json")
