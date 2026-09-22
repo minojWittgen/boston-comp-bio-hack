@@ -21,6 +21,8 @@ def open_workspace(experience="Try the tutorial"):
 
 def introduction():
     st.html(STYLES)
+    st.markdown("**CoMEA** — **Co**ntext-aware **M**ulti-modal & Multi-species **E**vidence **A**ssessment")
+    st.caption("Created by Minwoo Jung, Jaeeun Park, and Priya Mandala")
     st.title("Follow the evidence across contexts.")
     st.markdown("### A promising finding is a beginning. Where else does it hold?")
     st.write(
@@ -64,7 +66,7 @@ def introduction():
 def references():
     st.title("References and acknowledgments")
     st.write(
-        "The ideas, data sources and project notes behind Cross-context. These references explain "
+        "The ideas, data sources and project notes behind CoMEA. These references explain "
         "what shaped the workflow and where its evidence comes from."
     )
     st.subheader("Ideas that shaped the workflow")

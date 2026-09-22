@@ -105,12 +105,12 @@ def _svg_image(svg, css_class):
 
 
 def search_diagram():
-    return """<figure class="xctx-figure" aria-label="Paper-focused LLM search and the cross-context research workflow">
+    return """<figure class="xctx-figure" aria-label="Paper-focused LLM search and the CoMEA research workflow">
 <div class="fig-kicker">01 / LOOK BEYOND THE PAPER SUMMARY</div>
 <div class="fig-lane"><div class="lane-label">Paper-focused<br>LLM search<span>When the workflow stops at publications</span></div>
 <ol class="fig-flow"><li class="flow-step">Ask a question</li><li class="flow-step">Find papers</li><li class="flow-step">Summarize claims</li></ol></div>
 <div class="fig-blindspots"><strong>What can be left out?</strong><span class="fig-chip">Measured values</span><span class="fig-chip">Experimental conditions</span><span class="fig-chip">Species differences</span><span class="fig-chip">Patient variation</span></div>
-<div class="fig-lane research-lane"><div class="lane-label">Cross-context<br>research<span>Follow the claim into its evidence</span></div>
+<div class="fig-lane research-lane"><div class="lane-label">CoMEA<br>research<span>Follow the claim into its evidence</span></div>
 <ol class="fig-flow"><li class="flow-step">Define the<br>evidence needed</li><li class="flow-step">Inspect source<br>records + references</li><li class="flow-step">Compare settings<br>+ measurements</li><li class="flow-step">Explain findings<br>+ open questions</li></ol></div>
 <figcaption>The difference is the research workflow and the evidence it inspects. Today’s demo works with retrieved database findings and source metadata; raw-data reanalysis is a further step.</figcaption>
 </figure>"""

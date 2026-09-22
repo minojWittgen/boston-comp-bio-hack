@@ -58,7 +58,7 @@ def markdown_report(state):
         for char in ("\\", "[", "]", "*", "_", "<", ">", "`", "|"):
             text = text.replace(char, "\\" + char)
         return text.replace("\n", " ")
-    lines = ["# Cross-context research report", "", escape(state.request.question), "", assistant_summary(state), "", "## Why this result?", "", overview_explanation(state), "", criteria_origin(state), "",
+    lines = ["# CoMEA research report", "", escape(state.request.question), "", assistant_summary(state), "", "## Why this result?", "", overview_explanation(state), "", criteria_origin(state), "",
              "The study minimum is a software threshold, not a statistical sample-size calculation. More database rows do not count as more studies.", ""]
     for row in requirement_explanations(state):
         lines.append(f"- {escape(row['title'])}: minimum study count: {row['minimum']}; qualifying studies supplied: {row['qualifying_studies'] if row['qualifying_studies'] is not None else 'not checked'}.")
