@@ -63,10 +63,13 @@ def build_one(symbol: str, disease: str, mode: str, run_id: str) -> dict:
 @app.function(image=image, volumes={ROOT: vol}, secrets=secrets,
               max_containers=8, timeout=1800)
 def build_pathway(reactome_id: str, disease: str = "", mode: str = "explore",
-                  run_id: str = "") -> dict:
-    """Pathway-level evidence: resolve participants, fan out build_one, aggregate.
+                  run_id: str = "", members_evidence: bool = False) -> dict:
+    """Pathway-level evidence: pathway-level info + (optional) member-gene evidence.
 
-    Pathway input (Reactome id). No summed score across genes (v3 §9) —
+    Default is the cheap pathway-only view (a few Reactome calls): participants, pathway
+    details (description, defining PubMed IDs, hierarchy, GO), and inferred mouse pathway.
+    Set `members_evidence=True` to ALSO fan out build_one over member genes and aggregate
+    per-context coverage (heavier). No summed score across genes (v3 §9) —
     aggregate_pathway rolls up counts only.
     """
     import json
@@ -76,11 +79,12 @@ def build_pathway(reactome_id: str, disease: str = "", mode: str = "explore",
 
     vol.reload()
     pathway_res = PW.resolve_pathway(reactome_id)
+    details_res = PW.pathway_details(reactome_id)
     mouse_res = PW.infer_mouse_pathway(reactome_id)
     genes = [g["symbol"] for g in (pathway_res.get("data") or {}).get("genes", [])]
 
     packages = []
-    if genes:
+    if members_evidence and genes:
         args = [(g, disease, mode, run_id) for g in genes]
         # aggregate from the returned packages (one shot, no volume round-trip)
         for g, r in zip(genes, build_one.starmap(args, return_exceptions=True)):
@@ -92,21 +96,29 @@ def build_pathway(reactome_id: str, disease: str = "", mode: str = "explore",
                 packages.append(pkg)
 
     pkg = PW.aggregate_pathway(reactome_id, disease, mode, run_id,
-                               packages, pathway_res, mouse_res)
+                               packages, pathway_res, mouse_res, details_res)
+    pkg["run"]["members_evidence"] = bool(members_evidence)
     out = Path(ROOT) / "runs" / run_id / f"pathway_{reactome_id}.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(pkg, indent=2))
     vol.commit()
     return {"reactome_id": reactome_id, "path": str(out),
+            "members_evidence": bool(members_evidence),
             "n_participant_genes": len(genes), "n_built": len(packages),
+            "pathway_details": details_res.get("data") if details_res.get("status") == "ok" else None,
             "summary": pkg["summary"], "missing": pkg["missing"]}
 
 
 @app.local_entrypoint()
-def pathway(reactome_id: str, disease: str = "", mode: str = "explore"):
-    """Assess a pathway by Reactome id, e.g. --reactome-id R-HSA-5358508."""
+def pathway(reactome_id: str, disease: str = "", mode: str = "explore",
+            members_evidence: bool = False):
+    """Assess a pathway by Reactome id, e.g. --reactome-id R-HSA-5358508.
+
+    Default is the pathway-only view (Reactome details, no gene fan-out — fast).
+    Add --members-evidence to also fan out per-member gene evidence (heavier).
+    """
     run_id = dt.datetime.utcnow().strftime("%Y%m%dT%H%M%S") + f"-{mode}-pathway"
-    result = build_pathway.remote(reactome_id, disease, mode, run_id)
+    result = build_pathway.remote(reactome_id, disease, mode, run_id, members_evidence)
     manifest = {"run_id": run_id, "mode": mode, "disease": disease, **result}
     local = Path("runs") / run_id
     local.mkdir(parents=True, exist_ok=True)
