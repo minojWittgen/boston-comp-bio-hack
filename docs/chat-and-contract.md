@@ -76,11 +76,19 @@ canonical state as HTTP.
 ```
 
 HTTP clients can send `{"demo":"cross-context-conflict"}` to `/demos`. The other
-supported fixture is `missing-evidence`. The server loads the team's examples and uses
-its directory evidence provider. Fixture selection is explicit and labeled; an ordinary
+supported fixture is `missing-evidence`. The server serves cached results generated from the team’s examples and directory
+evidence provider, without spawning a worker or consuming the public live allowance. Fixture selection is explicit and labeled; an ordinary
 chat or structured request never triggers this fallback.
 
 Website planning needs a visitor’s API key and explicit model ID in Model settings.
 Explicit criteria and the two fixtures need no model credentials. See [MCP setup](mcp.md).
 The standalone team coordinator retains its own environment-based configuration;
 the combined frontend/MCP deployment uses visitor-funded planning only.
+
+## Public entry
+
+The website opens in the tutorial, not a login or key-entry screen. Website chat is
+an explicit optional path; the MCP path uses Claude Code or the Claude app directly.
+The combined hosted API is public and stores new runs separately from former team
+runs. Live starts share a limited demo allowance; cached tutorials remain available.
+See [MCP setup](mcp.md) and the deployment limits in [README](../README.md).

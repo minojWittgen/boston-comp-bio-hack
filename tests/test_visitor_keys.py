@@ -170,13 +170,17 @@ def test_streamlit_model_settings_are_session_scoped_and_can_be_cleared(monkeypa
     monkeypatch.delenv('INVESTIGATION_API_TOKEN', raising=False)
     first = AppTest.from_file('../streamlit_app.py').run()
     assert not first.exception
+    first.radio(key='experience').set_value('Investigate with your key').run()
     assert first.chat_input[0].disabled
     first.text_input(key='visitor_api_key').set_value('visitor-key-one')
     first.text_input(key='visitor_model').set_value('visitor-model').run()
     assert not first.chat_input[0].disabled
     second = AppTest.from_file('../streamlit_app.py').run()
+    second.radio(key='experience').set_value('Investigate with your key').run()
     assert second.text_input(key='visitor_api_key').value == ''
     next(b for b in first.button if b.label == 'Clear API key').click().run()
     assert first.text_input(key='visitor_api_key').value == ''
     assert first.chat_input[0].disabled
-    assert any('Use this through MCP' in e.label for e in first.expander)
+    first.radio(key='experience').set_value('Connect through MCP').run()
+    assert not first.text_input
+    assert any('claude mcp add --transport http' in code.value for code in first.code)
