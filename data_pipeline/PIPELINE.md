@@ -9,8 +9,8 @@ judgments and no scores** (v3 §9): every field is a retrieved fact or an explic
 | Input | Command | Output |
 |-------|---------|--------|
 | **Gene** | `modal run app.py::main --genes MLH1,MSH2 --disease "colorectal cancer"` | per-gene evidence package |
-| **Pathway** | `modal run app.py::pathway --reactome-id R-HSA-5358508` | pathway details (members, description, defining PMIDs, hierarchy, GO, mouse inference) + per-member evidence rollup |
-| **Pathway (light)** | `… --no-members-evidence` | pathway details only — no member-gene fan-out (fast) |
+| **Pathway** | `modal run app.py::pathway --reactome-id R-HSA-5358508` | pathway details only — members, description, defining PMIDs, hierarchy, GO, mouse inference (fast, no gene fan-out) |
+| **Pathway (+members)** | `… --members-evidence` | + per-member gene evidence rollup by species/context (heavier) |
 
 ## Flow
 

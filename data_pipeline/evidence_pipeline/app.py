@@ -63,14 +63,14 @@ def build_one(symbol: str, disease: str, mode: str, run_id: str) -> dict:
 @app.function(image=image, volumes={ROOT: vol}, secrets=secrets,
               max_containers=8, timeout=1800)
 def build_pathway(reactome_id: str, disease: str = "", mode: str = "explore",
-                  run_id: str = "", members_evidence: bool = True) -> dict:
+                  run_id: str = "", members_evidence: bool = False) -> dict:
     """Pathway-level evidence: pathway-level info + (optional) member-gene evidence.
 
-    Always cheap (a few Reactome calls): participants, pathway details (description,
-    defining PubMed IDs, hierarchy, GO), and inferred mouse pathway.
-    `members_evidence=True` also fans out build_one over member genes and aggregates
-    per-context coverage (heavier). Set False for a pathway-only view (no gene fan-out).
-    No summed score across genes (v3 §9) — aggregate_pathway rolls up counts only.
+    Default is the cheap pathway-only view (a few Reactome calls): participants, pathway
+    details (description, defining PubMed IDs, hierarchy, GO), and inferred mouse pathway.
+    Set `members_evidence=True` to ALSO fan out build_one over member genes and aggregate
+    per-context coverage (heavier). No summed score across genes (v3 §9) —
+    aggregate_pathway rolls up counts only.
     """
     import json
     from pathlib import Path
@@ -111,11 +111,11 @@ def build_pathway(reactome_id: str, disease: str = "", mode: str = "explore",
 
 @app.local_entrypoint()
 def pathway(reactome_id: str, disease: str = "", mode: str = "explore",
-            members_evidence: bool = True):
+            members_evidence: bool = False):
     """Assess a pathway by Reactome id, e.g. --reactome-id R-HSA-5358508.
 
-    --members-evidence (default) fans out member-gene evidence too;
-    --no-members-evidence gives a pathway-only view (Reactome details, no gene fan-out).
+    Default is the pathway-only view (Reactome details, no gene fan-out — fast).
+    Add --members-evidence to also fan out per-member gene evidence (heavier).
     """
     run_id = dt.datetime.utcnow().strftime("%Y%m%dT%H%M%S") + f"-{mode}-pathway"
     result = build_pathway.remote(reactome_id, disease, mode, run_id, members_evidence)
