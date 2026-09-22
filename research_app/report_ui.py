@@ -16,7 +16,7 @@ def criteria_table(state):
 
 
 def show_reasoning(state):
-    st.subheader("Evidence was found. What does it answer?")
+    st.subheader("How we reached this result")
     st.write(overview_explanation(state))
     st.markdown("**How much evidence does this plan ask for?**")
     st.write(criteria_origin(state))
@@ -38,7 +38,7 @@ def show_reasoning(state):
     st.markdown("**What needs to happen next?**")
     records = state.evidence.records if state.evidence else []
     if records and not any(r.level == "observation" for r in records):
-        st.write("Study measurements and their source/context information still need to be extracted and prepared for comparison. The live collector currently supplies reference material. Repeating the same search or adding an explanatory model call will not fill that data-integration gap.")
+        st.write("The sources found so far provide reference material. The next step is to extract the study measurements, keep their source and sample information, and prepare compatible comparisons. Another search of the same sources alone will not supply those missing measurements.")
     st.write("This prototype compares reported directions of change. It does not yet calculate a harmonized comparison of absolute measurement values across datasets. Review the proposed outcome, comparison groups and alignment method before treating the result as an answer to that broader question.")
     issues = list(dict.fromkeys(issue for explanation in comparison_explanations(state).values() for issue in explanation["plan_issues"]))
     for issue in issues:
@@ -140,7 +140,7 @@ def render_source(record):
             if view.table:
                 st.dataframe(view.table, hide_index=True, width="stretch")
             if not view.links:
-                st.caption("No usable source URL was supplied. No paper or database link has been invented.")
+                st.caption("No source link was included in this result.")
             elif any(kind in {"identifier", "query"} for _, _, kind in view.links):
                 st.caption("Database and article links are built from identifiers or queries in the retrieved result. A link is a way to inspect the source, not proof that it supports this comparison.")
             st.caption(f"Retrieved: {record.retrieved_at or 'Not supplied'} · Source release: {record.source_version or 'Not supplied'}")
@@ -263,9 +263,9 @@ def _show_investigation_report(state):
             st.markdown(f"**{row['label']}**")
             st.write(row["detail"])
 
-    findings, comparisons, sources, question = st.tabs(["Findings", "Comparisons", "Sources", "Research scope"])
+    findings, comparisons, sources, question = st.tabs(["Findings", "Comparisons", "Sources", "What we needed to answer"])
     with findings:
-        st.subheader("What the investigation found")
+        st.subheader("What we found")
         st.write(overview_explanation(state))
         contributions = source_contributions(state)
         for row in contributions:

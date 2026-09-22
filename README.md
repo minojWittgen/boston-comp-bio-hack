@@ -17,10 +17,13 @@ See the [implementation and benchmark handoff](docs/investigation-first-handoff.
 
 ## Try it without setup
 
-Open the [hosted app](https://minoj--xctx-research-web.modal.run). It opens directly
-in **Try the tutorial** with a complete evidence/report walkthrough. No access code
-or API key is needed. Choose **Investigate with your key** only for website chat,
-or **Connect through MCP** to use Claude's existing interface and model.
+Open the [hosted app](https://minoj--xctx-research-web.modal.run). **Introduction**
+explains the scientific rationale. **Research workspace** contains **Guided examples**,
+**Ask your own question**, and **Use in Claude (MCP)**. **References** credits the methods,
+data sources and reviewed tools, with links to the project's Markdown documentation.
+No access code or API key is needed to explore the story, examples or references.
+Only website chat needs your own API key; MCP uses your connected assistant's model.
+See the [demo story and walkthrough](docs/demo-story.md).
 
 ```bash
 claude mcp add --transport http cross-context-biology https://minoj--xctx-research-api.modal.run/mcp/
@@ -47,12 +50,12 @@ In a second terminal:
 .venv/bin/python -m streamlit run streamlit_app.py
 ```
 
-Open **http://127.0.0.1:8501**. **Try the tutorial** offers two explicit synthetic cases:
+Open **http://127.0.0.1:8501**, then choose **Explore a guided example**. There are two explicit synthetic cases:
 
-| Example | Execution | Evidence conclusion |
+| Example | Investigation | Optional measurement comparison |
 | --- | --- | --- |
-| Disagreement across contexts | complete | conflicting |
-| Missing observations | partial | not_assessable |
+| Disagreement across contexts | Complete | Measurements disagree |
+| Missing patient evidence | Collection incomplete | Not enough comparable evidence |
 
 Both use cached outputs from the team's coordinator and its declared fixtures.
 The tutorial works with only Streamlit running: it needs no backend, credentials or
@@ -60,11 +63,14 @@ live collection. An ordinary chat
 request never silently falls back to these fixtures.
 
 For real free-text questions, enter **your Anthropic API key and model ID** in the
-**Investigate with your key** sidebar under **Model settings**. Each visitor pays for their own planning
+**Ask your own question** sidebar under **Your API key · website chat**. Each visitor pays for their own planning
 calls. The combined app never falls back to a host model key, even if one exists in
 the environment. Keys stay in the visitor’s session and the planning HTTP request;
 they are excluded from background jobs, stored investigations and downloads. Use
-**Clear API key** when finished. The model is explicitly selected; there is no default.
+**Clear API key** when finished. The model field is prefilled with `claude-opus-5-5`
+and can be changed to a model available to your Anthropic account. Credentials and
+the selected conversation survive page changes within the same session. Saved report
+links open directly in the research workspace without a key or a new model call.
 Leave `XCTX_EVIDENCE_DIR` unset to use the Modal evidence collector. Modal authentication
 and access to `xctx-evidence` / `xctx-cache` are also required for live collection.
 For an intentional local replay, use an absolute `XCTX_EVIDENCE_DIR` with packages that

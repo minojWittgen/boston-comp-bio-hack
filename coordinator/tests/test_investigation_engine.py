@@ -314,7 +314,7 @@ def test_computed_source_investigation_reaches_primary_web_report(tmp_path):
         app.run()
         assert not app.exception
         assert [metric.value for metric in app.metric] == ["Finished", "Complete"]
-        assert [tab.label for tab in app.tabs] == ["Findings", "Comparisons", "Sources", "Research scope"]
+        assert [tab.label for tab in app.tabs] == ["Findings", "Comparisons", "Sources", "What we needed to answer"]
         visible = "\n".join(item.value for item in list(app.markdown) + list(app.caption))
         assert "5.2" in visible and "TPM" in visible
         assert not app.text_input[0].value

@@ -99,11 +99,12 @@ def test_tutorial_and_mcp_are_accessible_without_backend_or_credentials(monkeypa
          patch('requests.get', side_effect=AssertionError('Tutorial must not contact backend')):
         app = AppTest.from_file('../streamlit_app.py').run()
         assert not app.exception
+        app.radio(key='page').set_value('research').run()
         assert app.radio(key='experience').value == 'Try the tutorial'
         assert not app.text_input and not app.chat_input
         assert [metric.value for metric in app.metric] == ['Finished', 'Complete']
         assert len(app.get('download_button')) == 2
-        next(r for r in app.radio if r.label == 'Tutorial case').set_value('Missing patient evidence').run()
+        app.radio(key='tutorial_case').set_value('Missing patient evidence').run()
         assert not app.exception
         assert [metric.value for metric in app.metric] == ['Finished', 'Collection incomplete']
         app.radio(key='experience').set_value('Connect through MCP').run()

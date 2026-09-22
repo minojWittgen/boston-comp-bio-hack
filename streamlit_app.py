@@ -10,9 +10,10 @@ from coordinator.jobs import TERMINAL
 from research_app.client import InvestigationClient
 from research_app.presentation import assistant_summary, STAGES
 from research_app.report_ui import show_report
+from research_app.site_pages import EXPERIENCES, PAGES, introduction, references
 from research_app.tutorials import tutorial
 
-st.set_page_config(page_title="Cross-context · Research chat", page_icon="◈", layout="wide")
+st.set_page_config(page_title="Cross-context · Follow the evidence", page_icon="◈", layout="wide")
 st.markdown("""<style>
 .block-container {max-width: 1150px; padding-top: 4rem;}
 h1 {font-family: Georgia, serif; font-weight: 500 !important; letter-spacing: -1px;}
@@ -45,7 +46,7 @@ def clear_model_key():
 
 # Detach these session values from Streamlit's cleanup of hidden widgets.
 # They survive view switches and remain per-session, never cached or persisted.
-for name in ("visitor_api_key", "visitor_model"):
+for name in ("visitor_api_key", "visitor_model", "experience", "tutorial_case"):
     if name in st.session_state:
         st.session_state[name] = st.session_state[name]
 
@@ -63,13 +64,14 @@ if re.fullmatch(r"[a-f0-9]{32}", requested_report) and st.session_state.get("ope
     clear_conversation()
     st.session_state.opened_report = requested_report
     st.session_state.run_id = requested_report
+    st.session_state.page = "research"
     st.session_state.experience = "Investigate with your key"
 
 
 def submit(prompt):
     try:
         parent = st.session_state.get("run_id")
-        with st.spinner("Framing your question with your model account…"):
+        with st.spinner("Preparing an evidence plan from your question…"):
             result = client.chat(prompt, parent,
                                  api_key=st.session_state.get("visitor_api_key", ""),
                                  model=st.session_state.get("visitor_model", ""))
@@ -92,42 +94,57 @@ def submit(prompt):
 
 
 st.markdown('<div class="eyebrow">Boston computational biology hackathon</div>', unsafe_allow_html=True)
-st.title("Follow the evidence across contexts.")
-st.write("Explore a complete example, ask your own question, or bring this research workflow into Claude through MCP.")
-experience = st.radio("Choose how to explore", ["Try the tutorial", "Investigate with your key", "Connect through MCP"],
-                      horizontal=True, key="experience")
+page = st.radio("Explore Cross-context", list(PAGES), format_func=PAGES.get, horizontal=True, key="page")
+if page == "research":
+    st.title("Research workspace")
+    st.write("Explore an example, ask a biological question, or use these tools inside Claude. Follow each answer back to its sources.")
+    experience = st.radio("Choose how to explore", list(EXPERIENCES), format_func=EXPERIENCES.get,
+                          horizontal=True, key="experience")
+else:
+    experience = None
 
 with st.sidebar:
     st.markdown("### ◈ Cross-context")
-    st.caption("BIOLOGICAL INVESTIGATIONS")
+    st.caption("EVIDENCE ACROSS BIOLOGICAL CONTEXTS")
     st.divider()
-    st.write("One question. Every context.")
-    st.caption("In vitro · In vivo · Patients")
-    if experience == "Investigate with your key":
+    st.write("A finding. A comparison. A clearer next question.")
+    st.caption("Cell cultures · Animal models · Patients")
+    if page != "research":
+        st.markdown("**Start with the story. Follow the evidence.**")
+        st.write("Introduction explains the research idea. Research workspace lets you explore the demo. References shows what informed our approach.")
+        st.caption("Guided examples are open to everyone. You only need an API key to ask a new question in the website chat.")
+    elif experience == "Investigate with your key":
         st.session_state.setdefault("visitor_model", "claude-opus-5-5")
-        st.markdown("**Model settings · website chat only**")
+        st.markdown("**Your API key · website chat**")
         st.text_input("Your Anthropic API key", type="password", key="visitor_api_key",
-                      placeholder="sk-ant-…", help="Used only for your chat planning calls. Not saved in investigation downloads.")
+                      placeholder="sk-ant-…", help="Used to turn your question into a research plan. Not saved in reports or downloads.")
         st.text_input("Anthropic model ID", key="visitor_model", placeholder="e.g. claude-opus-5-5")
-        st.caption("Website chat uses your Anthropic API account and credits. Settings stay in this session when you switch views. Reloading or closing the app can clear them. Your key is not saved in investigations.")
+        st.caption("New questions use your Anthropic API credits. Your key and model stay in this session as you switch pages. Reloading or closing the app can clear them. Your key is not saved in reports.")
         st.button("Clear API key", on_click=clear_model_key, width="stretch",
                   disabled=not st.session_state.get("visitor_api_key"))
-        if st.button("New conversation", width="stretch"):
+        if st.button("New conversation", key="new_conversation", width="stretch"):
             clear_conversation()
             st.query_params.pop("report", None)
             st.session_state.pop("opened_report", None)
             st.rerun()
     elif experience == "Try the tutorial":
         st.markdown("**Start here. No setup needed.**")
-        st.write("Inspect the research plan, context comparisons, evidence and final report using two guided cases.")
-        st.caption("Tutorials use labeled synthetic data. No API key, access code or live collection is needed.")
+        st.write("Follow two questions through the evidence, the comparisons and the final explanation.")
+        st.caption("The examples use synthetic data. No API key or live search is needed.")
     else:
         st.markdown("**Your assistant, our research tools.**")
-        st.write("Use Claude Code, Claude Desktop or Claude on the web. Claude supplies the model; our MCP supplies the investigation workflow.")
+        st.write("Use these research tools from Claude Code, Claude Desktop or Claude on the web. MCP is the connection between your assistant and our tools.")
         st.caption("No separate Anthropic API key or team access code is needed for the hosted MCP.")
     st.divider()
-    st.caption("Public research prototype. Use public data; anyone with an investigation ID can retrieve its results. Live investigations have a limited demo allowance. Tutorials remain available.")
-    st.caption("Evidence checks evaluate declared scope and comparability; they do not independently validate source data or establish clinical efficacy.")
+    st.caption("Public research prototype. Anyone with a report link can read it, so use public questions and data. Live searches have a limited demo allowance; guided examples remain available.")
+    st.caption("The reports help you examine evidence and gaps. Study quality and biological conclusions still need researcher review.")
+
+if page == "intro":
+    introduction()
+    st.stop()
+if page == "references":
+    references()
+    st.stop()
 
 model_ready = bool(st.session_state.get("visitor_api_key", "").strip() and st.session_state.get("visitor_model", "").strip())
 
@@ -135,8 +152,8 @@ model_ready = bool(st.session_state.get("visitor_api_key", "").strip() and st.se
 
 if experience == "Try the tutorial":
     st.subheader("See an investigation from question to report")
-    st.write("These are synthetic teaching cases. They show how the coordinator preserves a research question, checks evidence across contexts, and reports disagreement or missing evidence.")
-    case = st.radio("Tutorial case", ["Disagreement across contexts", "Missing patient evidence"], horizontal=True)
+    st.write("These teaching examples show how a question becomes a report: what evidence was needed, what was found, and why the results disagree or leave a gap. All study observations in these examples are synthetic.")
+    case = st.radio("Choose an example", ["Disagreement across contexts", "Missing patient evidence"], horizontal=True, key="tutorial_case")
     name = "cross-context-conflict" if case == "Disagreement across contexts" else "missing-evidence"
     state = tutorial(name)
     with st.expander("Walk through this case", expanded=True):
@@ -149,7 +166,7 @@ if experience == "Try the tutorial":
 
 elif experience == "Connect through MCP":
     st.subheader("Use Cross-context inside Claude")
-    st.write("Claude turns your question into explicit research criteria and calls our MCP tools. The same coordinator collects evidence, checks comparisons and returns a traceable report. You do not need an Anthropic API key for this path.")
+    st.write("MCP lets Claude use our research tools from your conversation. Claude helps define what evidence your question needs; our tools search sources and explain which comparisons are possible. You do not need a separate Anthropic API key for this path.")
     endpoint = setting("XCTX_MCP_URL", "https://minoj--xctx-research-api.modal.run/mcp/")
     st.markdown("**Claude Code · terminal**")
     st.code(f"claude mcp add --transport http cross-context-biology {endpoint}\nclaude mcp get cross-context-biology", language="bash")
@@ -158,9 +175,9 @@ elif experience == "Connect through MCP":
     st.write("Open Customize → Connectors → Add custom connector. Name it Cross-context biology, paste the URL below, then enable it in your conversation. No authentication or API key is required by this server. Organization accounts may need an owner to add it.")
     st.code(endpoint, language=None)
     st.markdown("**Try this first**")
-    st.code("Use Cross-context biology to run the synthetic cross-context-conflict tutorial. Call start_investigation, then get_investigation, and explain why a complete investigation can have conflicting evidence.", language=None)
+    st.code("Use Cross-context biology to run the synthetic cross-context-conflict tutorial. Call start_investigation, then get_investigation. Explain what the examples show in cells, animal models and patients, and why the measurements disagree.", language=None)
     st.markdown("**Then investigate your question**")
-    st.write("Ask Claude to propose criteria from your research intent and review them with you before starting. It must not invent observations or validated comparison bases. The tools are start_investigation and get_investigation.")
+    st.write("Tell Claude what you want to compare and ask it to review the research scope with you before starting. The report explains findings from the retrieved sources, differences between contexts, uncertainties and next steps. Comparing individual study measurements is a separate check that needs those measurements and their context. The tools are start_investigation and get_investigation.")
     st.caption("Your Claude plan or client model charges still apply. Public live investigations have a limited hosting allowance; the tutorial works without live collection. The website chat is an optional alternative.")
     st.markdown("[Full setup guide](https://github.com/minojWittgen/boston-comp-bio-hack/blob/main/docs/mcp.md) · [Claude Code documentation](https://code.claude.com/docs/en/mcp) · [Claude connector documentation](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp)")
 
@@ -168,8 +185,8 @@ else:
     if model_ready:
         st.caption("Your model settings are entered. They will be checked when you send a question.")
     else:
-        st.info("You can read saved reports without an API key. To ask a new question here, enter your Anthropic API key and model ID in the sidebar. The tutorial and MCP are also available without a separate API key.")
-    st.caption("Live investigations retrieve and explain published database findings for the genes in your question, compare their species and research contexts, and report uncertainties and next steps. Individual patient comparisons are only possible when the sources provide matched patient data.")
+        st.info("To ask a new question, enter your Anthropic API key and model ID in the sidebar. You can read saved reports, explore Guided examples, or choose Use in Claude (MCP) without a separate API key.")
+    st.caption("Search public gene information and publication references, explore findings across species and experimental settings, and see uncertainties and next steps. Comparing measurements from the same patient requires matching patient and sample information.")
     if "run_id" not in st.session_state:
         with st.chat_message("assistant"):
             st.write("What biological question are you investigating? Include the gene or target, the disease or tissue, and what you want to compare.")
