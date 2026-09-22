@@ -1,0 +1,23 @@
+{
+ "data": [
+  {
+   "id": "ENSG00000105397",
+   "homologies": [
+    {
+     "type": "ortholog_one2one",
+     "method_link_type": "ENSEMBL_ORTHOLOGUES",
+     "source": {
+      "id": "ENSG00000105397",
+      "species": "homo_sapiens",
+      "perc_id": 96.0
+     },
+     "target": {
+      "id": "ENSMMUG_TYK2",
+      "species": "macaca_mulatta",
+      "perc_id": 96.2
+     }
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,11 @@
+[
+ {
+  "Gene": "IL17A",
+  "Ensembl": "ENSG00000112115",
+  "RNA cell line distribution": "Detected in many",
+  "RNA cell line specific nTPM": null,
+  "Subcellular location": "Cytosol",
+  "Subcellular main location": "Cytosol",
+  "Protein class": "Enzymes, Kinases"
+ }
+]

@@ -169,18 +169,30 @@ def main():
     prior = load(batch / "scorecard.json")["entries"] if (batch / "scorecard.json").exists() else {}
     graded = {}
     for bp in sorted((batch / "blind").glob("*.json")):
-        bid = bp.stem; o = load(bp); cid = o["case_id"]
-        k = key["runs"].get(bid, {})
+        bid = bp.stem; k = key["runs"].get(bid, {}); cid = k.get("case_id")
+        try: o = load(bp); cid = o.get("case_id", cid); malformed = None
+        except Exception as e: o, malformed = None, f"unreadable output: {e!r}"[:200]  # noqa: BLE001
         integrity = k.get("blind_sha256") == sha256_file(bp)
         up = batch / "usage" / f"{bid}.json"; usage, usage_ok = None, False
         if up.exists():
-            u = load(up); usage = u["usage"]; usage_ok = (sign(secret, usage) == u["sig"]) and usage.get("harness_signed") is True
+            try:
+                u = load(up); usage_ok = (sign(secret, u["usage"]) == u["sig"]) and u["usage"].get("harness_signed") is True
+                usage = u["usage"] if usage_ok else None
+            except Exception: usage, usage_ok = None, False  # noqa: BLE001
         integrity = integrity and usage_ok
         if cid in refs:
             m, pkg, obs, dsets, rk = case_world(cid)
-            rows, review = grade_run(o, refs[cid], m, pkg, obs, dsets, rk, usage_ok, usage, integrity, prior.get(bid, {}).get("must_detect_review", []))
-        elif cid in lit:
-            row = lit[cid]; ax = next((x for x in o["axes"] if x["axis_id"] == "literature_axis"), None)
+            try:
+                if malformed: raise ValueError(malformed)
+                rows, review = grade_run(o, refs[cid], m, pkg, obs, dsets, rk, usage_ok, usage, integrity, prior.get(bid, {}).get("must_detect_review", []))
+            except Exception as e:  # noqa: BLE001
+                rows = {"integrity": (integrity, ""), "execution": (False, f"malformed answer: {e!r}"[:300])}
+                for ax in refs[cid]["expected_axes"]: rows[f"axis:{ax}"] = (False, "malformed answer")
+                for r in ("overall", "unsupported_corroboration", "citation_validity", "status_interpretation", "required_actions"): rows[r] = (False, "malformed answer")
+                review = [{"id": it["id"], "text": it["text"], "mandatory": it["mandatory"], "auto": None, "confirm": None} for it in refs[cid]["must_detect"]]
+            o = o or {"execution_status": "malformed", "overall": {"verdict": None}}
+        elif cid in lit and o is not None:
+            row = lit[cid]; ax = next((x for x in o.get("axes", []) if x.get("axis_id") == "literature_axis"), None)
             ok = o["execution_status"] == "completed" and ax is not None and ax["verdict"] == row["documented_verdict"].replace("not_comparable", "not_assessable")
             rows = {"integrity": (integrity, ""), "execution": (o["execution_status"] == "completed" and usage_ok, o["execution_status"]),
                     "axis:literature_axis": (ok, "" if ok else f"{ax and ax['verdict']} != {row['documented_verdict']}")}
@@ -188,23 +200,24 @@ def main():
         else:
             continue
         graded[bid] = {"case_id": cid, "rows": {r: {"result": "pass" if v[0] else "fail", "reason": v[1]} for r, v in rows.items()},
-                       "must_detect_review": review, "execution_status": o["execution_status"], "overall": o["overall"]["verdict"]}
+                       "must_detect_review": review, "execution_status": o["execution_status"], "overall": o["overall"]["verdict"], "usage_verified": usage_ok}
     dump(batch / "scorecard.json", {"entries": graded})
     pending = sum(1 for g in graded.values() for r in g["must_detect_review"] if r["mandatory"] and r["confirm"] is None)
     print(f"graded {len(graded)} runs → {batch/'scorecard.json'}; {pending} mandatory must_detect items await human confirm (auto keyword hit is shown as a hint only)")
     if a.no_unblind: return
     if pending: print("NOTE: unconfirmed mandatory items count as NOT passed in the summary.")
 
-    per, usage_by = {}, {}
+    per, usage_by, summary_unverified = {}, {}, {}
     for bid, g in graded.items():
         k = key["runs"][bid]; cfg, cid = k["configuration"], k["case_id"]
         for r, v in g["rows"].items(): per.setdefault(cfg, {}).setdefault(cid, {}).setdefault(r, []).append(v["result"] == "pass")
         per[cfg][cid].setdefault("ALL_ROWS", []).append(all_pass(g))
         up = batch / "usage" / f"{bid}.json"
-        if up.exists(): usage_by.setdefault(cfg, []).append((load(up)["usage"], all_pass(g)))
+        if g.get("usage_verified") and up.exists(): usage_by.setdefault(cfg, []).append((load(up)["usage"], all_pass(g)))
+        else: summary_unverified.setdefault(cfg, []).append(bid)
     summary = {"_read_me": "Raw counts (passes/runs). Repeats measure run variability, not more biological tasks. Execution failures are failures.",
                "correctness": {cfg: {cid: {r: f"{sum(v)}/{len(v)}" for r, v in rows.items()} for cid, rows in cases.items()} for cfg, cases in per.items()},
-               "usage": {}}
+               "usage": {}, "usage_unavailable_runs": summary_unverified}
     for cfg, runs in usage_by.items():
         tot = [u["input_tokens"] + u["output_tokens"] for u, _ in runs]; passes = sum(1 for _, p in runs if p)
         summary["usage"][cfg] = {"runs": len(runs), "all_rows_pass": f"{passes}/{len(runs)}",

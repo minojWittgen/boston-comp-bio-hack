@@ -1,4 +1,4 @@
-# benchmarking — cross-context evidence evaluation (v3, handoff 2026-09-22)
+# benchmarking — cross-context evidence evaluation (v4, handoff 2026-09-22)
 
 Two suites, reported separately and never pooled.
 
@@ -12,12 +12,46 @@ from; **its score is never presented as the score of the full product.** Methodo
 reference: AutoSciRub's paired comparison with a hidden external rubric and separate component
 experiments — adopted as principles, not reproduced.
 
-## Readiness condition (read before running the primary suite)
+## Integrated system — how it is connected (handoff 2026-09-22 §1)
 
-The reviewed coordinator accepts normalized observations and does not extract them from source
-material. `bench/integrated_adapter.py` raises until the integrated extraction path exists.
-**If it is not ready, run the secondary suite and report its narrower scope. Do not fill the gap
-with hand-authored observations for our side.**
+`bench/integrated_adapter.py` now runs the **actual** system end to end. Neither `data_pipeline/` nor
+`coordinator/` is modified; the adapter only wires them to the frozen corpus.
+
+```
+task.md + corpus/ ─► DATA PIPELINE   real package.build_package → invitro.enrich_invitro → registry.annotate_package
+                     (bench/integration/pipeline_provider.py: sources.http replayed from corpus/api/index.json
+                      — recorded native responses for every request the pipeline makes in eval mode; 0 unrecorded)
+                  ─► EXTRACTION       bench/integration/extractor.py: one model call per study reads methods.md into
+                     + NORMALIZATION  structured metadata (species, context, tissue, condition, contrast class, which
+                                      table holds what) using the frozen plan's vocabulary; directions computed from the
+                                      tables; per-participant records with subject/specimen/visit; provenance to
+                                      corpus://file#locator on every record; missing metadata stays None
+                  ─► COORDINATOR      real ClaudePlanner (its own prompt, injected usage-counting client) → frozen plan
+                                      → Coordinator.execute (collection via the same provider, checks, bounded retry,
+                                      report) — the plan is passed through a FrozenPlanner so it is not paid for twice
+                  ─► ENVELOPE         RunState mapped to schema/report.schema.json: supported→supported,
+                                      conflicting→opposed, inconclusive/not_assessable→insufficient_evidence;
+                                      citations come from record provenance; the coordinator's own report is the
+                                      report_markdown; nothing is added or corrected
+```
+
+Every model call in every stage goes through one `UsageClient` bound to the run's deadline and budgets;
+`_system_internal` carries versions (repo / data_pipeline / coordinator commits), stages, extraction trace,
+replay log, model inventory and the full RunState. `harness/calibration_trace_offline.json` is the public
+calibration trace (offline stand-in for the two model calls; every other stage real).
+
+**What the connected system currently does on these cases** (offline calibration; real-model runs may differ):
+the planner nulls any model-proposed cross-species / context-alignment basis (`coordinator/planner.py`,
+`_annotate_inferences`) and the checker rejects pairs without one, so `in_vitro_vs_animal` and
+`in_vitro_vs_patient_rna` come back **insufficient_evidence ("missing declared cross-species basis" /
+"different condition alignment without declared context-alignment basis")**. The within-person axis is
+assessed correctly (supported when biopsies are shared, insufficient when proteomics used a second
+cohort). This is the coordinator's declared comparison policy showing through, not an adapter defect;
+it is the coordinator owner's item in the handoff table. The adapter must not supply the missing basis.
+
+`xctx-p04` (two genes + two pathway definitions) currently ends in `execution_status=error`:
+`InvestigationRequest.pathway` holds one definition and the planner refuses a pathway request without
+membership — the §5 single-pathway limitation, reported as such.
 
 ## Primary suite
 
@@ -53,19 +87,21 @@ declaring criteria met, for tool use, or for abstaining when the evidence is ass
 ```bash
 pip install -r bench/requirements.txt
 export ANTHROPIC_API_KEY=...  XCTX_MODEL=claude-sonnet-4-5
-export XCTX_PIPELINE=/path/to/data_pipeline/evidence_pipeline     # secondary suite only
+export XCTX_PIPELINE=/path/to/data_pipeline/evidence_pipeline     # default: ../data_pipeline/evidence_pipeline
+export XCTX_REPO_ROOT=/path/to/repo                                # default: ../ (must contain coordinator/)
 
-python bench/gen_primary.py                 # corpus for p00..p03 (synthetic, labelled)
+python bench/gen_primary.py                 # corpus for p00..p04 (synthetic, labelled) incl. recorded API responses
 python validate.py
-python bench/integrity_probes.py            # 24 probes; must end "Safe to collect model scores."
+python bench/integrity_probes.py            # 35 probes; must end "Safe to collect model scores."
 
 python bench/run_primary.py --system mock mock-careless --batch primary-smoke     # harness check, no LLM
 python bench/grade_primary.py runs/primary-smoke --no-unblind
 
-python bench/run_primary.py --system baseline --cases xctx-p00 --batch primary-dev   # feasibility under the 90 s deadline
-# if the dev case cannot finish meaningfully, reduce task scope for BOTH systems before freezing; never after seeing scores
+XCTX_FAKE_LLM=1 python bench/run_primary.py --system integrated mock --batch smoke-1   # offline: whole chain, no model
+python bench/run_primary.py --system integrated baseline --cases xctx-p00 --batch calib-1   # PUBLIC CALIBRATION RUN (paid)
+# measure runtime here; if it does not fit the limits, reduce scope for BOTH systems in bench/spec.json before freezing
 
-python bench/run_primary.py --system baseline integrated --batch primary-final       # the pilot: 2 × 3 × 1
+python bench/run_primary.py --system baseline integrated --batch primary-final       # the pilot: 2 × 3 × 1 (+ p04 if claiming §5)
 python bench/grade_primary.py runs/primary-final --no-unblind    # reviewer fills runs/primary-final/review.json blind
 python bench/grade_primary.py runs/primary-final                 # unblind → summary.json
 ```
@@ -128,16 +164,28 @@ Token accounting for both suites is specified in [`harness/usage_capture.md`](ha
 | Budget: 4× cumulative slack, fabricated usage accepted, no per-call deadline, cache tokens missing | Cumulative + per-call limits, deadline on every request, cache-read/creation counted, harness-signed usage, blind-file hashes (`bench/common.py`) |
 | Fixture provenance and literature scope | `provenance` on every record; `PROVENANCE.json` per corpus; literature layer labelled summary-judgment |
 
-## Handoff acceptance checklist
+## Handoff checklist (2026-09-22 implementation handoff)
 
-- [x] Primary and secondary suites are named and reported separately.
-- [ ] The primary runner invokes the actual integrated system (`bench/integrated_adapter.py` — integration owner).
-- [x] Both primary systems receive the same task and source access; neither receives a privately prepared evidence advantage.
-- [ ] The external rubric is independently reviewed and frozen (`held_out/primary_rubric.json` → `_review_status`).
-- [x] GTEx contradiction error and grader/isolation/budget defects corrected and regression-checked (`bench/integrity_probes.py`).
-- [x] Inputs preserve species, modality, experimental context and participant/specimen/visit distinctions; synthetic changes are labelled.
-- [x] Execution failures, scientific uncertainty and unsupported claims are scored distinctly.
-- [ ] Results disclose case count, model and code versions, actual usage, and whether extraction was automated or supplied (fill in at report time).
+| § | Item | Status |
+|---|---|---|
+| 1 | `integrated_adapter.py` invokes the actual pipeline and coordinator | done — `bench/integration/`, no pipeline/coordinator edits |
+| 1 | Pipeline data access bound to the frozen corpus via recorded responses | done — `corpus/api/index.json`, 0 unrecorded requests on every case |
+| 1 | Real extraction / normalization path (no hand-authored observations) | done — `extractor.py`; generic over corpus conventions; model-assisted; provenance on every record |
+| 1 | Provenance through every stage; missing stays missing | done |
+| 1 | Coordinator follow-up fed back | coordinator retries collection through the same provider; observations are a fixed Submission (coordinator contract) |
+| 1 | Faithful envelope mapping; complete ≠ supported | done — `_map()` |
+| 1 | Versions + every model call recorded | done — `versions`, `model_inventory`, single `UsageClient` |
+| 1 | One public calibration run with a full-stage trace | offline trace committed (`harness/calibration_trace_offline.json`); **paid calibration run still to do** |
+| 2 | Same question / corpus / limits / model; no pre-extracted input | done — limits in `bench/spec.json` apply to both |
+| 3 | Rubric independently reviewed and frozen | **open** — `held_out/primary_rubric.json → _review_status` (runner refuses scored batches until set) |
+| 3 | Correct / careless / malformed answers get intended outcomes; incomplete review cannot pass | done — probes 13, review gating |
+| 4 | `python_eval` isolation | done — subprocess, audit hook, CPU/time limit (`bench/_sandbox.py`) |
+| 4 | Malformed output handled in both graders | done |
+| 4 | Unverified usage excluded from totals | done — `usage_unavailable_runs` |
+| 4 | Readiness checks + incremental saving | done — `run_primary.py`, `run_cases.py` |
+| 4 | p03 cohort description | done — methods state a second cohort; identical description ≠ identity is the rubric item |
+| 5 | Mixed-input case (2 genes, 2 pathways) | corpus + rubric entry (needs independent review) added; **coordinator single-pathway contract is the blocker** |
+| 6 | Short scored evaluation | after 1 (paid calibration) and 3 |
 
 Coverage: single gene (TYK2), bulk RNA (in vitro, mouse in vivo, patient) and Olink protein
 (patient); human + mouse; 2D keratinocyte culture, mouse IMQ skin, paired patient skin biopsies.

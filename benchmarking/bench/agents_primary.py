@@ -30,7 +30,7 @@ SUBMIT_REPORT_SPEC = {
     "input_schema": {"type": "object", "required": ["comparisons", "limitations", "unresolved", "report_markdown"],
                      "properties": {
                          "comparisons": {"type": "array", "items": {"type": "object", "required": ["comparison_id", "scope", "conclusion", "statement", "citations"],
-                                                                     "properties": {"comparison_id": {"type": "string", "enum": ["in_vitro_vs_animal", "in_vitro_vs_patient_rna", "patient_rna_vs_patient_protein_within_person"]},
+                                                                     "properties": {"comparison_id": {"type": "string", "pattern": "^(in_vitro_vs_animal|in_vitro_vs_patient_rna|patient_rna_vs_patient_protein_within_person)(:[A-Za-z0-9_.-]+)?$"},
                                                                                     "scope": {"type": "object", "properties": {"species": {"type": "array", "items": {"type": "string"}}, "context": {"type": "array", "items": {"type": "string"}}, "modality": {"type": "array", "items": {"type": "string"}}}},
                                                                                     "conclusion": {"type": "string", "enum": ["supported", "opposed", "insufficient_evidence"]},
                                                                                     "statement": {"type": "string"},

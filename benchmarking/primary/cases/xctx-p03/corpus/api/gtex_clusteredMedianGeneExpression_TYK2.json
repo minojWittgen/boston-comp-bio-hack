@@ -1,0 +1,53 @@
+{
+ "medianGeneExpression": [
+  {
+   "gencodeId": "ENSG00000105397.12",
+   "geneSymbol": "TYK2",
+   "tissueSiteDetailId": "Skin_Sun_Exposed_Lower_leg",
+   "median": 14.2,
+   "unit": "TPM",
+   "datasetId": "gtex_v8"
+  },
+  {
+   "gencodeId": "ENSG00000105397.12",
+   "geneSymbol": "TYK2",
+   "tissueSiteDetailId": "Skin_Not_Sun_Exposed_Suprapubic",
+   "median": 12.9,
+   "unit": "TPM",
+   "datasetId": "gtex_v8"
+  },
+  {
+   "gencodeId": "ENSG00000105397.12",
+   "geneSymbol": "TYK2",
+   "tissueSiteDetailId": "Whole_Blood",
+   "median": 9.7,
+   "unit": "TPM",
+   "datasetId": "gtex_v8"
+  },
+  {
+   "gencodeId": "ENSG00000105397.12",
+   "geneSymbol": "TYK2",
+   "tissueSiteDetailId": "Spleen",
+   "median": 8.1,
+   "unit": "TPM",
+   "datasetId": "gtex_v8"
+  },
+  {
+   "gencodeId": "ENSG00000105397.12",
+   "geneSymbol": "TYK2",
+   "tissueSiteDetailId": "Lung",
+   "median": 6.4,
+   "unit": "TPM",
+   "datasetId": "gtex_v8"
+  },
+  {
+   "gencodeId": "ENSG00000105397.12",
+   "geneSymbol": "TYK2",
+   "tissueSiteDetailId": "Brain_Cortex",
+   "median": 0.9,
+   "unit": "TPM",
+   "datasetId": "gtex_v8"
+  }
+ ],
+ "clusters": {}
+}

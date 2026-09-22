@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Integrity probes — the review's offline attacks, each of which the harness MUST now reject.
 
-24 probes in 11 groups, covering both suites: groups 1-10 the secondary suite, group 11 the
-primary corpus sandbox. Most assert an attack is REJECTED; a few are positive controls that
-must still succeed. Groups 5, 5b and 6 shell out to grade.py, so held_out/reference_answers.json
-must be present or the run aborts partway.
+35 probes in 15 groups, covering both suites: groups 1-10 the secondary suite, 11-12 the primary
+corpus sandbox and python_eval isolation, 13-15 grader robustness, usage verification and runner
+readiness. Most assert an attack is REJECTED; a few are positive controls that must still succeed.
+Groups 5, 5b and 6 shell out to grade.py, so held_out/reference_answers.json must be present or
+the run aborts partway.
 
   python bench/integrity_probes.py        # exit 0 only if every probe is rejected
 
@@ -15,6 +16,7 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -129,6 +131,38 @@ def main():
     r = ct.python_eval("import os"); probe("primary python_eval: import unavailable", r["status"] == "error")
     probe("primary: no rubric/answer file inside primary/", not any("rubric" in q.name or "answer" in q.name for q in (ROOT / "primary").rglob("*")))
     probe("primary: citation with fabricated row does not resolve", not ct.resolve_citation("study_A_invitro/de_results.csv", "row:gene=NOTAGENE") and ct.resolve_citation("study_A_invitro/de_results.csv", "row:gene=TYK2"))
+
+    # 12. python_eval sandbox (handoff §4): subprocess + audit hook + time limit
+    marker = Path(tempfile.mkdtemp()) / "marker.txt"; marker.write_text("SECRET")
+    probe("python_eval: legitimate csv calculation works", ct.python_eval("rows=csv_rows('study_A_invitro/de_results.csv'); result=len(rows)")["status"] == "ok")
+    probe("python_eval: marker file via read_text outside corpus", ct.python_eval(f"result=read_text('{marker}')")["status"] == "error")
+    probe("python_eval: marker file via module __builtins__ open() (the reviewed escape)", ct.python_eval(f"result=math.__dict__['__builtins__']['open']('{marker}').read()")["status"] == "error")
+    probe("python_eval: marker file via object-subclass FileLoader", ct.python_eval(f"result=[c for c in ().__class__.__base__.__subclasses__() if c.__name__=='FileLoader'][0]('x','{marker}').get_data('{marker}')")["status"] == "error")
+    probe("python_eval: import os", ct.python_eval("import os; result=os.listdir('/')")["status"] == "error")
+    probe("python_eval: enforced time limit", ct.python_eval("while True: pass")["status"] == "error")
+    probe("python_eval: cannot write into the corpus", ct.python_eval("result=math.__dict__['__builtins__']['open']('study_A_invitro/methods.md','w')")["status"] == "error")
+
+    # 13. graders: a malformed answer fails, stays in the denominator, and does not stop grading others
+    pb = RUNS / "_probe_p"; shutil.rmtree(pb, ignore_errors=True)
+    subprocess.run([sys.executable, str(ROOT / "bench/run_primary.py"), "--system", "mock", "--cases", "xctx-p01", "xctx-p02", "--batch", "_probe_p", "--force"], check=True, capture_output=True, env={**os.environ, "XCTX_FAKE_LLM": "1"})
+    k = load(pb / "key.json"); bids = list(k["runs"]); (pb / "blind" / f"{bids[0]}.json").write_text("{this is not json")
+    r = subprocess.run([sys.executable, str(ROOT / "bench/grade_primary.py"), str(pb), "--no-unblind"], capture_output=True, text=True)
+    sc = load(pb / "scorecard.json")["mechanical"] if (pb / "scorecard.json").exists() else {}
+    probe("grader: malformed answer → failed run, others still graded", r.returncode == 0 and len(sc) == 2 and sc[bids[0]]["rows"]["execution"]["result"] == "fail" and sc[bids[1]]["rows"]["execution"]["result"] == "pass")
+    # 14. unverified usage excluded from totals
+    up = load(pb / "usage" / f"{bids[1]}.json"); up["usage"]["output_tokens"] = 999999; dump(pb / "usage" / f"{bids[1]}.json", up)
+    subprocess.run([sys.executable, str(ROOT / "bench/grade_primary.py"), str(pb)], capture_output=True)
+    summ = load(pb / "summary.json")
+    probe("grader: bad usage signature → integrity fail, usage marked unavailable, excluded from totals",
+          load(pb / "scorecard.json")["mechanical"][bids[1]]["rows"]["integrity"]["result"] == "fail" and bids[1] in summ.get("usage_unavailable_runs", {}).get("mock", []) and summ["usage"]["mock"]["runs"] == 1 and summ["usage"]["mock"]["output_tokens"] < 999999)
+    shutil.rmtree(pb, ignore_errors=True)
+    # 15. runner readiness: fake LLM refused for a scored batch; unimplemented/unconfigured integrated refused
+    r = subprocess.run([sys.executable, str(ROOT / "bench/run_primary.py"), "--system", "integrated", "--batch", "primary-final-probe"], capture_output=True, text=True, env={**os.environ, "XCTX_FAKE_LLM": "1"})
+    probe("runner: XCTX_FAKE_LLM refused for a scored batch", r.returncode == 2 and "smoke*/calib*" in r.stdout)
+    env = {k: v for k, v in os.environ.items() if k not in ("ANTHROPIC_API_KEY", "XCTX_MODEL", "ANTHROPIC_MODEL", "XCTX_FAKE_LLM")}
+    r = subprocess.run([sys.executable, str(ROOT / "bench/run_primary.py"), "--system", "baseline", "--batch", "primary-final-probe"], capture_output=True, text=True, env=env)
+    probe("runner: missing API key/model detected before any paid run", r.returncode == 2 and "ANTHROPIC_API_KEY" in r.stdout)
+    shutil.rmtree(RUNS / "primary-final-probe", ignore_errors=True)
 
     shutil.rmtree(batch, ignore_errors=True)
     bad = [n for n, r in results if not r]

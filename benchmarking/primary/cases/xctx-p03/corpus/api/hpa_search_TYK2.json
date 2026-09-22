@@ -1,0 +1,11 @@
+[
+ {
+  "Gene": "TYK2",
+  "Ensembl": "ENSG00000105397",
+  "RNA cell line distribution": "Detected in many",
+  "RNA cell line specific nTPM": null,
+  "Subcellular location": "Cytosol",
+  "Subcellular main location": "Cytosol",
+  "Protein class": "Enzymes, Kinases"
+ }
+]

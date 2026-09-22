@@ -1,27 +1,47 @@
 {
-  "_note": "Step-1 decisions. Everything is SYNTHETIC unless origin says otherwise; gen_fixtures labels every record. Replace gene/claim/effects here — nothing else needs editing.",
+  "_note": "Step-1 decisions. Everything is SYNTHETIC unless origin says otherwise; gen_fixtures labels every record. Replace gene/claim/effects here \u2014 nothing else needs editing.",
   "gene": "TYK2",
   "mouse_symbol": "Tyk2",
   "ensg": "ENSG00000105397",
   "disease": "psoriasis",
   "tissue_human": "skin, lesional plaque (full-thickness punch biopsy)",
   "tissue_gtex": "Skin_Sun_Exposed_Lower_leg",
-
   "claim": "TYK2 mRNA abundance is higher in IL-23-stimulated primary human keratinocytes than in vehicle-treated controls (treated vs control, 24 h). Question: does this directional increase in TYK2 mRNA also hold (a) in mouse imiquimod-induced psoriasiform skin vs vehicle skin, (b) in lesional vs non-lesional skin of psoriasis patients at the mRNA level, and (c) at the protein level within the same patients?",
-  "claim_contrast": { "gene": "TYK2", "endpoint": "mRNA abundance (log2 CPM)", "direction": "up", "origin_dataset": "invitro_rna" },
-
+  "claim_contrast": {
+    "gene": "TYK2",
+    "endpoint": "mRNA abundance (log2 CPM)",
+    "direction": "up",
+    "origin_dataset": "invitro_rna"
+  },
   "axes": [
-    { "axis_id": "in_vitro_vs_in_vivo",
+    {
+      "axis_id": "in_vitro_vs_in_vivo",
       "question": "Does TYK2/Tyk2 mRNA change in the same direction in mouse imiquimod psoriasiform skin (IMQ vs vehicle) as in the in-vitro contrast? Declare the alignment basis (both are inflammatory psoriasis-like stimulation of keratinocyte-rich tissue) or mark not_assessable.",
-      "datasets": ["invitro_rna", "invivo_rna"], "requires_matched_participants": false },
-    { "axis_id": "in_vitro_vs_patient_rna",
+      "datasets": [
+        "invitro_rna",
+        "invivo_rna"
+      ],
+      "requires_matched_participants": false
+    },
+    {
+      "axis_id": "in_vitro_vs_patient_rna",
       "question": "Does TYK2 mRNA change in the same direction in patient lesional vs non-lesional skin as in the in-vitro contrast?",
-      "datasets": ["invitro_rna", "patient_rna"], "requires_matched_participants": false },
-    { "axis_id": "patient_rna_vs_patient_protein_within_person",
-      "question": "WITHIN THE SAME PARTICIPANTS, is the patient mRNA increase accompanied by a TYK2 protein increase (lesional vs non-lesional)? This axis requires overlapping participant_ids; without them it is not_assessable — independent-cohort agreement is a different, weaker statement and must be labelled as such.",
-      "datasets": ["patient_rna", "patient_prot"], "requires_matched_participants": true }
+      "datasets": [
+        "invitro_rna",
+        "patient_rna"
+      ],
+      "requires_matched_participants": false
+    },
+    {
+      "axis_id": "patient_rna_vs_patient_protein_within_person",
+      "question": "WITHIN THE SAME PARTICIPANTS, is the patient mRNA increase accompanied by a TYK2 protein increase (lesional vs non-lesional)? This axis requires overlapping participant_ids; without them it is not_assessable \u2014 independent-cohort agreement is a different, weaker statement and must be labelled as such.",
+      "datasets": [
+        "patient_rna",
+        "patient_prot"
+      ],
+      "requires_matched_participants": true
+    }
   ],
-
   "checklist": [
     "Read the in-vitro origin observation and note gene, endpoint, contrast, direction.",
     "For each axis, read the counterpart observation(s); if a required dataset is `unavailable`, apply the retry policy (fetch_dataset once) before deciding the axis.",
@@ -30,23 +50,103 @@
     "Interpret reference-source statuses structurally: not_found = database has no record; error = technical, retryable; skipped = disabled by mode or upstream. Never read any of them as a biological negative.",
     "Use GTEx reference abundance, orthology and IMPC phenotypes as background only; they are not disease-contrast observations and do not decide an axis.",
     "Cite every observation_id or reference key an axis verdict rests on; do not cite what you did not use.",
-    "Overall verdict must be consistent with the axes: any axis diverges → overall cannot be persists; an axis not_assessable → say so in caveats."
+    "Overall verdict must be consistent with the axes: any axis diverges \u2192 overall cannot be persists; an axis not_assessable \u2192 say so in caveats."
   ],
-
-  "invitro": { "model": "primary human epidermal keratinocytes, pooled 3 donors", "perturbation": "IL-23 10 ng/mL, 24 h", "reference": "vehicle (PBS/0.1% BSA), 24 h",
-               "log2fc": 1.4, "padj": 2e-5, "n_case": 3, "n_reference": 3, "method": "bulk RNA-seq, DESeq2" },
-  "invivo":  { "model": "C57BL/6J, imiquimod 5% cream 62.5 mg/day x 6 days, dorsal skin", "reference": "vehicle cream, dorsal skin", "tissue": "dorsal skin (full-thickness)",
-               "log2fc_agree": 0.9, "log2fc_oppose": -0.8, "padj": 4e-4, "n_case": 6, "n_reference": 6, "method": "bulk RNA-seq, DESeq2",
-               "alignment_basis": "IMQ psoriasiform inflammation vs vehicle is the standard murine model of the IL-23/IL-17 axis engaged by the in-vitro IL-23 stimulation; endpoint is the same (mRNA abundance) in keratinocyte-rich tissue" },
-  "patient_rna":  { "cohort": "12 adults with plaque psoriasis, paired lesional/non-lesional 4 mm punch biopsies, baseline visit", "log2fc": 1.1, "padj": 1e-4, "method": "bulk RNA-seq, paired DESeq2" },
-  "patient_prot": { "cohort": "12 adults with plaque psoriasis, paired lesional/non-lesional 4 mm punch biopsies, baseline visit", "log2fc": 0.8, "padj": 3e-3, "method": "Olink Explore 3072, NPX, paired t-test" },
-  "cohort_summary": { "n_participants": 12, "age_mean": 44.1, "sex_ratio_f": 0.5, "site": "Site A", "visit": "baseline" },
-
-  "gtex_reference": { "tissues": [
-    { "tissue": "Skin_Sun_Exposed_Lower_leg", "median_tpm": 14.2 }, { "tissue": "Skin_Not_Sun_Exposed_Suprapubic", "median_tpm": 12.9 },
-    { "tissue": "Whole_Blood", "median_tpm": 9.7 }, { "tissue": "Spleen", "median_tpm": 8.1 }, { "tissue": "Lung", "median_tpm": 6.4 }, { "tissue": "Brain_Cortex", "median_tpm": 0.9 } ] },
-  "impc_hits": [ { "mp_term_id": "MP:0002169", "mp_term_name": "no abnormal phenotype detected", "top_level_mp_term_name": ["immune system phenotype"], "zygosity": "homozygote", "sex": "both", "p_value": 1e-6, "allele_symbol": "Tyk2<tm1a(EUCOMM)Wtsi>" } ],
-
-  "limits_dev":   { "max_data_tool_calls": 8, "max_bookkeeping_calls": 12, "max_output_tokens_total": 6000, "max_output_tokens_per_call": 2000, "wall_clock_seconds": 180 },
-  "limits_final": { "max_data_tool_calls": 6, "max_bookkeeping_calls": 10, "max_output_tokens_total": 5000, "max_output_tokens_per_call": 2000, "wall_clock_seconds": 90 }
+  "invitro": {
+    "model": "primary human epidermal keratinocytes, pooled 3 donors",
+    "perturbation": "IL-23 10 ng/mL, 24 h",
+    "reference": "vehicle (PBS/0.1% BSA), 24 h",
+    "log2fc": 1.4,
+    "padj": 2e-05,
+    "n_case": 3,
+    "n_reference": 3,
+    "method": "bulk RNA-seq, DESeq2"
+  },
+  "invivo": {
+    "model": "C57BL/6J, imiquimod 5% cream 62.5 mg/day x 6 days, dorsal skin",
+    "reference": "vehicle cream, dorsal skin",
+    "tissue": "dorsal skin (full-thickness)",
+    "log2fc_agree": 0.9,
+    "log2fc_oppose": -0.8,
+    "padj": 0.0004,
+    "n_case": 6,
+    "n_reference": 6,
+    "method": "bulk RNA-seq, DESeq2",
+    "alignment_basis": "IMQ psoriasiform inflammation vs vehicle is the standard murine model of the IL-23/IL-17 axis engaged by the in-vitro IL-23 stimulation; endpoint is the same (mRNA abundance) in keratinocyte-rich tissue"
+  },
+  "patient_rna": {
+    "cohort": "12 adults with plaque psoriasis, paired lesional/non-lesional 4 mm punch biopsies, baseline visit",
+    "log2fc": 1.1,
+    "padj": 0.0001,
+    "method": "bulk RNA-seq, paired DESeq2"
+  },
+  "patient_prot": {
+    "cohort": "12 adults with plaque psoriasis, paired lesional/non-lesional 4 mm punch biopsies, baseline visit",
+    "log2fc": 0.8,
+    "padj": 0.003,
+    "method": "Olink Explore 3072, NPX, paired t-test"
+  },
+  "cohort_summary": {
+    "n_participants": 12,
+    "age_mean": 44.1,
+    "sex_ratio_f": 0.5,
+    "site": "Site A",
+    "visit": "baseline"
+  },
+  "gtex_reference": {
+    "tissues": [
+      {
+        "tissue": "Skin_Sun_Exposed_Lower_leg",
+        "median_tpm": 14.2
+      },
+      {
+        "tissue": "Skin_Not_Sun_Exposed_Suprapubic",
+        "median_tpm": 12.9
+      },
+      {
+        "tissue": "Whole_Blood",
+        "median_tpm": 9.7
+      },
+      {
+        "tissue": "Spleen",
+        "median_tpm": 8.1
+      },
+      {
+        "tissue": "Lung",
+        "median_tpm": 6.4
+      },
+      {
+        "tissue": "Brain_Cortex",
+        "median_tpm": 0.9
+      }
+    ]
+  },
+  "impc_hits": [
+    {
+      "mp_term_id": "MP:0002169",
+      "mp_term_name": "no abnormal phenotype detected",
+      "top_level_mp_term_name": [
+        "immune system phenotype"
+      ],
+      "zygosity": "homozygote",
+      "sex": "both",
+      "p_value": 1e-06,
+      "allele_symbol": "Tyk2<tm1a(EUCOMM)Wtsi>"
+    }
+  ],
+  "limits_dev": {
+    "max_data_tool_calls": 30,
+    "max_bookkeeping_calls": 12,
+    "max_output_tokens_total": 12000,
+    "max_output_tokens_per_call": 4000,
+    "wall_clock_seconds": 300
+  },
+  "limits_final": {
+    "max_data_tool_calls": 24,
+    "max_bookkeeping_calls": 10,
+    "max_output_tokens_total": 10000,
+    "max_output_tokens_per_call": 4000,
+    "wall_clock_seconds": 180
+  },
+  "_limits_note": "Same limits for every system. A corpus of ~24 files needs ~15 reads to process fully; 90 s was infeasible for a whole-system run that plans, collects, extracts and checks \u2014 measured on the calibration case (handoff \u00a76: reduce scope for BOTH systems before freezing, never after seeing scores)."
 }

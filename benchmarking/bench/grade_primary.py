@@ -83,15 +83,29 @@ def main():
     prior = load(batch / "review.json") if (batch / "review.json").exists() else {}
     review, mech = {}, {}
     for bp in sorted((batch / "blind").glob("*.json")):
-        bid = bp.stem; o = load(bp); cid = o["case_id"]
+        bid = bp.stem; k = key["runs"].get(bid, {}); cid = k.get("case_id")
+        try:
+            o = load(bp); cid = o.get("case_id", cid); malformed = None
+        except Exception as e:  # noqa: BLE001  malformed JSON: failed run, stays in the denominator
+            o, malformed = None, f"unreadable output: {e!r}"[:200]
         if cid not in rubric: continue
-        k = key["runs"][bid]; integrity = k["blind_sha256"] == sha256_file(bp)
+        integrity = k.get("blind_sha256") == sha256_file(bp)
         up = batch / "usage" / f"{bid}.json"; usage, usage_ok = None, False
         if up.exists():
-            u = load(up); usage = u["usage"]; usage_ok = sign(secret, usage) == u["sig"] and usage.get("harness_signed") is True
+            try:
+                u = load(up); usage_ok = sign(secret, u["usage"]) == u["sig"] and u["usage"].get("harness_signed") is True
+                usage = u["usage"] if usage_ok else None      # unverified usage is never used (§4)
+            except Exception:  # noqa: BLE001
+                usage, usage_ok = None, False
         case_dir = ROOT / "primary" / "cases" / cid; manifest = load(case_dir / "manifest.json")
-        rows = grade(o, rubric[cid], case_dir, manifest, usage, usage_ok, integrity and usage_ok)
-        mech[bid] = {"case_id": cid, "rows": {r: {"result": "pass" if v[0] else "fail", "reason": v[1]} for r, v in rows.items()}}
+        try:
+            if malformed: raise ValueError(malformed)
+            rows = grade(o, rubric[cid], case_dir, manifest, usage, usage_ok, integrity and usage_ok)
+        except Exception as e:  # noqa: BLE001  any grading exception = failed run; other runs continue
+            rows = {"integrity": (integrity and usage_ok, ""), "execution": (False, f"malformed answer: {e!r}"[:300])}
+            for cc in rubric[cid]["expected"]: rows[f"conclusion:{cc}"] = (False, "malformed answer")
+            for rr in ("citations_resolve", "unsupported_corroboration", "task_completion"): rows[rr] = (False, "malformed answer")
+        mech[bid] = {"case_id": cid, "rows": {r: {"result": "pass" if v[0] else "fail", "reason": v[1]} for r, v in rows.items()}, "usage_verified": usage_ok}
         pr = prior.get(bid, {})
         review[bid] = {"case_id": cid, "purpose": rubric[cid]["purpose"], "review_prompts": rubric[cid].get("review_prompts", {}),
                        "dimensions": {d: pr.get("dimensions", {}).get(d, {"result": None, "note": ""}) for d in DIMS},
@@ -101,7 +115,7 @@ def main():
     print(f"mechanical checks → {batch/'scorecard.json'}; review sheet → {batch/'review.json'} ({pending} dimension decisions pending; open blind/<id>.json + the corpus, fill result pass|fail + note; record any blinding clues)")
     if a.no_unblind: return
     if pending: print("NOTE: pending review decisions count as NOT passed.")
-    per, usage_by = {}, {}
+    per, usage_by, unverified = {}, {}, {}
     for bid, g in mech.items():
         k = key["runs"][bid]; s, cid = k["system"], k["case_id"]
         allp = all(v["result"] == "pass" for v in g["rows"].values()) and all(review[bid]["dimensions"][d]["result"] == "pass" for d in DIMS)
@@ -109,8 +123,10 @@ def main():
         for d in DIMS: per[s][cid].setdefault(f"review:{d}", []).append(review[bid]["dimensions"][d]["result"] == "pass")
         per[s][cid].setdefault("ALL", []).append(allp)
         up = batch / "usage" / f"{bid}.json"
-        if up.exists(): usage_by.setdefault(s, []).append((load(up)["usage"], allp))
-    summary = {"_read_me": "PRIMARY suite (same task + same source corpus; each system extracts on its own). Raw counts. One execution per case is a demonstration, not an estimate. Scientific quality and usage are reported separately.",
+        if g["usage_verified"] and up.exists(): usage_by.setdefault(s, []).append((load(up)["usage"], allp))
+        else: unverified.setdefault(s, []).append(bid)
+    summary = {"_read_me": "PRIMARY suite (same task + same source corpus; each system extracts on its own). Raw counts. One execution per case is a demonstration, not an estimate. Scientific quality and usage are reported separately; usage totals include ONLY harness-verified records.",
+               "usage_unavailable_runs": unverified,
                "correctness": {s: {cid: {r: f"{sum(v)}/{len(v)}" for r, v in rows.items()} for cid, rows in cases.items()} for s, cases in per.items()},
                "usage": {}, "blinding_clues": {bid: r["blinding_clues"] for bid, r in review.items() if r["blinding_clues"]}}
     for s, runs in usage_by.items():

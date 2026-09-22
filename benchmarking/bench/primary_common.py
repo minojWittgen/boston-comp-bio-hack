@@ -17,6 +17,7 @@ from common import Usage
 
 MAX_READ_CHARS = 60_000
 MAX_SEARCH_HITS = 60
+PY_EVAL_TIMEOUT_S = 10
 
 
 class CorpusTools:
@@ -64,25 +65,21 @@ class CorpusTools:
         return {"status": "ok", "hits": hits, "capped": len(hits) >= MAX_SEARCH_HITS}
 
     def python_eval(self, code: str) -> dict:
-        """Restricted calculation: csv/json/statistics/math over permitted files via open_corpus(rel)."""
-        allow = self.allow
-        def open_corpus(rel):
-            t = (self.root / rel).resolve()
-            if t not in allow: raise PermissionError(f"{rel} is not a permitted corpus file")
-            return io.StringIO(t.read_text())
-        safe_builtins = {k: __builtins__[k] if isinstance(__builtins__, dict) else getattr(__builtins__, k)
-                         for k in ("abs", "all", "any", "dict", "enumerate", "float", "int", "len", "list", "max", "min", "range", "round", "set", "sorted", "str", "sum", "tuple", "zip", "print")}
-        out = io.StringIO()
-        env = {"__builtins__": safe_builtins, "csv": csv, "json": json, "statistics": statistics, "math": __import__("math"), "open_corpus": open_corpus, "result": None}
-        def _print(*a, **k): print(*a, file=out, **k)
-        env["print"] = _print
+        """Calculation in an ISOLATED SUBPROCESS (handoff §4): `python -I`, an audit hook that refuses every
+        file open outside the corpus and every network/subprocess event, a CPU/time limit, and no builtin open/import.
+        Data access only via csv_rows(rel) / json_load(rel) / read_text(rel); helpers mean/median/stdev/math."""
+        import subprocess, sys, tempfile
+        payload = json.dumps({"code": code, "root": str(self.root), "allowed": sorted(self.allow.values())})
         try:
-            exec(code, env)  # noqa: S102 — restricted namespace; no open(), no imports
-            self._rec("python_eval", {"code_chars": len(code)}, "ok")
-            return {"status": "ok", "result": env.get("result"), "stdout": out.getvalue()[:8000]}
-        except Exception as e:  # noqa: BLE001
-            self._rec("python_eval", {"code_chars": len(code)}, "error")
-            return {"status": "error", "error": repr(e)[:500], "stdout": out.getvalue()[:8000]}
+            r = subprocess.run([sys.executable, "-I", "-S", str(Path(__file__).with_name("_sandbox.py"))], input=payload, capture_output=True, text=True, timeout=PY_EVAL_TIMEOUT_S)
+        except subprocess.TimeoutExpired:
+            self._rec("python_eval", {"code_chars": len(code)}, "error"); return {"status": "error", "error": f"time limit {PY_EVAL_TIMEOUT_S}s exceeded"}
+        try:
+            out = json.loads(r.stdout.strip().splitlines()[-1]) if r.stdout.strip() else {"status": "error", "error": (r.stderr or "no output")[:500]}
+        except Exception:  # noqa: BLE001
+            out = {"status": "error", "error": (r.stderr or r.stdout)[:500]}
+        self._rec("python_eval", {"code_chars": len(code)}, out.get("status", "error"))
+        return out
 
     # -- citation resolution (used by the grader) --------------------------------
     def resolve_citation(self, file: str, locator: str) -> bool:
@@ -116,6 +113,6 @@ CORPUS_TOOL_SPECS = [
     {"name": "list_files", "description": "List the permitted corpus files.", "input_schema": {"type": "object", "properties": {}}},
     {"name": "read_file", "description": "Read a permitted corpus file (path relative to corpus/).", "input_schema": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}},
     {"name": "search", "description": "Regex search across permitted corpus files; returns file + line number + text.", "input_schema": {"type": "object", "properties": {"pattern": {"type": "string"}, "path_glob": {"type": "string"}}, "required": ["pattern"]}},
-    {"name": "python_eval", "description": "Run a short Python snippet for calculation. Available: csv, json, statistics, math, open_corpus(rel_path) → file object. Set `result` or print. No imports, no network, no other files.",
+    {"name": "python_eval", "description": "Run a short Python snippet for calculation in an isolated sandbox (10 s limit). Available: csv_rows(rel) → list of dict rows, json_load(rel), read_text(rel), mean/median/stdev, math. Set `result` or print. No imports, no open(), no network, no files outside the corpus.",
      "input_schema": {"type": "object", "properties": {"code": {"type": "string"}}, "required": ["code"]}},
 ]

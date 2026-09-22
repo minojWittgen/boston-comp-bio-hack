@@ -1,0 +1,17 @@
+{
+ "took": 3,
+ "total": 1,
+ "max_score": 90.1,
+ "hits": [
+  {
+   "_id": "3605",
+   "_score": 90.1,
+   "symbol": "IL17A",
+   "name": "interleukin 17A",
+   "entrezgene": "3605",
+   "ensembl": {
+    "gene": "ENSG00000112115"
+   }
+  }
+ ]
+}

@@ -5,36 +5,142 @@
   "description": "The same deliverable is requested from every system: conclusions per requested comparison, citations to the ORIGINAL source material, limitations, unresolved gaps. Mapping a system's answer into this envelope must not repair the answer or add evidence. Usage is recorded by the harness, never by the system.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["case_id", "system", "execution_status", "comparisons", "limitations", "unresolved", "report_markdown"],
+  "required": [
+    "case_id",
+    "system",
+    "execution_status",
+    "comparisons",
+    "limitations",
+    "unresolved",
+    "report_markdown"
+  ],
   "properties": {
-    "case_id": { "type": "string" },
-    "system": { "type": "string", "description": "BLIND on graded copies" },
-    "execution_status": { "enum": ["completed", "no_answer", "timeout", "budget_exceeded", "error"] },
+    "case_id": {
+      "type": "string"
+    },
+    "system": {
+      "type": "string",
+      "description": "BLIND on graded copies"
+    },
+    "execution_status": {
+      "enum": [
+        "completed",
+        "no_answer",
+        "timeout",
+        "budget_exceeded",
+        "error"
+      ]
+    },
     "comparisons": {
       "type": "array",
       "items": {
-        "type": "object", "additionalProperties": false,
-        "required": ["comparison_id", "scope", "conclusion", "statement", "citations"],
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "comparison_id",
+          "scope",
+          "conclusion",
+          "statement",
+          "citations"
+        ],
         "properties": {
-          "comparison_id": { "enum": ["in_vitro_vs_animal", "in_vitro_vs_patient_rna", "patient_rna_vs_patient_protein_within_person"] },
-          "scope": { "type": "object", "required": ["species", "context", "modality"],
-                     "properties": { "species": { "type": "array", "items": { "type": "string" } }, "context": { "type": "array", "items": { "type": "string" } }, "modality": { "type": "array", "items": { "type": "string" } } } },
-          "conclusion": { "enum": ["supported", "opposed", "insufficient_evidence"] },
-          "statement": { "type": "string", "maxLength": 1500 },
+          "comparison_id": {
+            "type": "string",
+            "pattern": "^(in_vitro_vs_animal|in_vitro_vs_patient_rna|patient_rna_vs_patient_protein_within_person)(:[A-Za-z0-9_.-]+)?$",
+            "description": "axis id, optionally suffixed :<entity> in mixed-input cases"
+          },
+          "scope": {
+            "type": "object",
+            "required": [
+              "species",
+              "context",
+              "modality"
+            ],
+            "properties": {
+              "species": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "context": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "modality": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "conclusion": {
+            "enum": [
+              "supported",
+              "opposed",
+              "insufficient_evidence"
+            ]
+          },
+          "statement": {
+            "type": "string",
+            "maxLength": 1500
+          },
           "citations": {
             "type": "array",
-            "items": { "type": "object", "additionalProperties": false, "required": ["file", "locator"],
-                       "properties": { "file": { "type": "string", "description": "path inside the case corpus" },
-                                       "locator": { "type": "string", "description": "line:N | row:<col>=<value> | json:<path> | section:<heading>" },
-                                       "quote": { "type": "string" } } }
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "file",
+                "locator"
+              ],
+              "properties": {
+                "file": {
+                  "type": "string",
+                  "description": "path inside the case corpus"
+                },
+                "locator": {
+                  "type": "string",
+                  "description": "line:N | row:<col>=<value> | json:<path> | section:<heading>"
+                },
+                "quote": {
+                  "type": "string"
+                }
+              }
+            }
           },
-          "within_person": { "type": ["boolean", "null"], "description": "for the within-person comparison: whether the systems established participant-level pairing; null if not attempted" }
+          "within_person": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "for the within-person comparison: whether the systems established participant-level pairing; null if not attempted"
+          }
         }
       }
     },
-    "limitations": { "type": "array", "items": { "type": "string" } },
-    "unresolved": { "type": "array", "items": { "type": "string" } },
-    "report_markdown": { "type": "string", "maxLength": 12000 },
-    "_system_internal": { "type": "object", "description": "opaque per-system trace; stripped for grading" }
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "unresolved": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "report_markdown": {
+      "type": "string",
+      "maxLength": 60000
+    },
+    "_system_internal": {
+      "type": "object",
+      "description": "opaque per-system trace; stripped for grading"
+    }
   }
 }

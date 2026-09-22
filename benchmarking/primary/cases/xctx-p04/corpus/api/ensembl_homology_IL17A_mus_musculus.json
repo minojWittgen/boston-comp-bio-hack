@@ -1,0 +1,23 @@
+{
+ "data": [
+  {
+   "id": "ENSG00000112115",
+   "homologies": [
+    {
+     "type": "ortholog_one2one",
+     "method_link_type": "ENSEMBL_ORTHOLOGUES",
+     "source": {
+      "id": "ENSG00000112115",
+      "species": "homo_sapiens",
+      "perc_id": 78.1
+     },
+     "target": {
+      "id": "ENSMUSG00000025929",
+      "species": "mus_musculus",
+      "perc_id": 79.4
+     }
+    }
+   ]
+  }
+ ]
+}

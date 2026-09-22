@@ -42,12 +42,18 @@ def main():
     ap.add_argument("--batch", default=dt.datetime.now().strftime("%Y%m%dT%H%M%S"))
     a = ap.parse_args()
     out = RUNS / a.batch; secret = secrets.token_hex(16); key = {"_secret": secret, "runs": {}}
+    dump(out / "key.json", key)
     for cfg in a.config:
         agent = get_agent(cfg)
         for mp in case_paths(a.suite, a.cases):
             m = load(mp)
             for r in range(1, a.reps + 1):
-                res = agent.run(m, mp, r)
+                try:
+                    res = agent.run(m, mp, r)
+                except Exception as e:  # noqa: BLE001  one failure must not lose the batch
+                    from agents import build_output
+                    from common import ToolBox, Usage
+                    u0 = Usage("unknown", m["limits"]); res = build_output(m, cfg, r, "error", None, ToolBox(m, mp, u0), u0, repr(e)[:300])
                 dump(out / "raw" / f"{cfg}_{m['case_id']}_{r}.json", res)
                 bid = secrets.token_hex(4)
                 blind = {k: v for k, v in res.items() if k not in ("configuration", "_ledger", "_coordinator", "usage")}
@@ -56,6 +62,7 @@ def main():
                 u = dict(res["usage"]); u["harness_signed"] = True
                 dump(out / "usage" / f"{bid}.json", {"usage": u, "sig": sign(secret, u)})
                 key["runs"][bid] = {"case_id": m["case_id"], "configuration": cfg, "run": r, "blind_sha256": sha256_file(out / "blind" / f"{bid}.json")}
+                dump(out / "key.json", key)   # incremental
                 print(f"{cfg:14s} {m['case_id']}  run{r}  {res['execution_status']:16s} overall={res['overall']['verdict']:18s} "
                       f"out_tok={u['output_tokens']:5d} data_tools={u['data_tool_calls']} wall={u['wall_clock_s']}s")
     dump(out / "key.json", key)

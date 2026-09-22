@@ -1,0 +1,11 @@
+{
+ "id": "R-HSA-SYN-2",
+ "source": "synthetic-reactome-like",
+ "version": "2026-09",
+ "name": "IL-17 effector program (synthetic)",
+ "genes": [
+  "IL17A",
+  "S100A8",
+  "KRT16"
+ ]
+}

@@ -15,7 +15,8 @@ Specifically:
 
 For each comparison give `supported`, `opposed`, or `insufficient_evidence`, a short justification, and citations
 to the exact source locations (file + line / row / JSON path). Reference resources in `corpus/api/` (gene
-identity, orthology, tissue reference abundance, knockout phenotypes) are background: use them for identity and
-species mapping, not as disease-contrast evidence. List limitations and anything that remains unresolved.
+identity, orthology, tissue reference abundance, knockout phenotypes, recorded as native API responses) are
+background: use them for identity and species mapping, not as disease-contrast evidence. List limitations and
+anything that remains unresolved.
 
 Deliver a short report in the envelope described by `schema/report.schema.json` via `submit_report`.

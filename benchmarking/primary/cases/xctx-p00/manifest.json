@@ -6,10 +6,19 @@
   "permitted_files": [
     "PROVENANCE.json",
     "README_CORPUS.md",
-    "api/ensembl_homology_mus_musculus.json",
-    "api/gtex_medianGeneExpression_TYK2.json",
+    "api/ensembl_homology_TYK2_macaca_mulatta.json",
+    "api/ensembl_homology_TYK2_mus_musculus.json",
+    "api/ensembl_homology_TYK2_rattus_norvegicus.json",
+    "api/ensembl_lookup_ENSMMUG_TYK2.json",
+    "api/ensembl_lookup_ENSMUSG00000032175.json",
+    "api/gtex_clusteredMedianGeneExpression_TYK2.json",
+    "api/gtex_reference_gene_TYK2.json",
+    "api/hpa_search_TYK2.json",
     "api/impc_genotype_phenotype_Tyk2.json",
+    "api/impc_statistical_result_Tyk2.json",
+    "api/index.json",
     "api/mygene_query_TYK2.json",
+    "api/opentargets_depmap_TYK2.json",
     "study_A_invitro/de_results.csv",
     "study_A_invitro/methods.md",
     "study_B_mouse_imq/animals.csv",
@@ -20,6 +29,12 @@
     "study_C_patient_cohort/rna_log2cpm.csv",
     "study_C_patient_cohort/specimens.csv"
   ],
+  "entities": {
+    "genes": [
+      "TYK2"
+    ],
+    "pathways": []
+  },
   "deliverable_schema": "../../../schema/report.schema.json",
   "tools": [
     "list_files",
@@ -29,11 +44,11 @@
     "submit_report"
   ],
   "limits": {
-    "max_data_tool_calls": 8,
+    "max_data_tool_calls": 30,
     "max_bookkeeping_calls": 12,
-    "max_output_tokens_total": 6000,
-    "max_output_tokens_per_call": 2000,
-    "wall_clock_seconds": 180
+    "max_output_tokens_total": 12000,
+    "max_output_tokens_per_call": 4000,
+    "wall_clock_seconds": 300
   },
-  "_note": "DEVELOPMENT EXAMPLE \u2014 feasibility only, never graded"
+  "_note": "DEVELOPMENT / CALIBRATION EXAMPLE \u2014 never graded"
 }

@@ -1,0 +1,23 @@
+{
+ "data": {
+  "target": {
+   "id": "ENSG00000112115",
+   "approvedSymbol": "IL17A",
+   "isEssential": false,
+   "depMapEssentiality": [
+    {
+     "tissueName": "Skin",
+     "screens": [
+      {
+       "cellLineName": "A375",
+       "diseaseFromSource": "melanoma",
+       "geneEffect": -0.12,
+       "expression": 4.1,
+       "mutation": null
+      }
+     ]
+    }
+   ]
+  }
+ }
+}

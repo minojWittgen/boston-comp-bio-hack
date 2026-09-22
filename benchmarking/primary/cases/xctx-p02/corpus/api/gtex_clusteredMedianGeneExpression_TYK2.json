@@ -1,5 +1,5 @@
 {
- "data": [
+ "medianGeneExpression": [
   {
    "gencodeId": "ENSG00000105397.12",
    "geneSymbol": "TYK2",
@@ -48,5 +48,6 @@
    "unit": "TPM",
    "datasetId": "gtex_v8"
   }
- ]
+ ],
+ "clusters": {}
 }

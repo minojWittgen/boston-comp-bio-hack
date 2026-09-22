@@ -1,0 +1,434 @@
+{
+ "_what": "Public calibration trace (OFFLINE stand-in for the two model calls; everything else is the real pipeline + real coordinator). Re-run with a real key to replace this.",
+ "execution_status": "completed",
+ "versions": {
+  "repo": "773cc2e",
+  "data_pipeline": "773cc2e",
+  "coordinator": "773cc2e"
+ },
+ "fake_llm": true,
+ "stages": [
+  {
+   "stage": "plan",
+   "requirements": 4,
+   "comparisons": 3
+  },
+  {
+   "stage": "collect",
+   "genes": [
+    "TYK2"
+   ],
+   "replayed_requests": 12,
+   "unrecorded": []
+  },
+  {
+   "stage": "extract",
+   "records": 28
+  },
+  {
+   "stage": "coordinate",
+   "status": "partial",
+   "conclusion": "not_assessable",
+   "attempts": 1
+  }
+ ],
+ "extraction_trace": [
+  {
+   "study": "study_A_invitro",
+   "metadata": {
+    "study_id": "study_A_invitro",
+    "species": "homo_sapiens",
+    "context": "in_vitro",
+    "host_species": null,
+    "tissue": "keratinocytes",
+    "condition": "IL-23 stimulation",
+    "contrast": {
+     "case": "IL-23",
+     "reference": "vehicle",
+     "label": "perturbed_vs_reference"
+    },
+    "tables": [
+     {
+      "file": "study_A_invitro/de_results.csv",
+      "kind": "differential_expression",
+      "modality": "RNA",
+      "endpoint": "relative_abundance",
+      "gene_column": "gene",
+      "effect_column": "log2FoldChange",
+      "padj_column": "padj",
+      "gene_symbol_species": "homo_sapiens"
+     }
+    ],
+    "rna_protein_same_specimen": false,
+    "normalization_basis_cross_modal": null,
+    "notes": "FAKE extractor (offline stand-in): keyword heuristics over methods text only"
+   }
+  },
+  {
+   "study": "study_B_mouse_imq",
+   "metadata": {
+    "study_id": "study_B_mouse_imq",
+    "species": "mus_musculus",
+    "context": "in_vivo",
+    "host_species": "mus_musculus",
+    "tissue": "skin",
+    "condition": "imiquimod psoriasiform inflammation",
+    "contrast": {
+     "case": "IMQ",
+     "reference": "vehicle",
+     "label": "perturbed_vs_reference"
+    },
+    "tables": [
+     {
+      "file": "study_B_mouse_imq/de_results.csv",
+      "kind": "differential_expression",
+      "modality": "RNA",
+      "endpoint": "relative_abundance",
+      "gene_column": "gene",
+      "effect_column": "log2FoldChange",
+      "padj_column": "padj",
+      "gene_symbol_species": "mus_musculus"
+     }
+    ],
+    "rna_protein_same_specimen": false,
+    "normalization_basis_cross_modal": null,
+    "notes": "FAKE extractor (offline stand-in): keyword heuristics over methods text only"
+   }
+  },
+  {
+   "study": "study_C_patient_cohort",
+   "metadata": {
+    "study_id": "study_C_patient_cohort",
+    "species": "homo_sapiens",
+    "context": "patient",
+    "host_species": null,
+    "tissue": "skin",
+    "condition": "psoriasis lesional vs non-lesional",
+    "contrast": {
+     "case": "lesional",
+     "reference": "non-lesional",
+     "label": "perturbed_vs_reference"
+    },
+    "tables": [
+     {
+      "file": "study_C_patient_cohort/protein_npx.csv",
+      "kind": "per_specimen_values",
+      "modality": "protein",
+      "endpoint": "relative_abundance",
+      "gene_column": "assay_target",
+      "value_column": "npx",
+      "specimen_column": "specimen_id"
+     },
+     {
+      "file": "study_C_patient_cohort/rna_log2cpm.csv",
+      "kind": "per_specimen_values",
+      "modality": "RNA",
+      "endpoint": "relative_abundance",
+      "gene_column": "gene",
+      "value_column": "log2cpm",
+      "specimen_column": "specimen_id"
+     },
+     {
+      "file": "study_C_patient_cohort/specimens.csv",
+      "kind": "specimen_metadata",
+      "specimen_column": "specimen_id",
+      "participant_column": "participant_id",
+      "timepoint_column": "visit",
+      "arm_column": "site_type",
+      "case_arm_value": "lesional",
+      "reference_arm_value": "nonlesional"
+     }
+    ],
+    "rna_protein_same_specimen": true,
+    "normalization_basis_cross_modal": "within-participant paired lesional vs non-lesional on log2 scales",
+    "notes": "FAKE extractor (offline stand-in): keyword heuristics over methods text only"
+   }
+  }
+ ],
+ "coordinator_events": [
+  "intent_and_criteria",
+  "criteria_frozen",
+  "feasibility_preflight",
+  "evidence_collection",
+  "feasibility_and_comparison",
+  "verification",
+  "finished"
+ ],
+ "plan_sha256": "389dc97b54203ee52a3d883cbd13c996c89f17da0b49806814ead284f11bc972",
+ "coordinator_status": "partial",
+ "coordinator_conclusion": "not_assessable",
+ "comparisons": [
+  {
+   "id": "in_vitro_vs_animal:TYK2",
+   "conclusion": "not_assessable",
+   "n_evidence": 0
+  },
+  {
+   "id": "in_vitro_vs_patient_rna:TYK2",
+   "conclusion": "not_assessable",
+   "n_evidence": 0
+  },
+  {
+   "id": "patient_rna_vs_patient_protein_within_person:TYK2",
+   "conclusion": "supported",
+   "n_evidence": 24
+  }
+ ],
+ "usage": {
+  "model": "offline-stand-in",
+  "llm_calls": 4,
+  "input_tokens": 0,
+  "cache_read_tokens": 0,
+  "cache_creation_tokens": 0,
+  "output_tokens": 0,
+  "data_tool_calls": 15,
+  "bookkeeping_calls": 0,
+  "wall_clock_s": 0.0,
+  "network_calls": 0,
+  "estimated_cost_usd": 0.0,
+  "harness_signed": false
+ },
+ "model_inventory": [
+  {
+   "stage": "unlabelled",
+   "model": "offline-stand-in"
+  },
+  {
+   "stage": "extract:study_A_invitro",
+   "model": "offline-stand-in"
+  },
+  {
+   "stage": "extract:study_B_mouse_imq",
+   "model": "offline-stand-in"
+  },
+  {
+   "stage": "extract:study_C_patient_cohort",
+   "model": "offline-stand-in"
+  }
+ ],
+ "report_envelope": {
+  "comparisons": [
+   {
+    "comparison_id": "in_vitro_vs_animal",
+    "scope": {
+     "species": [
+      "homo_sapiens",
+      "mus_musculus"
+     ],
+     "context": [
+      "in_vitro",
+      "in_vivo"
+     ],
+     "modality": [
+      "rna"
+     ]
+    },
+    "conclusion": "insufficient_evidence",
+    "statement": "No comparison meeting the declared evidence and comparability criteria. Comparable unique studies: vitro_rna_TYK2=0/1, vivo_rna_TYK2=0/1. Qualified evidence IDs: vitro_rna_TYK2=['obs-study_A_invitro-TYK2'], vivo_rna_TYK2=['obs-study_B_mouse_imq-TYK2']. Compared evidence IDs: []. Excluded candidate pairs: missing declared cross-species basis (1). Pair counts are not independent evidence counts.",
+    "citations": [],
+    "within_person": null
+   },
+   {
+    "comparison_id": "in_vitro_vs_patient_rna",
+    "scope": {
+     "species": [
+      "homo_sapiens"
+     ],
+     "context": [
+      "in_vitro",
+      "patient"
+     ],
+     "modality": [
+      "rna"
+     ]
+    },
+    "conclusion": "insufficient_evidence",
+    "statement": "No comparison meeting the declared evidence and comparability criteria. Comparable unique studies: vitro_rna_TYK2=0/1, patient_rna_TYK2=0/1. Qualified evidence IDs: vitro_rna_TYK2=['obs-study_A_invitro-TYK2'], patient_rna_TYK2=['obs-study_C_patient_cohort-TYK2-RNA-P01', 'obs-study_C_patient_cohort-TYK2-RNA-P02', 'obs-study_C_patient_cohort-TYK2-RNA-P03', 'obs-study_C_patient_cohort-TYK2-RNA-P04', 'obs-study_C_patient_cohort-TYK2-RNA-P05', 'obs-study_C_patient_cohort-TYK2-RNA-P06', 'obs-study_C_patient_cohort-TYK2-RNA-P07', 'obs-study_C_patient_cohort-TYK2-RNA-P08', 'obs-study_C_patient_cohort-TYK2-RNA-P09', 'obs-study_C_patient_cohort-TYK2-RNA-P10', 'obs-study_C_patient_cohort-TYK2-RNA-P11', 'obs-study_C_patient_cohort-TYK2-RNA-P12', 'obs-study_C_patient_cohort-TYK2-RNA-aggregate']. Compared evidence IDs: []. Excluded candidate pairs: different condition alignment without declared context-alignment basis (13). Pair counts are not independent evidence counts.",
+    "citations": [],
+    "within_person": null
+   },
+   {
+    "comparison_id": "patient_rna_vs_patient_protein_within_person",
+    "scope": {
+     "species": [
+      "homo_sapiens"
+     ],
+     "context": [
+      "patient"
+     ],
+     "modality": [
+      "protein",
+      "rna"
+     ]
+    },
+    "conclusion": "supported",
+    "statement": "Descriptive direction concordance for the declared endpoint in the compared subset. Comparable unique studies: patient_rna_TYK2=1/1, patient_prot_TYK2=1/1. Qualified evidence IDs: patient_rna_TYK2=['obs-study_C_patient_cohort-TYK2-RNA-P01', 'obs-study_C_patient_cohort-TYK2-RNA-P02', 'obs-study_C_patient_cohort-TYK2-RNA-P03', 'obs-study_C_patient_cohort-TYK2-RNA-P04', 'obs-study_C_patient_cohort-TYK2-RNA-P05', 'obs-study_C_patient_cohort-TYK2-RNA-P06', 'obs-study_C_patient_cohort-TYK2-RNA-P07', 'obs-study_C_patient_cohort-TYK2-RNA-P08', 'obs-study_C_patient_cohort-TYK2-RNA-P09', 'obs-study_C_patient_cohort-TYK2-RNA-P10', 'obs-study_C_patient_cohort-TYK2-RNA-P11', 'obs-study_C_patient_cohort-TYK2-RNA-P12', 'obs-study_C_patient_cohort-TYK2-RNA-aggregate'], patient_prot_TYK2=['obs-study_C_patient_cohort-TYK2-protein-P01', 'obs-study_C_patient_cohort-TYK2-protein-P02', 'obs-study_C_patient_cohort-TYK2-protein-P03', 'obs-study_C_patient_cohort-TYK2-protein-P04', 'obs-study_C_patient_cohort-TYK2-protein-P05', 'obs-study_C_patient_cohort-TYK2-protein-P06', 'obs-study_C_patient_cohort-TYK2-protein-P07', 'obs-study_C_patient_cohort-TYK2-protein-P08', 'obs-study_C_patient_cohort-TYK2-protein-P09', 'obs-study_C_patient_cohort-TYK2-protein-P10', 'obs-study_C_patient_cohort-TYK2-protein-P11', 'obs-study_C_patient_cohort-TYK2-protein-P12', 'obs-study_C_patient_cohort-TYK2-protein-aggregate']. Compared evidence IDs: ['obs-study_C_patient_cohort-TYK2-RNA-P01', 'obs-study_C_patient_cohort-TYK2",
+    "citations": [
+     {
+      "file": "study_C_patient_cohort/rna_log2cpm.csv",
+      "locator": "row:specimen_id=S-P01-L;gene=TYK2"
+     },
+     {
+      "file": "study_C_patient_cohort/specimens.csv",
+      "locator": "row:participant_id=P01"
+     },
+     {
+      "file": "study_C_patient_cohort/methods.md",
+      "locator": "section:methods"
+     },
+     {
+      "file": "study_C_patient_cohort/protein_npx.csv",
+      "locator": "row:specimen_id=S-P01-L;assay_target=TYK2"
+     },
+     {
+      "file": "study_C_patient_cohort/rna_log2cpm.csv",
+      "locator": "row:specimen_id=S-P02-L;gene=TYK2"
+     },
+     {
+      "file": "study_C_patient_cohort/specimens.csv",
+      "locator": "row:participant_id=P02"
+     },
+     {
+      "file": "study_C_patient_cohort/rna_log2cpm.csv",
+      "locator": "row:specimen_id=S-P03-L;gene=TYK2"
+     },
+     {
+      "file": "study_C_patient_cohort/specimens.csv",
+      "locator": "row:participant_id=P03"
+     },
+     {
+      "file": "study_C_patient_cohort/rna_log2cpm.csv",
+      "locator": "row:specimen_id=S-P04-L;gene=TYK2"
+     },
+     {
+      "file": "study_C_patient_cohort/specimens.csv",
+      "locator": "row:participant_id=P04"
+     },
+     {
+      "file": "study_C_patient_cohort/rna_log2cpm.csv",
+      "locator": "row:specimen_id=S-P05-L;gene=TYK2"
+     },
+     {
+      "file": "study_C_patient_cohort/specimens.csv",
+      "locator": "row:participant_id=P05"
+     },
+     {
+      "file": "study_C_patient_cohort/rna_log2cpm.csv",
+      "locator": "row:specimen_id=S-P06-L;gene=TYK2"
+     },
+     {
+      "file": "study_C_patient_cohort/specimens.csv",
+      "locator": "row:participant_id=P06"
+     },
+     {
+      "file": "study_C_patient_cohort/rna_log2cpm.csv",
+      "locator": "row:specimen_id=S-P07-L;gene=TYK2"
+     },
+     {
+      "file": "study_C_patient_cohort/specimens.csv",
+      "locator": "row:participant_id=P07"
+     },
+     {
+      "file": "study_C_patient_cohort/rna_log2cpm.csv",
+      "locator": "row:specimen_id=S-P08-L;gene=TYK2"
+     },
+     {
+      "file": "study_C_patient_cohort/specimens.csv",
+      "locator": "row:participant_id=P08"
+     },
+     {
+      "file": "study_C_patient_cohort/rna_log2cpm.csv",
+      "locator": "row:specimen_id=S-P09-L;gene=TYK2"
+     },
+     {
+      "file": "study_C_patient_cohort/specimens.csv",
+      "locator": "row:participant_id=P09"
+     },
+     {
+      "file": "study_C_patient_cohort/rna_log2cpm.csv",
+      "locator": "row:specimen_id=S-P10-L;gene=TYK2"
+     },
+     {
+      "file": "study_C_patient_cohort/specimens.csv",
+      "locator": "row:participant_id=P10"
+     },
+     {
+      "file": "study_C_patient_cohort/rna_log2cpm.csv",
+      "locator": "row:specimen_id=S-P11-L;gene=TYK2"
+     },
+     {
+      "file": "study_C_patient_cohort/specimens.csv",
+      "locator": "row:participant_id=P11"
+     },
+     {
+      "file": "study_C_patient_cohort/rna_log2cpm.csv",
+      "locator": "row:specimen_id=S-P12-L;gene=TYK2"
+     },
+     {
+      "file": "study_C_patient_cohort/specimens.csv",
+      "locator": "row:participant_id=P12"
+     },
+     {
+      "file": "study_C_patient_cohort/protein_npx.csv",
+      "locator": "row:specimen_id=S-P02-L;assay_target=TYK2"
+     },
+     {
+      "file": "study_C_patient_cohort/protein_npx.csv",
+      "locator": "row:specimen_id=S-P03-L;assay_target=TYK2"
+     },
+     {
+      "file": "study_C_patient_cohort/protein_npx.csv",
+      "locator": "row:specimen_id=S-P04-L;assay_target=TYK2"
+     },
+     {
+      "file": "study_C_patient_cohort/protein_npx.csv",
+      "locator": "row:specimen_id=S-P05-L;assay_target=TYK2"
+     },
+     {
+      "file": "study_C_patient_cohort/protein_npx.csv",
+      "locator": "row:specimen_id=S-P06-L;assay_target=TYK2"
+     },
+     {
+      "file": "study_C_patient_cohort/protein_npx.csv",
+      "locator": "row:specimen_id=S-P07-L;assay_target=TYK2"
+     },
+     {
+      "file": "study_C_patient_cohort/protein_npx.csv",
+      "locator": "row:specimen_id=S-P08-L;assay_target=TYK2"
+     },
+     {
+      "file": "study_C_patient_cohort/protein_npx.csv",
+      "locator": "row:specimen_id=S-P09-L;assay_target=TYK2"
+     },
+     {
+      "file": "study_C_patient_cohort/protein_npx.csv",
+      "locator": "row:specimen_id=S-P10-L;assay_target=TYK2"
+     },
+     {
+      "file": "study_C_patient_cohort/protein_npx.csv",
+      "locator": "row:specimen_id=S-P11-L;assay_target=TYK2"
+     },
+     {
+      "file": "study_C_patient_cohort/protein_npx.csv",
+      "locator": "row:specimen_id=S-P12-L;assay_target=TYK2"
+     }
+    ],
+    "within_person": true
+   }
+  ],
+  "limitations": [
+   "coordinator execution status: partial",
+   "declared_metadata: Scope (including condition, tissue and host species), observation labels, study identities, provenance, comparison keys and bases are declared normalized inputs. Structural checks do not verify source accuracy, cohort independence, normalization validity or biological comparability.",
+   "descriptive_only: Supported means descriptive direction concordance only. Abundance is not pathway activity; orthology is not conserved activity; cohort agreement is not within-patient agreement. No statistical significance, causal mechanism, clinical efficacy or general biological validation is established."
+  ],
+  "unresolved": [
+   "unsupported_source: opentargets_depmap: no scientific interpretation is defined",
+   "unsupported_source: hpa_cell_lines: no scientific interpretation is defined",
+   "source_not_found: ensembl_orthology/rattus_norvegicus: No database record; not a biological negative",
+   "source_skipped: opentargets: Source was not queried (disabled in eval mode)",
+   "source_skipped: pubmed: Source was not queried (disabled in eval mode)",
+   "comparison_not_assessable: in_vitro_vs_animal:TYK2: No comparison meeting the declared evidence and comparability criteria. Comparable unique studies: vitro_rna_TYK2=0/1, vivo_rna_TYK2=0/1. Qualified evidence IDs: vitro_rna_TYK2=['obs-study_A_invitro-TYK2'], vivo_rna_TYK2=['obs-study_B_mouse_imq-TYK2']. Compared evidence IDs: []. Excluded candidate pairs: missing declared cross-species basis (1). Pair counts are not independent evidence counts.",
+   "comparison_not_assessable: in_vitro_vs_patient_rna:TYK2: No comparison meeting the declared evidence and comparability criteria. Comparable unique studies: vitro_rna_TYK2=0/1, patient_rna_TYK2=0/1. Qualified evidence IDs: vitro_rna_TYK2=['obs-study_A_invitro-TYK2'], patient_rna_TYK2=['obs-study_C_patient_cohort-TYK2-RNA-P01', 'obs-study_C_patient_cohort-TYK2-RNA-P02', 'obs-study_C_patient_cohort-TYK2-RNA-P03', 'obs-study_C_patient_cohort-TYK2-RNA-P04', 'obs-study_C_patient_cohort-TYK2-RNA-P05', 'obs-study_C_patient_cohort-TYK2-RNA-P06', 'obs-study_C_patient_cohort-TYK2-RNA-P07', 'obs-study_C_patient_cohort-TYK2-RNA-P08', 'obs-study_C_patient_cohort-TYK2-RNA-P09', 'obs-study_C_patient_cohort-TYK2-RNA-P10', 'obs-study_C_patient_cohort-TYK2-RNA-P11', 'obs-study_C_patient_cohort-TYK2-RNA-P12', 'obs-study_C_patient_cohort-TYK2-RNA-aggregate']. Compared evidence IDs: []. Excluded candidate pairs: different condition alignment without declared context-alignment basis (13). Pair counts are not independent evidence counts."
+  ]
+ }
+}

@@ -1,0 +1,12 @@
+{
+ "id": "R-HSA-SYN-1",
+ "source": "synthetic-reactome-like",
+ "version": "2026-09",
+ "name": "IL-23/TYK2 receptor signalling (synthetic)",
+ "genes": [
+  "TYK2",
+  "JAK1",
+  "STAT3",
+  "IL23R"
+ ]
+}

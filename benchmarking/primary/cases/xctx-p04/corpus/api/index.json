@@ -1,0 +1,241 @@
+{
+ "_note": "Recorded native responses. The integrated system's collectors replay these instead of calling the live services; the baseline may read them as files.",
+ "requests": [
+  {
+   "method": "GET",
+   "url": "https://mygene.info/v3/query",
+   "params": {
+    "q": "symbol:TYK2",
+    "species": "human",
+    "size": 3,
+    "fields": "symbol,name,entrezgene,ensembl.gene"
+   },
+   "file": "api/mygene_query_TYK2.json"
+  },
+  {
+   "method": "GET",
+   "url": "https://rest.ensembl.org/homology/id/human/ENSG00000105397",
+   "params": {
+    "type": "orthologues",
+    "target_species": "mus_musculus",
+    "sequence": "none",
+    "content-type": "application/json"
+   },
+   "file": "api/ensembl_homology_TYK2_mus_musculus.json"
+  },
+  {
+   "method": "GET",
+   "url": "https://rest.ensembl.org/lookup/id/ENSMUSG00000032175",
+   "params": {
+    "content-type": "application/json"
+   },
+   "file": "api/ensembl_lookup_ENSMUSG00000032175.json"
+  },
+  {
+   "method": "GET",
+   "url": "https://rest.ensembl.org/homology/id/human/ENSG00000105397",
+   "params": {
+    "type": "orthologues",
+    "target_species": "rattus_norvegicus",
+    "sequence": "none",
+    "content-type": "application/json"
+   },
+   "file": "api/ensembl_homology_TYK2_rattus_norvegicus.json"
+  },
+  {
+   "method": "GET",
+   "url": "https://rest.ensembl.org/homology/id/human/ENSG00000105397",
+   "params": {
+    "type": "orthologues",
+    "target_species": "macaca_mulatta",
+    "sequence": "none",
+    "content-type": "application/json"
+   },
+   "file": "api/ensembl_homology_TYK2_macaca_mulatta.json"
+  },
+  {
+   "method": "GET",
+   "url": "https://rest.ensembl.org/lookup/id/ENSMMUG_TYK2",
+   "params": {
+    "content-type": "application/json"
+   },
+   "file": "api/ensembl_lookup_ENSMMUG_TYK2.json"
+  },
+  {
+   "method": "GET",
+   "url": "https://gtexportal.org/api/v2/reference/gene",
+   "params": {
+    "geneId": "ENSG00000105397"
+   },
+   "file": "api/gtex_reference_gene_TYK2.json"
+  },
+  {
+   "method": "GET",
+   "url": "https://gtexportal.org/api/v2/expression/clusteredMedianGeneExpression",
+   "params": {
+    "gencodeId": "ENSG00000105397.12",
+    "datasetId": "gtex_v8"
+   },
+   "file": "api/gtex_clusteredMedianGeneExpression_TYK2.json"
+  },
+  {
+   "method": "GET",
+   "url": "https://www.ebi.ac.uk/mi/impc/solr/statistical-result/select",
+   "params": {
+    "q": "marker_symbol:\"Tyk2\"",
+    "rows": 0,
+    "wt": "json"
+   },
+   "file": "api/impc_statistical_result_Tyk2.json"
+  },
+  {
+   "method": "GET",
+   "url": "https://www.ebi.ac.uk/mi/impc/solr/genotype-phenotype/select",
+   "params": {
+    "q": "marker_symbol:\"Tyk2\"",
+    "rows": 500,
+    "wt": "json",
+    "fl": "mp_term_id,mp_term_name,top_level_mp_term_name,zygosity,sex,p_value,allele_symbol"
+   },
+   "file": "api/impc_genotype_phenotype_Tyk2.json"
+  },
+  {
+   "method": "GET",
+   "url": "https://www.proteinatlas.org/api/search_download.php",
+   "params": {
+    "search": "ENSG00000105397",
+    "format": "json",
+    "compress": "no",
+    "columns": "g,eg,rnacld,rnaclsm,scl,scml,pc"
+   },
+   "file": "api/hpa_search_TYK2.json"
+  },
+  {
+   "method": "POST",
+   "url": "https://api.platform.opentargets.org/api/v4/graphql",
+   "json_variables": {
+    "id": "ENSG00000105397"
+   },
+   "json_query_contains": "depMapEssentiality",
+   "file": "api/opentargets_depmap_TYK2.json"
+  },
+  {
+   "method": "GET",
+   "url": "https://mygene.info/v3/query",
+   "params": {
+    "q": "symbol:IL17A",
+    "species": "human",
+    "size": 3,
+    "fields": "symbol,name,entrezgene,ensembl.gene"
+   },
+   "file": "api/mygene_query_IL17A.json"
+  },
+  {
+   "method": "GET",
+   "url": "https://rest.ensembl.org/homology/id/human/ENSG00000112115",
+   "params": {
+    "type": "orthologues",
+    "target_species": "mus_musculus",
+    "sequence": "none",
+    "content-type": "application/json"
+   },
+   "file": "api/ensembl_homology_IL17A_mus_musculus.json"
+  },
+  {
+   "method": "GET",
+   "url": "https://rest.ensembl.org/lookup/id/ENSMUSG00000025929",
+   "params": {
+    "content-type": "application/json"
+   },
+   "file": "api/ensembl_lookup_ENSMUSG00000025929.json"
+  },
+  {
+   "method": "GET",
+   "url": "https://rest.ensembl.org/homology/id/human/ENSG00000112115",
+   "params": {
+    "type": "orthologues",
+    "target_species": "rattus_norvegicus",
+    "sequence": "none",
+    "content-type": "application/json"
+   },
+   "file": "api/ensembl_homology_IL17A_rattus_norvegicus.json"
+  },
+  {
+   "method": "GET",
+   "url": "https://rest.ensembl.org/homology/id/human/ENSG00000112115",
+   "params": {
+    "type": "orthologues",
+    "target_species": "macaca_mulatta",
+    "sequence": "none",
+    "content-type": "application/json"
+   },
+   "file": "api/ensembl_homology_IL17A_macaca_mulatta.json"
+  },
+  {
+   "method": "GET",
+   "url": "https://rest.ensembl.org/lookup/id/ENSMMUG_IL17A",
+   "params": {
+    "content-type": "application/json"
+   },
+   "file": "api/ensembl_lookup_ENSMMUG_IL17A.json"
+  },
+  {
+   "method": "GET",
+   "url": "https://gtexportal.org/api/v2/reference/gene",
+   "params": {
+    "geneId": "ENSG00000112115"
+   },
+   "file": "api/gtex_reference_gene_IL17A.json"
+  },
+  {
+   "method": "GET",
+   "url": "https://gtexportal.org/api/v2/expression/clusteredMedianGeneExpression",
+   "params": {
+    "gencodeId": "ENSG00000112115.12",
+    "datasetId": "gtex_v8"
+   },
+   "file": "api/gtex_clusteredMedianGeneExpression_IL17A.json"
+  },
+  {
+   "method": "GET",
+   "url": "https://www.ebi.ac.uk/mi/impc/solr/statistical-result/select",
+   "params": {
+    "q": "marker_symbol:\"Il17a\"",
+    "rows": 0,
+    "wt": "json"
+   },
+   "file": "api/impc_statistical_result_Il17a.json"
+  },
+  {
+   "method": "GET",
+   "url": "https://www.ebi.ac.uk/mi/impc/solr/genotype-phenotype/select",
+   "params": {
+    "q": "marker_symbol:\"Il17a\"",
+    "rows": 500,
+    "wt": "json",
+    "fl": "mp_term_id,mp_term_name,top_level_mp_term_name,zygosity,sex,p_value,allele_symbol"
+   },
+   "file": "api/impc_genotype_phenotype_Il17a.json"
+  },
+  {
+   "method": "GET",
+   "url": "https://www.proteinatlas.org/api/search_download.php",
+   "params": {
+    "search": "ENSG00000112115",
+    "format": "json",
+    "compress": "no",
+    "columns": "g,eg,rnacld,rnaclsm,scl,scml,pc"
+   },
+   "file": "api/hpa_search_IL17A.json"
+  },
+  {
+   "method": "POST",
+   "url": "https://api.platform.opentargets.org/api/v4/graphql",
+   "json_variables": {
+    "id": "ENSG00000112115"
+   },
+   "json_query_contains": "depMapEssentiality",
+   "file": "api/opentargets_depmap_IL17A.json"
+  }
+ ]
+}

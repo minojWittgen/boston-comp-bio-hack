@@ -1,0 +1,19 @@
+{
+ "data": [
+  {
+   "gencodeId": "ENSG00000112115.12",
+   "geneSymbol": "IL17A",
+   "geneType": "protein coding",
+   "chromosome": "chr19",
+   "start": 10350528,
+   "end": 10380676,
+   "strand": "-"
+  }
+ ],
+ "paging_info": {
+  "numberOfPages": 1,
+  "page": 0,
+  "maxItemsPerPage": 250,
+  "totalNumberOfItems": 1
+ }
+}
