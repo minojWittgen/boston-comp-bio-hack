@@ -38,7 +38,12 @@ no need to port changes into a second planner or checker.
 
 The newer pathway/in-vitro pipeline from `jaeeun-wittgen/data-pipeline` is included
 from shared `main` at `41e488d`. The coordinator remains unchanged: its adapter retains
-unknown source payloads as background and reports unsupported-source gaps. Native
+unknown source payloads as background and reports unsupported-source gaps. HPA cell-line
+summaries and Open Targets DepMap now have explicit background adapters: both retain
+in-vitro human context, HPA's combined RNA/localization summary has no single assigned
+modality, and DepMap remains a CRISPR fitness reference rather than RNA abundance.
+The team's HPA pathology adapter retains patient-context cohort RNA as background,
+without inventing patient identities or matched observations. Native
 pathway-package orchestration and the new source semantics still need coordinator
 adapter work; merging the code does not promote retrieved records to observations or
 invent versioned pathway membership.

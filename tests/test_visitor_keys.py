@@ -100,7 +100,7 @@ def test_chat_only_dispatches_plan_and_research_data(tmp_path, monkeypatch):
         assert 'visitor-secret' not in (tmp_path / f'{run_id}.json').read_text()
 
 
-@pytest.mark.parametrize('status,kind', [(401, 'authentication_error'), (429, 'rate_limit_error'), (400, 'invalid_request_error')])
+@pytest.mark.parametrize('status,kind', [(401, 'authentication_error'), (429, 'rate_limit_error'), (400, 'invalid_request_error'), (403, 'permission_error'), (404, 'not_found_error')])
 def test_provider_error_does_not_echo_secret_or_save_job(tmp_path, monkeypatch, status, kind):
     def handler(request):
         return httpx.Response(status, json={'type': 'error', 'error': {'type': kind, 'message': 'visitor-secret-here'}})
@@ -175,6 +175,13 @@ def test_streamlit_model_settings_are_session_scoped_and_can_be_cleared(monkeypa
     first.text_input(key='visitor_api_key').set_value('visitor-key-one')
     first.text_input(key='visitor_model').set_value('visitor-model').run()
     assert not first.chat_input[0].disabled
+    for destination in ('Connect through MCP', 'Try the tutorial'):
+        first.radio(key='experience').set_value(destination).run()
+        assert not first.text_input
+        first.radio(key='experience').set_value('Investigate with your key').run()
+        assert first.text_input(key='visitor_api_key').value == 'visitor-key-one'
+        assert first.text_input(key='visitor_model').value == 'visitor-model'
+        assert not first.chat_input[0].disabled
     second = AppTest.from_file('../streamlit_app.py').run()
     second.radio(key='experience').set_value('Investigate with your key').run()
     assert second.text_input(key='visitor_api_key').value == ''
@@ -184,3 +191,6 @@ def test_streamlit_model_settings_are_session_scoped_and_can_be_cleared(monkeypa
     first.radio(key='experience').set_value('Connect through MCP').run()
     assert not first.text_input
     assert any('claude mcp add --transport http' in code.value for code in first.code)
+    first.radio(key='experience').set_value('Investigate with your key').run()
+    assert first.text_input(key='visitor_api_key').value == ''
+    assert first.chat_input[0].disabled

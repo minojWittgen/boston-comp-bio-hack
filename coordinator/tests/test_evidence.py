@@ -51,6 +51,26 @@ def test_successful_sources_remain_background_not_observations():
     assert records["gtex"].payload["source_result"]["data"]["tissues"]
 
 
+def test_cell_line_sources_keep_mixed_modality_and_fitness_as_background():
+    raw = package()
+    raw['sources']['hpa_cell_lines'] = source('hpa_cell_lines', {'rna_summary': 'detected', 'protein_location': ['nucleus']})
+    raw['sources']['opentargets_depmap'] = source('opentargets_depmap', {'essentiality': [{'cellLine': 'example', 'score': -0.7}]})
+    raw['sources']['hpa_pathology'] = source('hpa_pathology', {'cancer_expression': {'breast cancer': 'example cohort summary'}})
+    bundle = adapt_packages([raw])
+    records = {r.source: r for r in bundle.records}
+    assert not bundle.gaps
+    hpa, depmap = records['hpa_cell_lines'], records['opentargets_depmap']
+    assert hpa.context == depmap.context == 'in_vitro'
+    assert hpa.species == depmap.species == 'homo_sapiens'
+    assert hpa.modality is None and depmap.modality is None
+    patient = records['hpa_pathology']
+    assert patient.context == 'patient' and patient.modality == 'RNA'
+    for record in (hpa, depmap, patient):
+        assert record.level == 'background'
+        assert record.direction is None and record.study_id is None and record.subject_id is None
+        assert record.payload['source_result'] == raw['sources'][record.source]
+
+
 def test_statuses_are_distinct_and_only_error_is_retryable():
     raw = package()
     for name, status in (("gtex", "error"), ("pubmed", "not_found"), ("opentargets", "skipped")):

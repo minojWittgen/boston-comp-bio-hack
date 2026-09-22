@@ -40,6 +40,13 @@ def clear_model_key():
     st.session_state.visitor_api_key = ""
 
 
+# Detach these session values from Streamlit's cleanup of hidden widgets.
+# They survive view switches and remain per-session, never cached or persisted.
+for name in ("visitor_api_key", "visitor_model"):
+    if name in st.session_state:
+        st.session_state[name] = st.session_state[name]
+
+
 if st.session_state.get("coordinator_ui_version") != 3:
     clear_conversation()
     st.session_state.coordinator_ui_version = 3
@@ -84,11 +91,12 @@ with st.sidebar:
     st.write("One question. Every context.")
     st.caption("In vitro · In vivo · Patients")
     if experience == "Investigate with your key":
+        st.session_state.setdefault("visitor_model", "claude-opus-5-5")
         st.markdown("**Model settings · website chat only**")
         st.text_input("Your Anthropic API key", type="password", key="visitor_api_key",
                       placeholder="sk-ant-…", help="Used only for your chat planning calls. Not saved in investigation downloads.")
-        st.text_input("Anthropic model ID", key="visitor_model", placeholder="e.g. claude-sonnet-4-6")
-        st.caption("Website chat uses your Anthropic API account and credits. Your key stays in session memory and is sent to Anthropic for planning; it is not saved in investigations.")
+        st.text_input("Anthropic model ID", key="visitor_model", placeholder="e.g. claude-opus-5-5")
+        st.caption("Website chat uses your Anthropic API account and credits. Settings stay in this session when you switch views. Reloading or closing the app can clear them. Your key is not saved in investigations.")
         st.button("Clear API key", on_click=clear_model_key, width="stretch",
                   disabled=not st.session_state.get("visitor_api_key"))
         if st.button("New conversation", width="stretch"):
@@ -112,6 +120,14 @@ model_ready = bool(st.session_state.get("visitor_api_key", "").strip() and st.se
 def show_report(state):
     if is_synthetic(state):
         st.warning("Synthetic demonstration · these observations are fabricated, not biological findings.")
+    if state.plan:
+        st.markdown("**Investigated genes:** " + ", ".join(state.plan.genes))
+    if state.evidence:
+        background = sum(r.level == "background" for r in state.evidence.records)
+        observations = sum(r.level == "observation" for r in state.evidence.records)
+        st.caption(f"Evidence retrieved · {background} background references · {observations} declared observations · {state.evidence.package_count} source packages")
+        if background and not observations and state.status in TERMINAL and not is_synthetic(state):
+            st.info("Live sources returned background references. The current pipeline does not yet supply the experimental observations needed for these comparisons. Open Evidence to inspect the retrieved sources; missing observations remain explicit gaps.")
     a, b = st.columns(2)
     a.metric("Execution", state.status.replace("_", " ").title())
     b.metric("Evidence conclusion", state.assessment.conclusion.replace("_", " ").title() if state.assessment else "Not assessed")
@@ -227,6 +243,7 @@ else:
         st.caption("Your model settings are entered. They will be checked when you send a question.")
     else:
         st.info("Website chat is optional. Enter your Anthropic API key and model ID in the sidebar, or choose the tutorial or MCP to continue without a separate API key.")
+    st.caption("Live investigations retrieve source references for the genes in your question. Unlike the synthetic tutorial, they do not come with prefilled experiment or patient observations, so an honest result may be partial / not assessable.")
     if "run_id" not in st.session_state:
         with st.chat_message("assistant"):
             st.write("What biological question are you investigating? Include the gene or target, the disease or tissue, and what you want to compare.")

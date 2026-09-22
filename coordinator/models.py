@@ -12,7 +12,7 @@ class Contract(BaseModel):
 class EvidenceRequirement(Contract):
     id: str = Field(min_length=1)
     title: str = Field(min_length=1)
-    entity: str = Field(min_length=1)
+    entity: str = Field(min_length=1, description="Exact queried gene symbol from ResearchPlan.genes, or its supplied pathway ID. Keep this stable across species; put species in species and unverified ortholog aliases in assumptions, never in entity.")
     species: str = Field(min_length=1)
     context: Literal["in_vitro", "in_vivo", "patient", "reference"]
     modality: Literal["DNA", "RNA", "protein", "phenotype", "clinical"]

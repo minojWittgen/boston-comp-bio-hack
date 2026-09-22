@@ -95,8 +95,14 @@ held-out evaluation or a biomedical gold standard.
 Explicit requests with `requirements` and `genes` (or supplied versioned pathway genes)
 need no model credentials. Requests without requirements use `ClaudePlanner` and require
 both `ANTHROPIC_API_KEY` and `ANTHROPIC_MODEL` in the environment. The model name is never
-guessed. Planning makes one forced-schema call, disables SDK retries, and has a 60-second
-provider timeout. There is no paid model call in the offline test suite.
+guessed. Planning makes one strict schema-tool call with automatic tool choice, disables SDK
+retries, and has a 60-second provider timeout. This supports models that reject forced
+tool choice. The response must still contain exactly one complete, schema-valid research
+plan; text-only, truncated, and multiple-tool responses are rejected without starting
+collection. The SDK transforms the tool schema for provider compatibility; the original
+Pydantic schema and scope-preservation checks still validate the response. Provider
+refusals are reported explicitly, without retrying or changing models. There is no paid
+model call in the offline test suite.
 
 Replay the two supplied demonstrations using the same environment variables:
 

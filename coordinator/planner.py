@@ -56,7 +56,12 @@ def _input_genes(request: InvestigationRequest) -> list[str]:
 def _validated_plan(payload: Any) -> ResearchPlan:
     try:
         plan = ResearchPlan.model_validate(payload)
-    except (ValidationError, TypeError, ValueError) as exc:
+    except ValidationError as exc:
+        if any(error['msg'] == "Value error, Requirement entities must be declared genes or the supplied pathway ID"
+               for error in exc.errors(include_input=False, include_context=False)):
+            raise PlanningError("The research plan does not satisfy the required schema: a requirement refers to an undeclared gene or pathway. No investigation was started.") from exc
+        raise PlanningError("The research plan does not satisfy the required schema.") from exc
+    except (TypeError, ValueError) as exc:
         raise PlanningError("The research plan does not satisfy the required schema.") from exc
     _validate_genes(plan.genes)
     return plan
@@ -151,6 +156,8 @@ class ClaudePlanner:
         self.client = client
 
     def plan(self, request: InvestigationRequest) -> ResearchPlan:
+        from anthropic import transform_schema
+
         genes = _input_genes(request)
         # This payload contains intent only. Retrieved text and evidence bundles
         # deliberately have no argument or route into this planning call.
@@ -163,11 +170,19 @@ class ClaudePlanner:
             tools=[{
                 "name": _TOOL_NAME,
                 "description": "Return an unassessed research plan preserving the supplied research intent.",
-                "input_schema": ResearchPlan.model_json_schema(),
+                "input_schema": transform_schema(ResearchPlan),
+                "strict": True,
             }],
-            tool_choice={"type": "tool", "name": _TOOL_NAME, "disable_parallel_tool_use": True},
+            # Some current models reject forced tool choice. Auto keeps this a
+            # single bounded call; below, we still require exactly one valid plan.
+            tool_choice={"type": "auto", "disable_parallel_tool_use": True},
         )
-        if getattr(response, "stop_reason", None) != "tool_use":
+        stop_reason = getattr(response, "stop_reason", None)
+        if stop_reason == "refusal":
+            raise PlanningError("Anthropic declined to create a research plan for this request. No investigation or data collection was started.")
+        if stop_reason == "max_tokens":
+            raise PlanningError("The model reached the planning token limit before completing its plan. No investigation was started.")
+        if stop_reason != "tool_use":
             raise PlanningError("The planning response ended without a complete structured plan.")
         blocks = [item for item in getattr(response, "content", []) if getattr(item, "type", None) == "tool_use"]
         if len(blocks) != 1 or getattr(blocks[0], "name", None) != _TOOL_NAME:
