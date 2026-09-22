@@ -123,7 +123,7 @@ def test_saved_report_renders_links_and_reopens_without_key_or_new_run():
         app.radio(key='experience').set_value('Connect through MCP').run()
         app.radio(key='experience').set_value('Investigate with your key').run()
         assert not app.exception and get.call_count == 1
-        app.button[1].click().run()  # New conversation; clear the saved report link.
+        app.button(key='new_conversation').click().run()  # Clear the saved report link.
         assert not app.query_params.get('report')
         assert not app.metric
 
@@ -134,4 +134,4 @@ def test_invalid_report_link_does_not_trigger_a_request():
         app.query_params['report'] = '../private'
         app.run()
         assert not app.exception
-        assert app.radio(key='experience').value == 'Try the tutorial'
+        assert app.radio(key='page').value == 'intro'
