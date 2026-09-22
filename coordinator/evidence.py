@@ -178,14 +178,19 @@ def _record(entity: str, source: str, value: dict, run: dict,
     elif source == "pubmed":
         metadata = {"endpoint": "literature_search"}
     elif source == "hpa_cell_lines":
+        # neutral in-vitro background; do not name RNA when only protein localization is present
         metadata = {"species": "homo_sapiens", "context": "in_vitro",
-                    "endpoint": "cell_line_rna_and_protein"}
+                    "endpoint": "cell_line_background"}
     elif source == "opentargets_depmap":
         metadata = {"species": "homo_sapiens", "context": "in_vitro",
                     "endpoint": "crispr_fitness_essentiality"}
     elif source == "hpa_pathology":
-        metadata = {"species": "homo_sapiens", "context": "patient", "modality": "RNA",
-                    "endpoint": "cancer_cohort_expression"}
+        # cohort disease background; only label RNA when cancer RNA fields are present
+        pdata = value.get("data") if isinstance(value.get("data"), dict) else {}
+        metadata = {"species": "homo_sapiens", "context": "patient",
+                    "endpoint": "cancer_cohort_background"}
+        if pdata.get("has_cancer_rna"):
+            metadata["modality"] = "RNA"
     explicit = value.get("provenance", [])
     provenance = [p for p in explicit if _text(p)] if isinstance(explicit, list) else []
     return EvidenceRecord(
@@ -214,6 +219,41 @@ def _note_truncation(bundle: EvidenceBundle, source: str, value: dict, gene: str
         _gap(bundle, "source_may_be_truncated", "IMPC returned the 500-row limit; phenotype hit coverage may be incomplete", source, gene)
 
 
+def _adapt_pathway_package(package: dict, bundle: EvidenceBundle, seen: set[str], index: int) -> None:
+    """Adapt a pathway package (schema 0.1-pathway) as BACKGROUND.
+
+    Preserves the pathway id and coverage summary; never promotes membership/coverage
+    counts to measured pathway activity. This handles the pipeline's pathway builder
+    output so it is not rejected as malformed. The full multi-pathway request/collection
+    route remains a separate coordinator integration.
+    """
+    pathway = package.get("pathway") if isinstance(package.get("pathway"), dict) else {}
+    run = package.get("run") if isinstance(package.get("run"), dict) else {}
+    pdata = pathway.get("data") if isinstance(pathway.get("data"), dict) else {}
+    reactome_id = _text(pdata.get("reactome_id")) or _text(run.get("reactome_id"))
+    if not reactome_id:
+        _gap(bundle, "malformed_package", f"Package {index}: pathway package missing a reactome_id")
+        return
+    identity = {"pathway": reactome_id, "summary": package.get("summary")}
+    digest = hashlib.sha256(json.dumps(identity, sort_keys=True, ensure_ascii=True,
+                                       allow_nan=False).encode()).hexdigest()[:24]
+    record = EvidenceRecord(
+        id=f"pathway-{digest}", source="reactome_pathway", entity=reactome_id, level="background",
+        context="reference", endpoint="pathway_membership_and_coverage",
+        source_version=_text(pathway.get("source_version")),
+        retrieved_at=_text(pathway.get("retrieved_at")),
+        payload={"pathway_package": deepcopy(package),
+                 "limitation": "Pathway membership and per-gene coverage counts; "
+                               "not measured pathway activity or a completed comparison."})
+    if record.id not in seen:
+        seen.add(record.id)
+        bundle.records.append(record)
+    _gap(bundle, "pathway_background_only",
+         f"{reactome_id}: pathway membership/coverage is background, not measured pathway "
+         f"activity; a pathway-vs-pathway comparison still needs its own observations",
+         "reactome_pathway", reactome_id)
+
+
 def adapt_packages(packages: list[dict]) -> EvidenceBundle:
     """Adapt schema 0.1 packages without inventing studies, subjects, or observations.
 
@@ -232,6 +272,9 @@ def adapt_packages(packages: list[dict]) -> EvidenceBundle:
                 _gap(bundle, "malformed_package", f"Package {index}: content is not valid finite JSON")
                 continue
             bundle.raw_packages.append(deepcopy(package))
+        if isinstance(package, dict) and package.get("schema_version") == "0.1-pathway":
+            _adapt_pathway_package(package, bundle, seen, index)
+            continue
         if not isinstance(package, dict) or not all(isinstance(package.get(k), dict) for k in ("gene", "run", "sources")):
             _gap(bundle, "malformed_package", f"Package {index}: expected gene, run and sources objects; receipts are not packages")
             continue

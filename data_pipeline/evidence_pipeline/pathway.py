@@ -237,6 +237,21 @@ def aggregate_pathway(reactome_id: str, disease: str, mode: str, run_id: str,
         "note": "shared = also in the reference pathway (e.g. DNA replication); "
                 "not exclusive to this pathway"}
 
+    # patient/disease context: count only genes with SUBSTANTIVE HPA pathology (an
+    # identifier-only row is not_found). Status reflects real availability, not a match.
+    hpa_pat = [_src(p, "hpa_pathology") for p in pkgs]
+    n_disease_bg = sum(1 for r in hpa_pat if r.get("status") == "ok")
+    patients = {
+        "status": "cohort_only" if n_disease_bg else "gap",
+        "n_genes_with_disease_background": n_disease_bg,
+        "n_genes_skipped": sum(1 for r in hpa_pat if r.get("status") == "skipped"),
+        "n_genes_no_data": sum(1 for r in hpa_pat if r.get("status") in ("not_found", "error")),
+        "source": "HPA pathology (TCGA-derived), cohort-level" if n_disease_bg else None,
+        "individual_variation": "not resolved",
+        "gap": "per-patient variation and matched measurements "
+               "(patient/specimen/time-point IDs) — needs dataset analysis "
+               "(GEO / CELLxGENE Census / NCI GDC), out of this layer's scope"}
+
     return {
         "schema_version": "0.1-pathway",
         "run": {"run_id": run_id, "mode": mode, "disease_query": disease,
@@ -257,17 +272,8 @@ def aggregate_pathway(reactome_id: str, disease: str, mode: str, run_id: str,
             "human_reference": {
                 "note": "GTEx baseline + Open Targets association live in each gene "
                         "package; association is skipped in eval mode"},
-            # patient/disease context: cohort-level background present (HPA), but the
-            # individual-variation requirement (v3 §1) stays an explicit gap.
-            "patients": {
-                "status": "cohort_only",
-                "n_genes_with_disease_background": len(
-                    [p for p in pkgs if _src(p, "hpa_pathology").get("status") == "ok"]),
-                "source": "HPA pathology (TCGA-derived), cohort-level",
-                "individual_variation": "not resolved",
-                "gap": "per-patient variation and matched measurements "
-                       "(patient/specimen/time-point IDs) — needs dataset analysis "
-                       "(GEO / CELLxGENE Census / NCI GDC), out of this layer's scope"}},
+            # patient/disease context: cohort_only only when substantive HPA exists (§1).
+            "patients": patients},
         "missing": _pathway_missing(pathway_result, mouse_result, pkgs),
     }
 

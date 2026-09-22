@@ -121,6 +121,51 @@ def test_independent_sources_dedupes_shared_providers():
     assert out["providers"]["GTEx"] == ["opentargets_association", "gtex"]
 
 
+def test_hpa_pathology_identifier_only_is_not_found(monkeypatch):
+    """A matching gene row with no disease/cancer fields is not evidence (issue 2)."""
+    monkeypatch.setattr(S, "http", lambda m, u, **k: [
+        {"Gene": "X", "Ensembl": "ENSG1"}])  # row exists, no di / cancer RNA
+    r = S.hpa_pathology("ENSG1")
+    assert r["status"] == "not_found"
+    # a row with only cancer RNA -> ok, flagged has_cancer_rna
+    monkeypatch.setattr(S, "http", lambda m, u, **k: [
+        {"Ensembl": "ENSG1", "RNA cancer specificity": "Low cancer specificity"}])
+    r2 = S.hpa_pathology("ENSG1")
+    assert r2["status"] == "ok" and r2["data"]["has_cancer_rna"] is True
+    assert r2["data"]["has_disease_annotation"] is False
+
+
+def test_hpa_cell_lines_identifier_only_is_not_found(monkeypatch):
+    """Identifier-only cell-line row is not substantive evidence (issue 2)."""
+    monkeypatch.setattr(S, "http", lambda m, u, **k: [{"Gene": "X", "Ensembl": "ENSG1"}])
+    assert S.hpa_cell_lines("ENSG1")["status"] == "not_found"
+    # protein-only row is ok but flagged has_rna False
+    monkeypatch.setattr(S, "http", lambda m, u, **k: [
+        {"Ensembl": "ENSG1", "Subcellular location": ["Nucleoplasm"]}])
+    r = S.hpa_cell_lines("ENSG1")
+    assert r["status"] == "ok" and r["data"]["has_rna"] is False and r["data"]["has_protein"] is True
+
+
+def test_patients_status_reflects_actual_availability():
+    """patients is 'gap' when no substantive HPA pathology, 'cohort_only' when present (issue 1)."""
+    def pkg(sym, pat_status):
+        return {"gene": {"data": {"symbol": sym}},
+                "sources": {"ensembl_orthology": {}, "impc": {"status": "skipped"},
+                            "hpa_pathology": {"status": pat_status}}}
+    pr = S.result("reactome_pathway", "ok", {}, data={"genes": []})
+    mr = S.result("reactome_orthology", "ok", {}, data={"inferred": True})
+    # all skipped (e.g. eval) -> gap, not cohort_only
+    agg = PW.aggregate_pathway("R", "d", "eval", "r",
+                               [pkg("A", "skipped"), pkg("B", "not_found")], pr, mr)
+    assert agg["summary"]["patients"]["status"] == "gap"
+    assert agg["summary"]["patients"]["n_genes_with_disease_background"] == 0
+    # some substantive -> cohort_only
+    agg2 = PW.aggregate_pathway("R", "d", "explore", "r",
+                                [pkg("A", "ok"), pkg("B", "not_found")], pr, mr)
+    assert agg2["summary"]["patients"]["status"] == "cohort_only"
+    assert agg2["summary"]["patients"]["n_genes_with_disease_background"] == 1
+
+
 def test_hpa_pathology_is_patient_cohort_and_leaks_in_eval():
     """HPA pathology fills the patient context at cohort level; disease-linked → leaks."""
     e = R.SOURCES["hpa_pathology"]

@@ -223,13 +223,19 @@ def hpa_cell_lines(ensg: str) -> dict:
         row = next((r for r in rows if r.get("Ensembl") == ensg), None)
         if not row:
             return result("hpa_cell_lines", "not_found", q, version="HPA")
+        rna = {"cell_line_distribution": row.get("RNA cell line distribution"),
+               "cell_line_specific_ntpm": row.get("RNA cell line specific nTPM")}
+        protein = {"subcellular_location": row.get("Subcellular location"),
+                   "subcellular_main": row.get("Subcellular main location"),
+                   "protein_class": row.get("Protein class")}
+        has_rna = any(v for v in rna.values())
+        has_protein = any(v for v in protein.values())
+        if not has_rna and not has_protein:  # identifier-only row, no substantive evidence
+            return result("hpa_cell_lines", "not_found", q, version="HPA",
+                          data={"reason": "gene row exists but no cell-line RNA/protein fields"})
         return result("hpa_cell_lines", "ok", q, version="HPA", data={
-            "gene": row.get("Gene"),
-            "rna": {"cell_line_distribution": row.get("RNA cell line distribution"),
-                    "cell_line_specific_ntpm": row.get("RNA cell line specific nTPM")},
-            "protein": {"subcellular_location": row.get("Subcellular location"),
-                        "subcellular_main": row.get("Subcellular main location"),
-                        "protein_class": row.get("Protein class")}})
+            "gene": row.get("Gene"), "rna": rna, "protein": protein,
+            "has_rna": has_rna, "has_protein": has_protein})
     except Exception as e:  # noqa: BLE001
         return result("hpa_cell_lines", "error", q, error=repr(e))
 
@@ -250,10 +256,20 @@ def hpa_pathology(ensg: str) -> dict:
         row = next((r for r in rows if r.get("Ensembl") == ensg), None)
         if not row:
             return result("hpa_pathology", "not_found", q, version="HPA")
+        disease = row.get("Disease involvement") or []
+        cancer_spec = row.get("RNA cancer specificity")
+        cancer_dist = row.get("RNA cancer distribution")
+        has_cancer_rna = bool(cancer_spec or cancer_dist)
+        has_disease_annotation = bool(disease)
+        if not has_cancer_rna and not has_disease_annotation:  # identifier-only row
+            return result("hpa_pathology", "not_found", q, version="HPA",
+                          data={"reason": "gene row exists but no disease annotation or cancer RNA"})
         return result("hpa_pathology", "ok", q, version="HPA", data={
-            "disease_involvement": row.get("Disease involvement") or [],
-            "cancer_rna_specificity": row.get("RNA cancer specificity"),
-            "cancer_rna_distribution": row.get("RNA cancer distribution"),
+            "disease_involvement": disease,
+            "cancer_rna_specificity": cancer_spec,
+            "cancer_rna_distribution": cancer_dist,
+            "has_cancer_rna": has_cancer_rna,
+            "has_disease_annotation": has_disease_annotation,
             "granularity": "cohort",
             "individual_variation": "not resolved"})
     except Exception as e:  # noqa: BLE001
