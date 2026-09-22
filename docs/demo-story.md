@@ -22,7 +22,8 @@ published data and explains agreement, disagreement and missing evidence.
    **Use in Claude (MCP)**. A saved `?report=<id>` link opens directly here. API keys,
    model settings, the chosen example and the current report survive page changes
    within the same session. Reloads, server restarts and new sessions can clear keys.
-3. **References** distinguishes methodological inspiration, sources queried by the
+3. **References & structure** introduces the shared architecture and investigation
+   flow, then distinguishes methodological inspiration, sources queried by the
    pipeline, related systems reviewed as candidates, and implementation documentation.
 
 The page copy lives in `research_app/site_pages.py`. Navigation and the workspace
@@ -73,7 +74,26 @@ Show **Use in Claude (MCP)** for the alternative entry point: an existing assist
 can call the same research tools. The server does not require a separate Anthropic
 API key; the connected client's subscription or model charges still apply.
 
-Finish with **References** so people can inspect our rationale, sources and code.
+Finish with **References & structure** so people can inspect our rationale, sources
+and code. Its two diagrams in `research_app/structure_diagrams.py` explain:
+
+1. **One research system, two ways in.** Website chat and Claude MCP use the same
+   coordinator, which collects gene evidence through the separately hosted pipeline
+   and returns saved reports. Website chat uses the visitor's model key for planning;
+   MCP accepts the connected assistant's structured scope. Source synthesis adds no
+   post-retrieval model call. This follows the [integration guide](frontend-integration.md),
+   [MCP guide](mcp.md) and [pipeline flow](../data_pipeline/PIPELINE.md).
+2. **From a question to a report.** Define scope, collect sources, compare findings,
+   review gaps and report next steps. Recoverable collection failures can trigger at
+   most one retry within the budget. This follows the current
+   [coordinator workflow](../coordinator/README.md#execution-and-scientific-meaning) and
+   [investigation-first contract](investigation-first-handoff.md), rather than treating
+   the broader design document as fully implemented.
+
+The expandable scope note distinguishes gene collection from the pipeline's separate
+pathway support and the future work of raw-data analysis and matched-patient comparisons.
+The page remains readable offline without credentials, and the existing references
+remain available below the architecture overview.
 
 ## What is implemented, and what comes next
 

@@ -111,7 +111,7 @@ with st.sidebar:
     st.caption("Cell cultures · Animal models · Patients")
     if page != "research":
         st.markdown("**Start with the story. Follow the evidence.**")
-        st.write("Introduction explains the research idea. Research workspace lets you explore the demo. References shows what informed our approach.")
+        st.write("Introduction explains the research idea. Research workspace lets you explore the demo. References & structure shows how the system works and what informed our approach.")
         st.caption("Guided examples are open to everyone. You only need an API key to ask a new question in the website chat.")
     elif experience == "Investigate with your key":
         st.session_state.setdefault("visitor_model", "claude-opus-5-5")

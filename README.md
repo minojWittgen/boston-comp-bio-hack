@@ -25,7 +25,8 @@ See the [implementation and benchmark handoff](docs/investigation-first-handoff.
 
 Open the [hosted app](https://minoj--xctx-research-web.modal.run). **Introduction**
 explains the scientific rationale. **Research workspace** contains **Guided examples**,
-**Ask your own question**, and **Use in Claude (MCP)**. **References** credits the methods,
+**Ask your own question**, and **Use in Claude (MCP)**. **References & structure** explains
+the shared architecture and investigation flow with diagrams, then credits the methods,
 data sources and reviewed tools, with links to the project's Markdown documentation.
 No access code or API key is needed to explore the story, examples or references.
 Only website chat needs your own API key; MCP uses your connected assistant's model.
