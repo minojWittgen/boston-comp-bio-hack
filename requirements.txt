@@ -1,11 +1,2 @@
-streamlit==1.64.0
-anthropic==0.125.0
-modal==1.5.5
-mcp==2.2.0
-requests==2.34.2
-fastapi==0.141.1
-scipy==1.17.1
-pydantic==2.13.5
-jsonschema==4.26.0
-httpx2==2.13.0
-uvicorn==0.53.0
+-r coordinator/requirements.txt
+-r requirements-ui.txt

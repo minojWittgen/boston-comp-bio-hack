@@ -1,130 +1,118 @@
 # Boston Computational Biology Hackathon — Team Workspace
 
-Shared code and notes for our team's project at the [Boston Computational Biology Hackathon](https://luma.com/boston-comp-bio-hack), hosted by Anthropic, Modal, and Flagship Pioneering.
+Research chat, API and MCP for the team's cross-context investigation coordinator.
+Scientific behavior comes from [`coordinator/`](coordinator/README.md), integrated from
+`codex/investigation-coordinator` at `f7578e7`. Frontend and transport adapters live in
+`research_app/`; there is one planner, evidence adapter, checker and research engine.
 
-## Get started
+The coordinator compares **declared observations**. It currently does not generate
+experimental measurements or run a new statistical analysis. Real empirical data
+still needs the team's observation/analysis adapter. Source retrieval is background,
+not biological validation.
 
-```bash
-git clone https://github.com/minojWittgen/boston-comp-bio-hack.git
-cd boston-comp-bio-hack
-git switch -c your-name/short-task
-```
+## Run the integrated app locally
 
-## Run the shared investigation service
-
-This implementation is on `codex/coordinator-modal-mcp`, based on the team's
-`jaeeun-wittgen/data-pipeline` branch. Check out this branch before following the
-commands below while it is awaiting integration into `main`.
-
-The coordinator, Streamlit frontend and MCP adapter share one investigation service.
-The scientific scope is in [the canonical design](cross-context-biology-agent.md);
-the implemented workflow and its limits are in [the coordinator guide](docs/coordinator.md).
-The chat flow and internal contract are documented in [chat-and-contract.md](docs/chat-and-contract.md).
+From this branch (`codex/coordinator-modal-mcp`):
 
 ```bash
 python3.11 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements-dev.txt
+.venv/bin/python -m pip install -r requirements-dev.txt
+XCTX_RUN_DIR=/tmp/xctx-investigations .venv/bin/python -m uvicorn research_app.api:create_app --factory --host 127.0.0.1 --port 8000
 ```
 
-For a local numerical demonstration without API credentials, start the service:
+In a second terminal:
 
 ```bash
-COORDINATOR_MODEL_ENABLED=0 python -m uvicorn coordinator.api:local_app --factory --host 127.0.0.1 --port 8000
+.venv/bin/python -m streamlit run streamlit_app.py
 ```
 
-In a second terminal, with the virtual environment activated:
+Open **http://127.0.0.1:8501**. The sidebar offers two explicit synthetic examples:
+
+| Example | Execution | Evidence conclusion |
+| --- | --- | --- |
+| Disagreement across contexts | complete | conflicting |
+| Missing observations | partial | not_assessable |
+
+Both run the team's coordinator with its own declared fixtures and directory provider.
+They require no model credentials and do not contact live sources. An ordinary chat
+request never silently falls back to these fixtures.
+
+For real free-text questions, configure `ANTHROPIC_API_KEY` and `ANTHROPIC_MODEL` in the
+API server environment. The model is explicitly selected; there is no default model.
+Leave `XCTX_EVIDENCE_DIR` unset to use the Modal evidence collector. Modal authentication
+and access to `xctx-evidence` / `xctx-cache` are also required for live collection.
+For an intentional local replay, use an absolute `XCTX_EVIDENCE_DIR` with packages that
+match the request's gene, disease and mode. See the [coordinator guide](coordinator/README.md).
+
+## Integration contract
+
+- `POST /investigations` accepts the team's nested **`Submission`**: `request` and
+  optional `observations`. It returns `run_id`, `status`, and `status_url`.
+- `POST /chat` accepts `prompt` and optional `previous_investigation_id`. It wraps
+  researcher-authored text in a canonical request and uses the same coordinator.
+- `GET /investigations/{run_id}` returns the canonical **`RunState`** unchanged.
+- `GET /investigations/{run_id}/report` returns Markdown, or HTTP 409 before available.
+- `POST /demos` explicitly selects one of the two documented synthetic fixtures.
+- `/mcp/` exposes `start_investigation` and `get_investigation` over Streamable HTTP.
+- `/openapi.json` and `coordinator/models.py` are the contract sources of truth.
+
+The Python frontend imports these schemas directly; it does not maintain a copy.
+The UI shows execution status, scientific conclusion, all three contexts, proposed
+scope/assumptions, criterion evidence IDs, provenance, gaps and activity separately.
+It provides Markdown and full-evidence downloads. No contract JSON editor is needed.
+
+Read the [frontend/backend integration guide](docs/frontend-integration.md),
+[chat contract guide](docs/chat-and-contract.md), and
+[team coordinator handoff](coordinator/README.md).
+
+## Deploy the integrated frontend and backend on Modal
+
+The existing pipeline must be available in the selected workspace: app `xctx-evidence`,
+function `build_one`, volume `xctx-cache`.
+
+Configure Modal secret **`xctx-research-secrets`** with:
+
+- `ANTHROPIC_API_KEY`
+- `ANTHROPIC_MODEL` (an explicitly chosen provider model)
+- `COORDINATOR_API_TOKEN` (a random shared team access code)
+
+The earlier `INVESTIGATION_API_TOKEN` name remains supported if the canonical token
+name is absent. Keep its value out of Git. The generated local access code, if present,
+is in the ignored `.env.demo` file. `COORDINATOR_SECRET_NAME=xctx-coordinator` can select
+the team's existing secret instead. A deployment-time `ANTHROPIC_MODEL` can explicitly
+override the secret's model setting.
 
 ```bash
-streamlit run streamlit_app.py
+.venv/bin/modal deploy modal_app.py
 ```
 
-Open the displayed local URL and click **Try synthetic investigation** in the sidebar.
-The chat interface sends the request to the backend. The numerical
-workflow executes; the report explicitly labels the data synthetic and the model
-interpretation disabled. This is a software demonstration, not a real finding or
-held-out evaluation. To run Claude locally, configure `ANTHROPIC_API_KEY` in the
-server environment and omit `COORDINATOR_MODEL_ENABLED=0`. Live reference retrieval
-also needs Modal access to the existing pipeline workspace.
+The integrated app is **`xctx-research`**, with `api` (canonical HTTP + chat/MCP),
+`run_investigation` (team coordinator in a detached worker), and `web` (Streamlit).
+The frontend finds this deployment's API automatically. The MCP URL is the printed API
+URL plus `/mcp/`. Cloud calls preserve worker IDs and the team's polling reconciliation.
+Finished artifacts also go to `xctx-investigation-artifacts`.
 
-## Deploy to Modal
+The separate `coordinator/modal_app.py` remains the team's standalone HTTP deployment.
+Use the root `modal_app.py` for this combined chat/MCP frontend. Both run the same engine.
+The hosted UI and API require the same team access code; this is shared demo access,
+not per-user authorization or OAuth. OAuth-only MCP clients need a separate adapter.
 
-1. Run `modal setup` and select the workspace/environment containing the existing
-   `xctx-evidence` app and `xctx-cache` volume. The pipeline is maintained under
-   [data_pipeline](data_pipeline/README.md).
-2. In the Modal dashboard, create the secret **`xctx-research-secrets`** containing
-   `ANTHROPIC_API_KEY` and a random `INVESTIGATION_API_TOKEN`. Keep values out of Git.
-   Use the investigation token as the hosted frontend's team access code.
-3. Deploy:
-
-```bash
-modal deploy modal_app.py
-```
-
-The deployment defines `run_investigation` (background worker), `api` (REST and MCP),
-and `web` (Streamlit). Deployment prints the API and frontend URLs. The MCP URL is
-the API URL followed by **`/mcp/`**. The frontend uses that same API; it has no separate
-research or model loop.
-
-Configuration overrides, set before deployment: `COORDINATOR_SECRET_NAME`,
-`ANTHROPIC_MODEL`, `EVIDENCE_APP_NAME`, `EVIDENCE_VOLUME_NAME`, and
-`EVIDENCE_ENVIRONMENT`. Run `modal deploy --env <environment> modal_app.py` when using
-a non-default Modal environment. Workspaces are selected through the Modal profile.
-
-## Use the API or MCP
-
-`POST /chat` accepts `{ "prompt": "your research question" }` and starts conversational
-intake. Send `previous_investigation_id` with a reply to continue. The frontend has no
-contract editor: Claude frames the intent and the server builds the internal request.
-`POST /investigations` remains available for structured integrations;
-`GET /investigations/{id}` returns progress and results for both entry points. Both require a bearer token when one is configured. The complete request
-example is [examples/development-investigation.json](examples/development-investigation.json).
-Scientific criteria are immutable during execution. Chat can first explore background
-evidence without numerical validation; missing comparison rules are discussed in chat.
-Structured validation requests without confirmed criteria return `needs_input`.
-
-The MCP exposes `start_investigation(request)` and `get_investigation(investigation_id)`.
-The start tool accepts a prompt object or the full structured request.
-It uses Streamable HTTP and the same bearer token. Test a real MCP connection:
-
-```bash
-# Set INVESTIGATION_API_TOKEN in your environment for a protected endpoint.
-python scripts/smoke_mcp.py http://127.0.0.1:8000/mcp/
-# Replace the local URL with the deployed API URL plus /mcp/ for the cloud test.
-```
-
-This tests a synthetic investigation through the actual MCP transport. Clients must
-support bearer authorization headers. OAuth-only connector setup is not implemented;
-Claude web/Science connectivity has not been verified. The bundled Python client is
-the reference connection test.
+**This integration has been verified locally; the integrated cloud app is not deployed.**
+As of this handoff, the workspace's model key and model setting are still missing.
 
 ## Verify
 
 ```bash
-python -m pytest tests data_pipeline/tests -q
+.venv/bin/python -m pytest tests coordinator/tests data_pipeline/tests -q
+.venv/bin/python scripts/smoke_mcp.py http://127.0.0.1:8000/mcp/
 ```
 
-Tests cover numerical contrasts, missing contexts, incorrect patient pairing,
-metadata recovery followed by disagreement, species mapping, assay meaning,
-duplicate replicates, budgets, model citation/status checks, HTTP access, and MCP
-sharing the same run state. Cloud credentials and live model calls require a separate
-deployment smoke test.
+The MCP smoke test explicitly runs the synthetic conflict fixture and expects
+`complete / conflicting`. Tests do not call paid models or claim scientific validation.
 
 ## Work together
 
-- Use GitHub Issues to record tasks, owners, and the next concrete step.
-- Work on a branch and open a pull request when a change is ready to share.
-- Ask the repository owner for collaborator access to push branches. Without write access, fork the repository and submit a pull request if it is public.
-- Keep API keys in local environment variables or the deployment platform's secret store.
-- Keep datasets, model weights, and generated results outside Git; document their source and retrieval steps.
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the contribution workflow.
-
-## Team decisions
-
-- [ ] Choose a problem, intended user, and demo outcome.
-- [ ] Add teammates as GitHub collaborators.
-- [x] Choose the runtime and dependency setup (Python 3.11; pinned SDK dependencies).
-- [ ] Set up shared Modal access and Claude API access as needed.
-- [ ] Document the data source, evaluation method, and demo instructions.
-- [ ] Agree on a license before distributing the project for reuse.
+Use feature branches and pull requests. Keep keys and generated data out of Git.
+The team's [canonical scientific design](cross-context-biology-agent.md) defines the
+broader research scope; the current gene pipeline and declared-observation checks
+are only the implemented adapters. See [CONTRIBUTING.md](CONTRIBUTING.md).

@@ -1,113 +1,77 @@
-# Research chat and the internal investigation contract
+# Chat input and the team's investigation contract
 
-The user writes a research question, not JSON. The frontend sends the question to
-`POST /chat`; a background worker uses Claude through the Anthropic SDK to extract
-the intent, genes, disease and next feasible step. Modal hosts the service and
-workers; it does not host Claude model weights. The Streamlit app has no model key
-or independent research loop.
-
-## From message to investigation
-
-```text
-Research message → Claude intake → validated internal request
-                               ├─ missing intent → conversational clarification
-                               ├─ gene question → background exploration + explicit gaps
-                               └─ complete comparison rules → readable proposed criteria
-                                                              ↓ researcher confirmation
-                                          frozen contract → coordinator → checked report
-```
-
-Each message starts a new background job and returns an ID immediately. A reply
-includes the previous job ID so the backend can retain the conversation and draft.
-Previous runs remain unchanged. Intake drafts have `contract_hash: null`; a SHA-256
-hash is assigned only when execution inputs have been assembled and frozen.
-
-Example initial request:
+The user writes a question. `POST /chat` wraps it in the team's canonical
+`Submission(request=InvestigationRequest(question=...))`. The coordinator's
+`AutoPlanner` selects `ClaudePlanner` for natural language, freezes the resulting
+`ResearchPlan` before collection, and performs its own evidence checks. No second
+intake model or scientific schema is maintained by the frontend.
 
 ```json
-{
-  "prompt": "What evidence connects TYK2 to psoriasis across cell experiments, animal models and patients?"
-}
+{"prompt": "Compare TYK2 RNA abundance in human cell cultures, mouse models and psoriasis patients."}
 ```
 
-Example follow-up:
+The response is HTTP 202:
 
 ```json
-{
-  "prompt": "Focus on protein abundance in skin.",
-  "previous_investigation_id": "<id returned by the previous request>"
-}
+{"run_id": "<32-character identifier>", "status": "queued", "status_url": "/investigations/<id>"}
 ```
 
-Poll `GET /investigations/{id}` every three seconds. The `chat.messages` array contains
-the conversation, `chat.reply` the latest assistant message, and the existing
-`report`, `reference_packages`, `events`, and `usage` fields contain the research
-result. The API rejects replies while the parent is still running. Conversations
-are limited to 20 input/history messages and 24,000 characters before starting a
-new conversation; each user prompt is limited to 4,000 characters.
+Poll the status URL at least three seconds apart. Inspect `status` separately from
+`assessment.conclusion`. `report` contains the team's Markdown result; it is also
+available from `GET /investigations/{run_id}/report`.
 
-The same MCP tool accepts either this prompt object or the full structured request:
+## Clarifying a question
 
 ```json
-{"request": {"prompt": "Investigate TYK2 and psoriasis across biological contexts"}}
+{"prompt": "Focus on skin tissue.", "previous_investigation_id": "<completed run id>"}
 ```
 
-`start_investigation` returns the ID; `get_investigation` returns the same state
-that the frontend reads. This remains a two-tool MCP adapter.
+The adapter appends the clarification to the parent's original researcher-authored
+question. It does not put previous evidence, reports or assistant conclusions into
+intent planning. The new question receives a new run and plan; earlier states remain
+unchanged. Replies while a job is running are rejected. The combined question must
+fit the team's 6,000-character bound; individual chat messages are limited to 4,000.
 
-## What the contract contains
+The UI keeps conversation messages in the Streamlit session. Canonical saved runs
+contain the research question, plan and results, not a separate chatbot message log.
+Starting a real question after a synthetic example uses fresh intent, not fixture data.
 
-`coordinator/models.py` defines the authoritative, validated schema.
+## Structured integrations
 
-| Field | Meaning |
-| --- | --- |
-| `intent` | Research question framed from the conversation |
-| `phase` | `exploration` for background evidence, or `validation` for numerical comparisons |
-| `genes`, `disease` | Scope of reference retrieval; at most three gene symbols |
-| `criteria` | Explicit study/context/species/tissue, feature, assay quantity/modalities, comparison conditions and times, expected direction, minimum effect, minimum biological pairs, confidence level, pairing rule and rationale |
-| `criteria_confirmed` | Whether the researcher has approved the displayed comparison rules |
-| `observations` | Source-linked processed measurements with context, measured/host species, assay/unit, subject, specimen and time identifiers |
-| `species_mappings` | Declared orthology and review status |
-| `available_sample_maps` | Declared metadata sources for recovering missing sample identity |
-| `reference_packages` | Background packages supplied by a caller |
-| `retrieve_reference`, `reference_required` | Retrieval choice and dependency status |
-| `budget` | Wall-time, tool-call, model-call, output-token and total-token limits |
+Teammates can call `POST /investigations` with the exact nested `Submission` described
+in [the coordinator guide](../coordinator/README.md). It includes:
 
-A gene-centered prompt can begin **exploration** immediately. All three scientific
-contexts remain visible as `not_assessable` without suitable study comparisons.
-The overall research result remains `partial` even when background collection
-succeeds. Reference-source failures are preserved; required technical failures
-produce failed execution, never a biological negative.
+- `request.question`, `genes`, `disease`, and `mode`;
+- explicit `requirements`, `comparisons`, optional versioned `pathway` membership,
+  and bounded `max_revisions`;
+- separate `observations` with provenance, study/subject/specimen/time IDs, biological
+  scope, observed directions and declared comparison bases.
 
-For **validation**, the intake model can propose complete rules from choices in the
-conversation, but it cannot set authorization or generate observations. The server
-renders the rules in ordinary language, including thresholds and the paired t
-interval method. The exact reply **Use these criteria** confirms that pending draft
-in a new run. Any other reply returns to intake. No criteria are silently changed
-once execution begins. Missing choices are asked about in the conversation.
+Import `coordinator.models` in Python, or generate types from `/openapi.json`. Do not
+send the previous draft's bare `intent`, `criteria`, numerical-measurement or
+`criteria_confirmed` payload. There is no current "Use these criteria" command:
+proposed scope is displayed as assumptions under the team's planning semantics.
 
-The current chat intake does not ingest measurement files. Teammates supply real
-processed measurements, mappings and full comparison contracts through the
-existing `POST /investigations` integration. Chat history is not a source of assay
-values. Broad dataset discovery and raw-data processing remain separate adapters;
-the gene pipeline is only background retrieval. See [coordinator.md](coordinator.md)
-for the implemented numerical method and full scientific limitations.
+The model can propose a research plan, but cannot supply `criteria_met`, fabricate
+observations, or certify mappings and comparison bases. Those scientific boundaries
+are enforced and documented by the coordinator. Its current checks compare declared
+directions and metadata; they are not statistical inference or independent biological
+validation. See [coordinator/AGENTS.md](../coordinator/AGENTS.md).
 
-## Model and demo behavior
+## MCP and synthetic examples
 
-Claude is called for conversational intake, optionally for choosing among eligible
-tools, and for explaining the checked report. These calls share one per-run token
-and call budget. The model cannot change computed statuses or cite unknown evidence
-IDs. Free-text explanations still require scientific review.
+`start_investigation(request)` accepts a canonical nested Submission, a chat object,
+or an explicit demo object. `get_investigation(investigation_id)` returns the same
+canonical state as HTTP.
 
-The sidebar's **Try synthetic investigation** sends `demo: true`. The backend loads
-the versioned fixture and preset criteria, performs real numerical calculations on
-fabricated measurements, and labels the result synthetic. This works in explicit
-local model-disabled mode without pretending an LLM was called. Ordinary chat in
-that mode reports that the Claude connection is disabled. A demo cannot be mixed
-into an existing conversation; start a new conversation first.
+```json
+{"request": {"demo": "cross-context-conflict"}}
+```
 
-For live chat, the deployed `xctx-research-secrets` Modal secret needs
-`ANTHROPIC_API_KEY` and `INVESTIGATION_API_TOKEN`. The latter protects both API/MCP
-and the hosted frontend. Never commit their values. The local generated access code
-is in the ignored `.env.demo` file when provisioned by the deployment operator.
+HTTP clients can send `{"demo":"cross-context-conflict"}` to `/demos`. The other
+supported fixture is `missing-evidence`. The server loads the team's examples and uses
+its directory evidence provider. Fixture selection is explicit and labeled; an ordinary
+chat or structured request never triggers this fallback.
+
+Natural planning needs both `ANTHROPIC_API_KEY` and an explicitly configured
+`ANTHROPIC_MODEL`. Explicit criteria and the two fixtures need no model credentials.
