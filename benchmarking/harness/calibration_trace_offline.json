@@ -2,9 +2,9 @@
   "_what": "Public calibration trace (OFFLINE stand-in for the two model calls; everything else is the real pipeline + real coordinator). Re-run with a real key to replace this.",
   "execution_status": "completed",
   "versions": {
-    "repo": "e267400",
-    "data_pipeline": "e267400",
-    "coordinator": "e267400"
+    "repo": "e25d1c7",
+    "data_pipeline": "e25d1c7",
+    "coordinator": "e25d1c7"
   },
   "fake_llm": true,
   "stages": [
