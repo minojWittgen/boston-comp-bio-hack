@@ -60,7 +60,7 @@ def test_frontend_examples_use_real_coordinator_and_report(tmp_path, name, statu
         assert [r['total'] for r in cards] == [1, 1, 2]
         assert cards[2]['passed'] == (2 if status == 'complete' else 0)
         summary = assistant_summary(state)
-        assert status in summary and conclusion.replace('_', ' ') in summary
+        assert ('not enough comparable evidence' if conclusion == 'not_assessable' else 'measurements disagree') in summary
         assert 'synthetic' in summary.lower()
 
 

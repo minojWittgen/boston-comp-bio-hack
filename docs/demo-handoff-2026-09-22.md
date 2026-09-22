@@ -148,3 +148,9 @@ Archived results: `xctx-investigation-artifacts`. Former private runs stay separ
 - [Anthropic tool choice](https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools)
 - [Anthropic strict outputs and SDK schema transformation](https://platform.claude.com/docs/en/build-with-claude/structured-outputs)
 - [Chat contract](chat-and-contract.md) and [frontend integration](frontend-integration.md)
+
+## Research report UI update
+
+See [researcher-facing reports](researcher-report-ui.md) for the clearer labels, source links,
+study/sample traceability, readable exports and saved-report links. The scientific result
+and original data remain unchanged; a finished search can still have insufficient evidence.

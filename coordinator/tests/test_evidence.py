@@ -55,7 +55,7 @@ def test_cell_line_sources_keep_mixed_modality_and_fitness_as_background():
     raw = package()
     raw['sources']['hpa_cell_lines'] = source('hpa_cell_lines', {'rna_summary': 'detected', 'protein_location': ['nucleus']})
     raw['sources']['opentargets_depmap'] = source('opentargets_depmap', {'essentiality': [{'cellLine': 'example', 'score': -0.7}]})
-    raw['sources']['hpa_pathology'] = source('hpa_pathology', {'cancer_expression': {'breast cancer': 'example cohort summary'}})
+    raw['sources']['hpa_pathology'] = source('hpa_pathology', {'disease_involvement': ['breast cancer'], 'cancer_rna_specificity': 'Low cancer specificity', 'has_cancer_rna': True, 'has_disease_annotation': True})
     bundle = adapt_packages([raw])
     records = {r.source: r for r in bundle.records}
     assert not bundle.gaps
@@ -69,6 +69,17 @@ def test_cell_line_sources_keep_mixed_modality_and_fitness_as_background():
         assert record.level == 'background'
         assert record.direction is None and record.study_id is None and record.subject_id is None
         assert record.payload['source_result'] == raw['sources'][record.source]
+
+
+def test_disease_annotation_without_cancer_rna_is_not_labeled_rna():
+    raw = package()
+    raw['sources']['hpa_pathology'] = source('hpa_pathology', {
+        'disease_involvement': ['Cancer-related genes'], 'has_cancer_rna': False,
+        'has_disease_annotation': True,
+    })
+    patient = next(r for r in adapt_packages([raw]).records if r.source == 'hpa_pathology')
+    assert patient.context == 'patient' and patient.modality is None
+    assert patient.level == 'background'
 
 
 def test_statuses_are_distinct_and_only_error_is_retryable():
