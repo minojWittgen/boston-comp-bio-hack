@@ -126,7 +126,9 @@ def main():
     ct = CorpusTools(pm, pc, Usage("probe", {**pm["limits"], "max_data_tool_calls": 10**6, "wall_clock_seconds": 10**6}))
     r = ct.read_file("../../../../held_out/primary_rubric.json"); probe("primary read_file: .. escape to held_out", r["status"] == "rejected")
     r = ct.read_file(str((ROOT / "held_out" / "primary_rubric.json").resolve())); probe("primary read_file: absolute path outside corpus", r["status"] == "rejected")
-    r = ct.python_eval("f = open_corpus('../../../../held_out/primary_rubric.json')"); probe("primary python_eval: open_corpus outside corpus", r["status"] == "error")
+    # read_text is the current helper; open_corpus was removed in v4, so probing it only raised NameError
+    r = ct.python_eval("f = read_text('../../../../held_out/primary_rubric.json')")
+    probe("primary python_eval: read_text outside corpus", r["status"] == "error" and "not a permitted corpus file" in str(r.get("error", "")))
     r = ct.python_eval("f = open('/etc/hostname')"); probe("primary python_eval: builtin open() unavailable", r["status"] == "error")
     r = ct.python_eval("import os"); probe("primary python_eval: import unavailable", r["status"] == "error")
     probe("primary: no rubric/answer file inside primary/", not any("rubric" in q.name or "answer" in q.name for q in (ROOT / "primary").rglob("*")))

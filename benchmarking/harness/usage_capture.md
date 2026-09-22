@@ -1,6 +1,6 @@
 # Capturing `usage` fairly
 
-Updated for v3 (handoff 2026-09-22). Covers both suites: **primary** (`baseline` vs
+Updated for v4 (handoff 2026-09-22). Covers both suites: **primary** (`baseline` vs
 `integrated`) and **secondary** (`A0` / `A` / `B` / `C`). The principle is unchanged — **sum
 the provider's `usage` object, never estimate from text** — but who does the summing changed,
 and in the primary suite *what counts as the run* changed too.
@@ -74,14 +74,20 @@ normalization → coordinator). The fairness risk is different here: the integra
 - If stages use different models, record `_system_internal.model_inventory`. A cheap model on
   one stage and an expensive one on another is a real cost profile, not a rounding detail.
 - **Every corpus tool call costs data budget** — `list_files`, `read_file`, `search` and
-  `python_eval` all call `usage.add_tool("data")`. With `max_data_tool_calls: 6` against 15
-  permitted files, reading everything is not a viable strategy for either system. That
-  pressure is deliberate and applies equally.
+  `python_eval` all call `usage.add_tool("data")`. The budget is deliberately tighter than the
+  corpus (24 calls against 24 permitted files on p01–p03; 28 against 38 on p04), so reading
+  everything is not a viable strategy for either system. That pressure applies equally.
 
-`bench/integrated_adapter.py` raises until the real extraction path exists. If it is not
-ready, run the secondary suite and report its narrower scope — **do not** hand the integrated
-side pre-extracted observations the baseline never got. That is the one substitution that
-would invalidate the comparison outright.
+As of v4 `bench/integrated_adapter.py` runs the real system end to end, so the integrated side
+is measured rather than stubbed. The standing rule still holds: **do not** hand it
+pre-extracted observations the baseline never got. If a stage is not ready, run the secondary
+suite and report its narrower scope — substituting hand-authored evidence for our side is the
+one change that would invalidate the comparison outright.
+
+Because the adapter drives several stages, check `usage.llm_calls` and
+`_system_internal.model_inventory` against the stage list before trusting a total. A stage
+whose client was not wrapped contributes zero tokens and will silently flatter the integrated
+system.
 
 ## Configuration C (the team's coordinator)
 
@@ -129,6 +135,12 @@ reports raw counts (`passes/runs`) for `integrity`, `execution`, each `axis:<id>
 `required_actions`, and `ALL_ROWS`; plus per-config totals for LLM calls, every token
 category, data-tool and bookkeeping calls, wall clock, `tokens_median_per_run`,
 `tokens_per_passed_run`, and `estimated_cost_usd_total`.
+
+As of v4 the grader **excludes unverified usage from all totals** rather than counting it:
+each entry carries `usage_verified`, and any run whose signature failed is listed under
+`summary.json → usage_unavailable_runs`. Check that list before quoting a cost — a total that
+silently omits half the runs is worse than no total. The run still counts in the correctness
+denominator; only its tokens are dropped.
 
 Report raw counts, not percentages — three cases and one replicate do not support a rate.
 Timeouts are failures. Repeats measure run variability, not more biological tasks.
