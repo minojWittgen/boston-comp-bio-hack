@@ -4,8 +4,9 @@ from unittest.mock import patch
 import pytest
 from streamlit.testing.v1 import AppTest
 
-from coordinator.models import EvidenceBundle, EvidenceRecord, Gap
-from research_app.presentation import assistant_summary, comparison_views, search_status
+from coordinator.models import (EvidenceBundle, EvidenceRecord, Gap, InvestigationAssessment,
+    ResearchComparison, ResearchCoverage, ResearchFinding, RunState)
+from research_app.presentation import assistant_summary, comparison_views, context_coverage, search_status
 from research_app.report_ui import markdown_report
 from research_app.sources import MISSING, safe_url, source_view
 from research_app.tutorials import tutorial
@@ -18,6 +19,7 @@ def record(source, data=None, query=None, **kwargs):
 
 def live_state():
     state = tutorial('missing-evidence')
+    state.investigation = None  # Historical reports preserve their original interpretation.
     state.run_id = 'f' * 32
     state.request.question = 'Compare gene RNA in cells, mice and patients'
     state.plan.question = state.request.question
@@ -27,6 +29,27 @@ def live_state():
         record('opentargets_depmap', {'n_tissues': 1, 'tissues': [{'tissueName': 'colon', 'screens': [
             {'cellLineName': 'HT29', 'geneEffect': -.1, 'expression': 4.2}]}]}, {'ensg': 'ENSG00000076242'}),
     ])
+    for item in state.evidence.records:
+        item.id = item.source
+    return state
+
+
+def investigation_state():
+    state = live_state()
+    state.status = 'complete'
+    state.investigation = InvestigationAssessment(
+        criteria_met=True, completion_reason='The requested sources were investigated and their limits documented.',
+        findings=[ResearchFinding(evidence_id=r.id, entity=r.entity, source=r.source,
+                    summary=source_view(r).summary, limitations=[source_view(r).limitation]) for r in state.evidence.records],
+        coverage=[ResearchCoverage(requirement_id=r.id, status='addressed' if r.context == 'in_vitro' else 'limited',
+                    evidence_ids=[state.evidence.records[2].id] if r.context == 'in_vitro' else [],
+                    detail='Cell-line screens are available.' if r.context == 'in_vitro' else 'Retrieved categories provide partial context; matching cohorts remain an open question.')
+                  for r in state.plan.requirements],
+        comparisons=[ResearchComparison(id=state.plan.comparisons[0].id,
+                    left_evidence_ids=['opentargets_depmap'], right_evidence_ids=['hpa_pathology'],
+                    summary='Cell-line screens report expression 4.2; patient results report cancer-cohort categories.',
+                    limitations=['These endpoints do not share a measurement scale.'])],
+        limitations=['Patient matching has not been established.'], next_steps=['Inspect the retrieved study links.'])
     return state
 
 
@@ -61,6 +84,8 @@ def test_source_measurements_are_visible_without_becoming_validated_observations
     depmap = source_view(state.evidence.records[2])
     assert depmap.table[0]['Cell line'] == 'HT29'
     assert depmap.table[0]['CRISPR gene-effect score'] == -.1
+    assert 'required by this question' not in depmap.limitation
+    assert 'expression units' in depmap.limitation
     assert depmap.identities['Study ID'] == MISSING
     pathology = source_view(state.evidence.records[1])
     assert 'cohort' in pathology.limitation and 'not resolved' in pathology.limitation
@@ -92,6 +117,7 @@ def test_missing_source_fields_never_invent_an_identity_or_break_the_report(sour
 
 def test_readable_report_and_comparisons_keep_science_but_remove_internal_diagnostics():
     state = tutorial('cross-context-conflict')
+    state.investigation = None
     before = state.model_dump_json()
     views = comparison_views(state)
     assert any(v['conclusion'] == 'Measurements disagree' for v in views)
@@ -135,3 +161,66 @@ def test_invalid_report_link_does_not_trigger_a_request():
         app.run()
         assert not app.exception
         assert app.radio(key='page').value == 'intro'
+
+
+def test_investigation_findings_drive_summary_coverage_and_export():
+    state = investigation_state()
+    before = state.model_dump_json()
+    assert state.assessment.conclusion == 'not_assessable'
+    summary = assistant_summary(state)
+    assert 'Investigation complete' in summary
+    assert 'not enough comparable evidence' not in summary
+    assert context_coverage(state)[0]['passed'] == 1
+    assert 'Cell-line screens' in context_coverage(state)[0]['detail']
+    assert comparison_views(state)[0]['detail'] == state.investigation.comparisons[0].summary
+    report = markdown_report(state)
+    from coordinator.engine import render_report
+    assert report.startswith(render_report(state).rstrip())
+    assert '4.2' in report and 'HT29' in report
+    assert 'https://pubmed.ncbi.nlm.nih.gov/42770890/' in report
+    assert 'Patient matching has not been established.' in report
+    assert 'Inspect the retrieved study links.' in report
+    assert state.model_dump_json() == before
+
+
+def test_new_report_reopens_without_model_and_keeps_legacy_verdict_secondary():
+    state = investigation_state()
+    with patch('research_app.client.InvestigationClient.get', return_value=state), \
+         patch('research_app.client.InvestigationClient.chat', side_effect=AssertionError('No model call')):
+        app = AppTest.from_file('../streamlit_app.py')
+        app.query_params['report'] = state.run_id
+        app.run()
+        assert not app.exception
+        assert [m.value for m in app.metric] == ['Finished', 'Complete']
+        assert [tab.label for tab in app.tabs] == ['Findings', 'Comparisons', 'Sources', 'What we needed to answer']
+        visible = '\n'.join(item.value for item in list(app.markdown) + list(app.caption))
+        assert 'expression 4.2' in visible
+        assert 'not enough comparable evidence' not in visible.lower()
+        assert any('PMID 42770890' in link.label for link in app.get('link_button'))
+
+
+def test_incomplete_investigation_and_old_saved_schema_remain_distinct():
+    state = investigation_state()
+    state.status = 'partial'
+    state.investigation.criteria_met = False
+    state.investigation.completion_reason = 'One required source failed during collection.'
+    assert 'Collection incomplete' in assistant_summary(state)
+    raw = live_state().model_dump(mode='json')
+    raw.pop('investigation')
+    raw['schema_version'] = '0.1'
+    legacy = RunState.model_validate(raw)
+    assert legacy.investigation is None
+    assert 'not enough comparable evidence' in assistant_summary(legacy)
+
+
+def test_optional_observation_comparison_stays_secondary():
+    state = tutorial('cross-context-conflict')
+    assert state.investigation is not None and state.assessment.conclusion == 'conflicting'
+    assert any(v['conclusion'] == 'Measurements disagree' for v in comparison_views(state, observation_only=True))
+    with patch('research_app.client.InvestigationClient.get', return_value=state):
+        app = AppTest.from_file('../streamlit_app.py')
+        app.query_params['report'] = state.run_id
+        app.run()
+        assert not app.exception
+        assert [m.value for m in app.metric] == ['Finished', 'Complete']
+        assert any(e.label == 'Optional comparison of supplied study observations' for e in app.expander)

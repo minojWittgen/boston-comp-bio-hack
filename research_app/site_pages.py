@@ -60,14 +60,14 @@ def introduction():
         st.markdown("**What you can try today**")
         st.write(
             "Walk through two guided reports, search public gene references with your own question, "
-            "or use the same research tools inside Claude through MCP. Each report connects its conclusion "
-            "to the evidence found and the requirements set for the question."
+            "or use the same research tools inside Claude through MCP. Each report explains source findings, "
+            "differences between contexts, uncertainties and next research steps."
         )
         st.caption(
-            "The live search currently retrieves database summaries and publication references. The workflow "
-            "can compare directions of change in separately supplied study observations; the guided examples "
-            "demonstrate this with synthetic observations. Extracting real study measurements, harmonizing "
-            "datasets and running new numerical analyses are the next steps toward the broader research goal."
+            "Today’s reports interpret retrieved database findings at their reported scope. Finishing a search "
+            "does not mean the biological question is settled. The workflow can also compare directions of "
+            "change in separately supplied study observations. Extracting real study measurements, harmonizing "
+            "datasets and running new numerical analyses are further steps toward the broader research goal."
         )
     st.button("Ask your own research question", on_click=open_workspace,
               args=("Investigate with your key",), width="content")

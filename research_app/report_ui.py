@@ -47,6 +47,9 @@ def show_reasoning(state):
 
 def markdown_report(state):
     """A readable export; the canonical audit and every original payload stay in JSON."""
+    if getattr(state, "investigation", None) is not None:
+        from coordinator.engine import render_report
+        return render_report(state).rstrip() + "\n\n" + _source_markdown(state)
     def escape(value):
         text = str(value)
         for char in ("\\", "[", "]", "*", "_", "<", ">", "`", "|"):
@@ -91,6 +94,28 @@ def markdown_report(state):
     return "\n".join(lines)
 
 
+def _source_markdown(state):
+    """Preserve source links and numeric previews alongside the canonical report."""
+    def escape(value):
+        text = str(value)
+        for char in ("\\", "[", "]", "*", "_", "<", ">", "`", "|"):
+            text = text.replace(char, "\\" + char)
+        return text.replace("\n", " ")
+    lines = ["## Source records and measurements", "", "Links use identifiers, queries or provenance supplied with the retrieved records.", ""]
+    for record in (state.evidence.records if state.evidence else []):
+        view = source_view(record)
+        lines.extend([f"### {escape(view.title)}", "", escape(view.summary), "", escape(view.limitation), ""])
+        lines.extend(f"- [{escape(label)}]({url.replace('(', '%28').replace(')', '%29')})" for label, url, _ in view.links)
+        lines.extend(f"- **{key}:** {escape(value)}" for key, value in {**view.facts, **view.identities}.items())
+        if view.table:
+            columns = list(view.table[0])
+            lines.extend(["", f"Source data preview: {min(25, len(view.table))} of {len(view.table)} returned rows. Full data are in the JSON download.", "",
+                          "| " + " | ".join(columns) + " |", "| " + " | ".join("---" for _ in columns) + " |"])
+            lines.extend("| " + " | ".join(escape(row.get(col)) if row.get(col) is not None else "Not supplied" for col in columns) + " |" for row in view.table[:25])
+        lines.append("")
+    return "\n".join(lines)
+
+
 def render_source(record):
     view = source_view(record)
     with st.container(border=True):
@@ -122,6 +147,9 @@ def render_source(record):
 
 
 def show_report(state):
+    if getattr(state, "investigation", None) is not None:
+        _show_investigation_report(state)
+        return
     if is_synthetic(state):
         st.warning("Synthetic teaching example · all observations are fabricated, not biological findings.")
     a, b = st.columns([1, 2])
@@ -218,4 +246,114 @@ def show_report(state):
                  "assessment": state.assessment.model_dump() if state.assessment else None,
                  "collection_limits": [g.model_dump() for g in state.evidence.gaps] if state.evidence else [],
                  "plan_sha256": state.plan_sha256}, expanded=False)
+        st.download_button("Download all original data (JSON)", state.model_dump_json(indent=2), file_name=f"investigation-{state.run_id}.json", mime="application/json")
+
+
+def _show_investigation_report(state):
+    investigation = state.investigation
+    records = state.evidence.records if state.evidence else []
+    if is_synthetic(state):
+        st.warning("Synthetic teaching example · not biological findings.")
+    a, b = st.columns([1, 2])
+    a.metric("Source search", search_status(state))
+    b.metric("Investigation", "Complete" if investigation.criteria_met else "Collection incomplete")
+    st.write(investigation.completion_reason)
+    for col, row in zip(st.columns(3), context_coverage(state)):
+        with col.container(border=True):
+            st.markdown(f"**{row['label']}**")
+            st.write(row["detail"])
+
+    findings, comparisons, sources, question = st.tabs(["Findings", "Comparisons", "Sources", "What we needed to answer"])
+    with findings:
+        st.subheader("What we found")
+        st.write(overview_explanation(state))
+        contributions = source_contributions(state)
+        for row in contributions:
+            with st.container(border=True):
+                st.markdown(f"**{row['title']}**")
+                st.write(row["finding"])
+                if row["role"]:
+                    st.caption(row["role"])
+                for label, url, _ in row["links"][:3]:
+                    st.markdown(f"[{label}]({url.replace('(', '%28').replace(')', '%29')})")
+        if not contributions:
+            st.info("No source records have been returned. The coverage and next steps explain the remaining search work.")
+        if investigation.limitations:
+            st.markdown("**Uncertainties and limitations**")
+            for limitation in investigation.limitations:
+                st.write(limitation)
+        notes = collection_notes(state)
+        if notes:
+            with st.expander("Source availability and search limits"):
+                for note in notes:
+                    st.write(note)
+        st.markdown("**Next steps**")
+        for step in investigation.next_steps:
+            st.write(step)
+        if not investigation.next_steps:
+            st.write("Review the linked sources and refine the research question if you want to investigate further.")
+
+    with comparisons:
+        st.subheader("Similarities, differences and open questions")
+        views = comparison_views(state)
+        for view in views:
+            with st.container(border=True):
+                st.markdown(f"**{view['title']}**")
+                st.write(view["detail"])
+                for limitation in view["limitations"]:
+                    st.caption(limitation)
+                if view["records"]:
+                    st.caption("Sources: " + "; ".join(dict.fromkeys(source_view(r).title for r in view["records"])))
+        if not views:
+            st.write("No cross-context comparison was requested or returned. The retrieved findings are available in Findings and Sources.")
+        if state.assessment and any(r.level == "observation" for r in records):
+            with st.expander("Optional comparison of supplied study observations"):
+                st.write(CONCLUSIONS[state.assessment.conclusion])
+                st.caption("This separate check compares declared study measurements. It does not determine whether the research investigation is complete.")
+                details = comparison_explanations(state)
+                for view in comparison_views(state, observation_only=True):
+                    st.markdown(f"**{view['title']}**")
+                    st.write(view["conclusion"])
+                    st.write(view["detail"])
+                    if view["id"] in details:
+                        st.table(details[view["id"]]["counts"])
+                        for reason in details[view["id"]]["reasons"]:
+                            st.write(reason)
+
+    with sources:
+        st.subheader("Where the information comes from")
+        st.write("Inspect the retrieved measurements, annotations and article links here. Source details preserve the reported context and available identifiers.")
+        for record in records:
+            render_source(record)
+        if not records:
+            st.info("No source results have been returned.")
+
+    with question:
+        st.subheader("Your research question")
+        st.write(state.request.question)
+        st.write(criteria_origin(state))
+        rows = requirement_rows(state)
+        if rows:
+            st.table([{key: row[key] for key in ("Question to answer", "Context", "Evidence available", "What the sources answer")} for row in rows])
+            for row in rows:
+                with st.expander(f"{row['Question to answer']} · {row['Evidence available']}"):
+                    for key, value in row.items():
+                        st.text(f"{key}: {value}")
+        if state.plan and state.plan.assumptions:
+            with st.expander("Scope assumptions to review"):
+                for assumption in state.plan.assumptions:
+                    st.write(assumption)
+        if state.plan and state.plan.pathway:
+            st.caption(f"Pathway scope: {state.plan.pathway.id} · {state.plan.pathway.source} · {state.plan.pathway.version}")
+
+    if state.error:
+        st.error(state.error)
+    if state.status in {"complete", "partial", "failed"}:
+        st.download_button("Download readable report", markdown_report(state), file_name=f"research-report-{state.run_id}.md", mime="text/markdown")
+    with st.expander("Technical details and original data"):
+        st.json({"investigation_id": state.run_id, "status": state.status,
+                 "investigation": investigation.model_dump(),
+                 "optional_observation_assessment": state.assessment.model_dump() if state.assessment else None,
+                 "collection_limits": [g.model_dump() for g in state.evidence.gaps] if state.evidence else [],
+                 "events": state.events, "plan_sha256": state.plan_sha256}, expanded=False)
         st.download_button("Download all original data (JSON)", state.model_dump_json(indent=2), file_name=f"investigation-{state.run_id}.json", mime="application/json")

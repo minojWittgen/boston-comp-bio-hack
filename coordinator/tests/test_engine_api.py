@@ -2,10 +2,12 @@ from fastapi.testclient import TestClient
 
 from coordinator.api import create_app
 from coordinator.engine import Coordinator, plan_digest
+from coordinator.evidence import adapt_packages
 from coordinator.models import (EvidenceBundle, EvidenceRecord, EvidenceRequirement,
     Gap, InvestigationRequest, ResearchPlan, Submission)
 from coordinator.planner import ExplicitPlanner
 from coordinator.store import FileRunStore
+from coordinator.tests.test_evidence import package
 
 
 def submission():
@@ -40,7 +42,7 @@ def test_retry_preserves_criteria_and_recovers_only_technical_gap(tmp_path, monk
     def adapt(packages):
         if packages[0]["attempt"] == 1:
             return EvidenceBundle(gaps=[Gap(code="source_error", gene="TYK2", retryable=True, detail="Timeout")])
-        return EvidenceBundle(records=[observation()], package_count=1)
+        return adapt_packages([package()])
     monkeypatch.setattr("coordinator.engine.adapt_packages", adapt)
     run = engine(tmp_path)
     item = submission()
@@ -48,7 +50,9 @@ def test_retry_preserves_criteria_and_recovers_only_technical_gap(tmp_path, monk
     assert result.status == "complete"
     assert result.attempts == 2
     assert result.plan_sha256 == plan_digest(ExplicitPlanner().plan(item.request))
+    assert result.investigation.criteria_met
     assert result.assessment.conclusion == "not_assessable"  # coverage is not a biological comparison
+    assert not result.assessment.criteria_met  # source investigation does not require observations
     assert any(e["stage"] == "targeted_follow_up" for e in result.events)
 
 

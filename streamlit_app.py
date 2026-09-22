@@ -177,7 +177,7 @@ elif experience == "Connect through MCP":
     st.markdown("**Try this first**")
     st.code("Use Cross-context biology to run the synthetic cross-context-conflict tutorial. Call start_investigation, then get_investigation. Explain what the examples show in cells, animal models and patients, and why the measurements disagree.", language=None)
     st.markdown("**Then investigate your question**")
-    st.write("Tell Claude what you want to compare and ask it to review the evidence requirements with you before starting. Live searches retrieve reference material; study measurements and a justified way to compare them must be supplied separately. The tools are start_investigation and get_investigation.")
+    st.write("Tell Claude what you want to compare and ask it to review the research scope with you before starting. The report explains findings from the retrieved sources, differences between contexts, uncertainties and next steps. Comparing individual study measurements is a separate check that needs those measurements and their context. The tools are start_investigation and get_investigation.")
     st.caption("Your Claude plan or client model charges still apply. Public live investigations have a limited hosting allowance; the tutorial works without live collection. The website chat is an optional alternative.")
     st.markdown("[Full setup guide](https://github.com/minojWittgen/boston-comp-bio-hack/blob/main/docs/mcp.md) · [Claude Code documentation](https://code.claude.com/docs/en/mcp) · [Claude connector documentation](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp)")
 
@@ -186,7 +186,7 @@ else:
         st.caption("Your model settings are entered. They will be checked when you send a question.")
     else:
         st.info("To ask a new question, enter your Anthropic API key and model ID in the sidebar. You can read saved reports, explore Guided examples, or choose Use in Claude (MCP) without a separate API key.")
-    st.caption("Live searches retrieve public gene information and publication references. They may find useful background while still missing the study measurements needed for your comparison. Each report explains what was found and what is needed next.")
+    st.caption("Search public gene information and publication references, explore findings across species and experimental settings, and see uncertainties and next steps. Comparing measurements from the same patient requires matching patient and sample information.")
     if "run_id" not in st.session_state:
         with st.chat_message("assistant"):
             st.write("What biological question are you investigating? Include the gene or target, the disease or tissue, and what you want to compare.")

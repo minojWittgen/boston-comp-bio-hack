@@ -36,15 +36,19 @@ Point to cell cultures, animal models and patients. Explain that the measurement
 experimental settings must be understood before evidence can be compared.
 
 Open **Explore a guided example**. The default example deliberately disagrees across
-contexts. Show **Why this result?**, **Comparisons**, **Sources**, and **What we needed
-to answer**. Disagreement is an informative outcome, not a failed search. Switch to
-**Missing patient evidence** to show how the report explains an unanswered question.
+contexts. Show **Findings**, **Comparisons**, **Sources**, and **What we needed
+to answer**. The supplied measurement comparison is expandable inside Comparisons;
+disagreement is an informative outcome, not a failed search. Switch to
+**Missing patient evidence** to show how the report explains missing source information.
 Both examples are synthetic teaching cases, not biological findings.
 
 For a live example, reopen an existing report with its saved link. No key or new
 collection is needed. Show the returned database information and publication links,
-then explain why reference material may still be insufficient for the requested
-study comparison. To start a new question, select **Ask your own question** and enter
+then explain the source findings, their context, uncertainties and next steps.
+Historical schema 0.1 reports preserve their original result and **Why this result?**
+tab; they are not silently rescored. New schema 0.2 reports present source findings
+first and keep optional study-measurement checks separate from research completion.
+To start a new question, select **Ask your own question** and enter
 your Anthropic API key and an available model ID in the sidebar.
 
 Show **Use in Claude (MCP)** for the alternative entry point: an existing assistant
@@ -55,11 +59,14 @@ Finish with **References** so people can inspect our rationale, sources and code
 
 ## What is implemented, and what comes next
 
-The prototype plans evidence requirements, retrieves context-tagged source information,
-checks separately supplied study observations and produces traceable reports. Current
-comparisons check declared metadata and reported directions of change. Live source
-retrieval currently returns background/reference records; it does not automatically
-extract and harmonize real study observations. The examples supply synthetic observations.
+The prototype plans research scope, retrieves context-tagged source information,
+explains findings and differences, and produces traceable reports. Research completion
+means the bounded source investigation is done, not that a biological claim is proven.
+Database records contribute at their reported scope. Optional checks of separately
+supplied study observations compare declared metadata and reported directions of change.
+The pipeline does not automatically extract and harmonize real study observations.
+The examples supply synthetic observations. The current behavior is documented in the
+[investigation-first handoff](investigation-first-handoff.md).
 
 Extracting measurements from real studies, harmonizing datasets, retaining participant
 and specimen relationships, and running independently checked numerical analyses are

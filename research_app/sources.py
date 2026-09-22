@@ -60,7 +60,7 @@ def source_view(record):
     data, query = obj(source.get("data")), obj(source.get("query"))
     name = SOURCE_NAMES.get(record.source, readable(record.source))
     view = SourceView(f"{record.entity} · {name}", "A source result was retrieved. Open the source to review its content.",
-                      "This database result has not been converted into a study measurement that meets this question's comparison criteria.")
+                      "Interpret this result in its reported source context. Study design, measurement definitions and comparability may need further review.")
     view.identities = {"Study ID": record.study_id or MISSING, "Participant / subject ID": record.subject_id or MISSING,
                        "Sample / specimen ID": record.specimen_id or MISSING, "Time point": record.timepoint or MISSING}
     for i, value in enumerate(record.provenance, 1):
@@ -161,7 +161,7 @@ def source_view(record):
                                    "Disease annotation": display(screen.get("diseaseFromSource")), "CRISPR gene-effect score": screen.get("geneEffect"),
                                    "RNA expression (units not supplied)": screen.get("expression")})
         view.summary = f"Cell-line screen results returned: {len(view.table)} across {display(data.get('n_tissues'))} tissue groups."
-        view.limitation = "Cell-line names are available below. Repeated names can represent multiple screens, not independent studies. These results lack the study and comparison metadata required by this question."
+        view.limitation = "Cell-line names and returned screen values are shown below. Repeated names can represent multiple screens, not independent studies. The response does not specify study IDs, expression units or treatment-versus-control contrasts; gene-effect scores describe CRISPR fitness dependency."
     elif record.source == "reactome_pathway":
         view.summary = "Pathway membership was retrieved."
         view.limitation = "Membership defines the genes in scope; it does not measure pathway activity."
