@@ -9,11 +9,11 @@ ROOT = Path(__file__).parent
 image = (modal.Image.debian_slim(python_version="3.11")
          .pip_install_from_requirements(str(ROOT / "coordinator/requirements.txt"))
          .pip_install_from_requirements(str(ROOT / "requirements-ui.txt"))
+         .env({"PYTHONPATH": "/workspace"})
          .add_local_dir(ROOT / "coordinator", "/workspace/coordinator", ignore=["__pycache__", "*.pyc", "tests"])
          .add_local_dir(ROOT / "research_app", "/workspace/research_app", ignore=["__pycache__", "*.pyc"])
          .add_local_file(ROOT / "streamlit_app.py", "/workspace/streamlit_app.py")
-         .add_local_file(ROOT / ".streamlit/config.toml", "/workspace/.streamlit/config.toml")
-         .env({"PYTHONPATH": "/workspace"}))
+         .add_local_file(ROOT / ".streamlit/config.toml", "/workspace/.streamlit/config.toml"))
 app = modal.App("xctx-research")
 # Only a team access token is required. Model calls use visitor credentials in /chat.
 secrets = [modal.Secret.from_name(os.environ.get("COORDINATOR_SECRET_NAME", "xctx-research-secrets"))]
