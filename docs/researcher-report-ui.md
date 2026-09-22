@@ -72,3 +72,56 @@ Before deployment, check that investigation workers are idle, then run:
 Recreation restarts website sessions. Open the saved-report link to recover a result;
 API keys remain session-only and may need to be entered again for new questions.
 No pipeline deployment or paid model call is required for this UI update.
+
+## Explain the evidence-to-conclusion reasoning
+
+The default **Why this result?** tab now shows:
+
+1. What was retrieved and what each source can establish at its reported level.
+2. The saved minimum study count for each measurement and how many distinct study IDs
+   were accepted. The origin is explicit: model-proposed or supplied in the request.
+3. The exact scope/traceability rules and the difference between scope-qualified studies
+   and the subset usable in a particular comparison.
+4. Missing comparison groups, normalization, cross-species justification or matching
+   information, when indicated by the saved result or plan.
+5. Plan problems that cannot be solved simply by retrieving more records.
+
+For the saved MLH1 run, the model chose one study per context. That is a software default,
+not a scientific sample-size calculation. The 11 returned reference records do not count
+as 11 qualifying studies. Some contain numeric data: the mouse ortholog entry reports
+88.2895% target and 88.7566% source identity; GTEx contains RNA medians for 54 tissue/cell
+categories. These are visible findings, but sequence identity does not measure RNA
+abundance, and this integration has not prepared the reference data as traceable study
+observations with matching outcomes and comparison groups.
+
+The presenter also exposes two limitations in that saved plan:
+
+- Different natural-language outcome names were generated for the three contexts. The
+  coordinator currently requires exact outcome-name equality. Even adding otherwise
+  qualifying studies would not make those comparison definitions work. The definitions
+  need scientific review and alignment in a new plan; the saved plan is not rewritten.
+- Cross-species comparison bases are absent. Sequence similarity does not by itself
+  justify treating the expression measurements as comparable.
+
+This run does **not** require matched participants or specimens. Those identifiers are
+required only for comparisons whose `require_matched_subjects` flag is true. Study IDs
+and source provenance remain necessary for all qualifying observations.
+
+The underlying comparison checks describe directions of change relative to a shared
+contrast; they do not calculate harmonized absolute expression levels across datasets.
+The current live collection path returns background references. Extracting, normalizing
+and attaching traceable study observations is a separate integration task. Another
+explanatory model call alone would not supply that missing evidence.
+
+Implementation: `research_app/explanations.py` reads the saved plan, accepted evidence
+IDs and comparison results. It neither changes the scientific rules nor reruns a model.
+Known pair-rejection messages are translated from the canonical report text; future
+structured rejection codes would be preferable to this compatibility adapter. API/MCP
+schemas, stored assessments and frozen plans remain unchanged. The same explanations
+are included in the readable Markdown export.
+
+Validation: **199 tests and 40 subtests passed**, including unique study counts, compared
+subsets, numeric reference findings, matched versus unpaired identity rules, proposed
+threshold provenance, plan blockers, and read-only saved-result replay. No paid model
+calls were made for this change. Source identity terminology follows the
+[Ensembl orthology guide](https://grch37.ensembl.org/Help/View?id=578).

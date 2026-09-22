@@ -40,9 +40,10 @@ def context_coverage(state: RunState):
         elif passed == len(scoped):
             detail = "Study measurements meet the requested evidence criteria."
         elif passed:
-            detail = "Some requested measurements are available; others are still missing."
+            detail = "Some requested study measurements are available. See the study minimum and missing information below."
         else:
-            detail = "The required study measurements are still missing or do not meet the criteria."
+            targets = "; ".join(f"{r.entity} {r.modality}: at least {r.min_studies} {'study' if r.min_studies == 1 else 'studies'}" for r in scoped)
+            detail = "No requested measurement has enough qualifying study records. This plan asks for " + targets + "."
         rows.append({"context": context, "label": CONTEXT_LABELS[context], "total": len(scoped), "passed": passed, "detail": detail})
     return rows
 
@@ -59,7 +60,7 @@ def assistant_summary(state: RunState):
         return "The search is still running."
     text = "The search finished. " if search_status(state) == "Finished" else "The search ended with some sources unavailable. "
     text += {
-        "not_assessable": "**There is not enough comparable evidence to answer your question yet.** Database summaries and paper links can help you find studies, but do not replace the study measurements needed for this comparison.",
+        "not_assessable": "**There is not enough comparable evidence to answer your question yet.** See “Why this result?” for what was found, the study minimum, and the data or plan issues preventing comparison. This does not mean relevant studies do not exist.",
         "conflicting": "**The compared measurements disagree in direction.** The report keeps that disagreement visible.",
         "inconclusive": "**The compared measurements show no clear agreement.** Mixed directions or unchanged measurements prevent a clear conclusion.",
         "supported": "**The compared measurements agree in direction.** This describes the supplied observations; it does not establish causality or clinical benefit.",
@@ -113,7 +114,7 @@ def comparison_views(state):
             detail += " This is a descriptive comparison of supplied measurements."
             if not spec.require_matched_subjects:
                 detail += " It does not establish agreement within the same individual."
-        views.append({"title": f"{label(left)} ↔ {label(right)}", "conclusion": CONCLUSIONS[result.conclusion], "detail": detail,
+        views.append({"id": spec.id, "title": f"{label(left)} ↔ {label(right)}", "conclusion": CONCLUSIONS[result.conclusion], "detail": detail,
                       "records": [r for r in (state.evidence.records if state.evidence else []) if r.id in result.evidence_ids]})
     return views
 

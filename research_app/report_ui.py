@@ -4,6 +4,45 @@ import streamlit as st
 from research_app.presentation import (CONCLUSIONS, assistant_summary, collection_notes,
     comparison_views, context_coverage, is_synthetic, requirement_rows, search_status)
 from research_app.sources import source_view
+from research_app.explanations import (comparison_explanations, criteria_origin,
+    overview_explanation, requirement_explanations, source_contributions)
+
+
+def criteria_table(state):
+    return [{"Measurement / context": r["title"], "Minimum studies in this plan": r["minimum"],
+             "Qualifying studies supplied": r["qualifying_studies"] if r["qualifying_studies"] is not None else "Not checked yet",
+             "Needed for this question": "Required" if r["required"] else "Optional"}
+            for r in requirement_explanations(state)]
+
+
+def show_reasoning(state):
+    st.subheader("Evidence was found. What does it answer?")
+    st.write(overview_explanation(state))
+    st.markdown("**How much evidence does this plan ask for?**")
+    st.write(criteria_origin(state))
+    criteria = criteria_table(state)
+    if criteria:
+        st.table(criteria)
+    st.caption("This is a minimum for the software's descriptive comparison, not a scientific sample-size calculation or proof that one study is sufficient. Study IDs are counted once per requirement; one study may contribute to more than one context. More database rows do not increase this count.")
+    st.markdown("**What makes a study qualify?**")
+    st.write("It must be supplied as a study observation with a study ID and source reference, and match the requested gene, species, context, measurement type and outcome name. Any specified disease, tissue or host species must also match. The comparison then needs compatible measurements and a shared comparison group with a reported direction of change.")
+    st.caption("The current checker compares supplied labels exactly. It does not independently validate study quality, sample size, effect magnitude, units, statistical significance or scientific equivalence.")
+    st.markdown("**What we found and how it relates to the question**")
+    contributions = source_contributions(state)
+    if contributions:
+        st.table([{"Source": row["title"], "Finding in the returned data": row["finding"],
+                   "What this can—and cannot—answer": row["role"]} for row in contributions])
+        st.caption("These statements describe the retrieved records. Open Sources for the linked database entries, papers and full returned measurements.")
+    else:
+        st.write("No source records are available yet.")
+    st.markdown("**What needs to happen next?**")
+    records = state.evidence.records if state.evidence else []
+    if records and not any(r.level == "observation" for r in records):
+        st.write("Study measurements and their source/context information still need to be extracted and prepared for comparison. The live collector currently supplies reference material. Repeating the same search or adding an explanatory model call will not fill that data-integration gap.")
+    st.write("This prototype compares reported directions of change. It does not yet calculate a harmonized comparison of absolute measurement values across datasets. Review the proposed outcome, comparison groups and alignment method before treating the result as an answer to that broader question.")
+    issues = list(dict.fromkeys(issue for explanation in comparison_explanations(state).values() for issue in explanation["plan_issues"]))
+    for issue in issues:
+        st.warning("Plan needs review: " + issue)
 
 
 def markdown_report(state):
@@ -13,9 +52,23 @@ def markdown_report(state):
         for char in ("\\", "[", "]", "*", "_", "<", ">", "`", "|"):
             text = text.replace(char, "\\" + char)
         return text.replace("\n", " ")
-    lines = ["# Cross-context research report", "", escape(state.request.question), "", assistant_summary(state), "", "## Comparisons", ""]
+    lines = ["# Cross-context research report", "", escape(state.request.question), "", assistant_summary(state), "", "## Why this result?", "", overview_explanation(state), "", criteria_origin(state), "",
+             "The study minimum is a software threshold, not a statistical sample-size calculation. More database rows do not count as more studies.", ""]
+    for row in requirement_explanations(state):
+        lines.append(f"- {escape(row['title'])}: minimum study count: {row['minimum']}; qualifying studies supplied: {row['qualifying_studies'] if row['qualifying_studies'] is not None else 'not checked'}.")
+    lines.extend(["", "## What we found and what it means", ""])
+    for contribution in source_contributions(state):
+        lines.extend([f"### {escape(contribution['title'])}", "", escape(contribution['finding']), "", escape(contribution['role']), ""])
+    explanations = comparison_explanations(state)
+    lines.extend(["## Comparisons", ""])
     for view in comparison_views(state):
         lines.extend([f"### {escape(view['title'])}", "", f"**{view['conclusion']}**", "", escape(view['detail']), ""])
+        explanation = explanations[view['id']]
+        lines.extend(f"- {escape(note)}" for note in explanation['needs'] + explanation['reasons'] + explanation['plan_issues'])
+        lines.extend(["", explanation['identity'], ""])
+        for count in explanation['counts']:
+            lines.append(f"- {escape(count['Context / measurement'])}: minimum {count['Minimum studies in this plan']} studies; {count['Studies meeting scope and traceability']} meet scope; {count['Studies usable in this comparison']} usable in this comparison.")
+        lines.append("")
     lines.extend(["## Evidence needed", "", "These measurements come from the research plan; they are not claims about what a source measured.", ""])
     for row in requirement_rows(state):
         lines.extend([f"### {escape(row['Question to answer'])}", ""])
@@ -63,7 +116,7 @@ def render_source(record):
                 st.dataframe(view.table, hide_index=True, width="stretch")
             if not view.links:
                 st.caption("No usable source URL was supplied. No paper or database link has been invented.")
-            elif any(kind != "supplied" for _, _, kind in view.links):
+            elif any(kind in {"identifier", "query"} for _, _, kind in view.links):
                 st.caption("Database and article links are built from identifiers or queries in the retrieved result. A link is a way to inspect the source, not proof that it supports this comparison.")
             st.caption(f"Retrieved: {record.retrieved_at or 'Not supplied'} · Source release: {record.source_version or 'Not supplied'}")
 
@@ -83,17 +136,30 @@ def show_report(state):
         with col.container(border=True):
             st.markdown(f"**{row['label']}**")
             st.write(row["detail"])
-    findings, sources, question = st.tabs(["Comparisons", "Sources", "What we need to answer"])
+    reasoning, findings, sources, question = st.tabs(["Why this result?", "Comparisons", "Sources", "What we need to answer"])
+    with reasoning:
+        show_reasoning(state)
     with findings:
         st.subheader("What can we conclude?")
         views = comparison_views(state)
         if not views:
             st.write("No comparison has been assessed yet.")
+        explanations = comparison_explanations(state)
         for view in views:
             with st.container(border=True):
                 st.markdown(f"**{view['title']}**")
                 st.write(view["conclusion"])
                 st.write(view["detail"])
+                explanation = explanations[view["id"]]
+                st.table(explanation["counts"])
+                for reason in explanation["reasons"]:
+                    st.write(reason)
+                for issue in explanation["plan_issues"]:
+                    st.warning("Plan needs review: " + issue)
+                with st.expander("What would make these measurements comparable?"):
+                    for item in explanation["needs"]:
+                        st.write(item)
+                    st.write(explanation["identity"])
                 if view["records"]:
                     with st.expander("Measurements used in this comparison"):
                         st.dataframe([{"Gene": r.entity, "Study ID": r.study_id or "Not supplied", "Measured outcome": r.endpoint,
