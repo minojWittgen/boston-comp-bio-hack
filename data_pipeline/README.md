@@ -15,10 +15,11 @@ See [`PIPELINE.md`](PIPELINE.md) for the full data-flow diagrams.
 Two entry points, same computation:
 
 ### 1. MCP tool (for the agent)
-`mcp_server.py` exposes one stdio tool:
+`mcp_server.py` exposes a build tool and a package-reading tool over stdio:
 
 ```
 build_evidence_package(symbol: str, disease: str = "", mode: str = "explore") -> dict
+read_evidence_package(path: str) -> dict
 ```
 
 It calls the deployed Modal function and returns a **build receipt**:
@@ -28,6 +29,10 @@ It calls the deployed Modal function and returns a **build receipt**:
 ```bash
 python mcp_server.py        # serves the tool over stdio
 ```
+
+Call `read_evidence_package` with the exact receipt path in the same MCP session
+to read the actual JSON. It can only read paths issued by that session. The shared
+coordinator also has a direct Modal adapter for this build-and-read operation.
 
 Register it with your MCP client (Claude Desktop / agent runtime) pointing at
 `python /path/to/data_pipeline/mcp_server.py`.
@@ -107,7 +112,6 @@ Ran live against all five APIs and through Modal:
 ## Notes / limitations
 - `mcp` resolves to 2.x here, where `FastMCP` was renamed `MCPServer`; the server uses
   the new API (see the fallback note atop `mcp_server.py` for mcp 1.x).
-- The MCP tool returns a receipt with the volume path, not the full package body; pull
-  the package from the volume (or read it backend-side) to consume the evidence.
+- The build tool returns a receipt; the read tool retrieves the full package body.
 - Out of scope by design: drug-response prediction and imputing missing data. Missing
   data is reported explicitly, never inferred.
