@@ -1,0 +1,10 @@
+{
+  "dataset_id": "narrative",
+  "context": "literature",
+  "gene": "DCX",
+  "program": "iPSC-derived cortical neuron identity \u2014 fetal rather than adult signature",
+  "axis": "in_vitro_vs_patient",
+  "in_vitro_finding": "iPSC-derived neurons express neuronal identity genes but their transcriptome (and 3D genome) most closely matches first/second-trimester fetal cortex; immature markers such as DCX remain high.",
+  "in_vivo_finding": "Adult cortex has low DCX and an adult (not fetal) layer/maturation signature.",
+  "patient_finding": "Adult patient post-mortem cortex: adult signature; iPSC models of adult-onset disease are therefore modelling a fetal-stage cell."
+}

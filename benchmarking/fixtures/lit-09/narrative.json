@@ -1,0 +1,10 @@
+{
+  "dataset_id": "narrative",
+  "context": "literature",
+  "gene": "NOS2",
+  "program": "NOS2 (iNOS) induction in macrophages",
+  "axis": "mouse_vs_human",
+  "in_vitro_finding": "Mouse macrophages robustly induce Nos2 / nitric oxide on LPS+IFN\u03b3; human monocyte-derived macrophages induce NOS2 weakly or inconsistently under the same in-vitro stimulation.",
+  "in_vivo_finding": "Orthologous gene, conserved sequence, but species-divergent regulation \u2014 the mouse in-vitro finding does not transfer to human cells.",
+  "patient_finding": "NOS2 protein detectable in some human inflammatory lesions but not the high-output NO response seen in mouse; a classic translational mismatch."
+}

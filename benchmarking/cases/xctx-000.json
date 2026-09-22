@@ -1,0 +1,61 @@
+{
+  "case_id": "xctx-000",
+  "schema_version": "1.0",
+  "mode": "explore",
+  "_note": "DEVELOPMENT EXAMPLE ONLY. Freeze limits here; never graded.",
+  "task": {
+    "claim": "TYK2 upregulation in IL-23-stimulated primary human keratinocytes reflects a JAK/STAT-driven state that is present in lesional skin of psoriasis patients.",
+    "instruction": "Using only the evidence package and context datasets provided (and the listed tools if you judge more evidence is needed), decide whether the in-vitro finding described in the claim is corroborated across the in-vivo and patient contexts. Return one verdict from allowed_verdicts with cited evidence, caveats, and every action you took, in the shape given by output_schema.",
+    "allowed_verdicts": [
+      "persists",
+      "partially_persists",
+      "diverges",
+      "not_comparable"
+    ],
+    "output_schema": "../schema/agent_output.schema.json"
+  },
+  "gene": {
+    "symbol": "TYK2",
+    "disease": "psoriasis"
+  },
+  "evidence_package": {
+    "path": "../fixtures/xctx-000/evidence_package.json",
+    "run_id": "gen-xctx-000",
+    "produced_by": "xctx-evidence.build_package"
+  },
+  "context_datasets": [
+    {
+      "id": "invitro_rna",
+      "context": "in_vitro",
+      "modality": "rna",
+      "path": "../fixtures/xctx-000/invitro_rna.json",
+      "description": "Bulk/pseudobulk RNA from the in-vitro model named in the claim, treated vs control."
+    },
+    {
+      "id": "patient_rna",
+      "context": "patient",
+      "modality": "rna",
+      "path": "../fixtures/xctx-000/patient_rna.json",
+      "description": "Per-sample RNA from patient tissue, lesional vs non-lesional, with cohort summary."
+    },
+    {
+      "id": "patient_prot",
+      "context": "patient",
+      "modality": "protein",
+      "path": "../fixtures/xctx-000/patient_prot.json",
+      "description": "Per-sample protein from patient tissue, lesional vs non-lesional, with cohort summary."
+    }
+  ],
+  "tools": {
+    "available": [
+      "read_file",
+      "build_evidence_package"
+    ],
+    "stub_responses": "../fixtures/xctx-000/tool_stub.json"
+  },
+  "limits": {
+    "max_tool_calls": 12,
+    "max_output_tokens": 4000,
+    "wall_clock_seconds": 600
+  }
+}

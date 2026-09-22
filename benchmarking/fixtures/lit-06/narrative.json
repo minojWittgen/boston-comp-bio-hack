@@ -1,0 +1,10 @@
+{
+  "dataset_id": "narrative",
+  "context": "literature",
+  "gene": "PTPRC",
+  "program": "PTPRC (CD45) \u2014 pan-leukocyte identity marker",
+  "axis": "all",
+  "in_vitro_finding": "Expressed on all cultured/isolated haematopoietic cells; used as the gating marker.",
+  "in_vivo_finding": "Expressed on all nucleated haematopoietic cells in mouse (Ptprc) and human tissue atlases.",
+  "patient_finding": "Universal immune-compartment marker in patient tissue (Tabula Sapiens, HCA)."
+}

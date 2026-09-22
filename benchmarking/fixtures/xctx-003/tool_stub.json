@@ -1,0 +1,13 @@
+{
+  "build_evidence_package": {
+    "{\"disease\":\"psoriasis\",\"mode\":\"eval\",\"symbol\":\"TYK2\"}": {
+      "sequence": [
+        "evidence_package.recovered.json"
+      ]
+    },
+    "default": {
+      "status": "error",
+      "error": "stub: unexpected arguments"
+    }
+  }
+}

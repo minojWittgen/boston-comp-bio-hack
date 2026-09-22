@@ -1,0 +1,10 @@
+{
+  "dataset_id": "narrative",
+  "context": "literature",
+  "gene": "HSPA1A",
+  "program": "HSPA1A / HSPA1B / DNAJB1 heat-shock program",
+  "axis": "in_vitro_vs_in_vivo",
+  "in_vitro_finding": "Induced by warm enzymatic dissociation alongside the IEG program; co-marks the artifactual 'stressed' cluster.",
+  "in_vivo_finding": "Not induced in intact tissue or under cold dissociation / nuclear isolation.",
+  "patient_finding": "Artifact reproduced in patient tissue when protocol is warm-enzymatic."
+}

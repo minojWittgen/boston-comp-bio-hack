@@ -1,0 +1,10 @@
+{
+  "dataset_id": "narrative",
+  "context": "literature",
+  "gene": "CXCL8",
+  "program": "CXCL8 (IL-8) \u2014 human chemokine with no mouse ortholog",
+  "axis": "mouse_vs_human",
+  "in_vitro_finding": "Strongly induced in human cells (epithelium, monocytes) by inflammatory stimuli.",
+  "in_vivo_finding": "Mouse has no CXCL8 gene; neutrophil chemotaxis is carried by Cxcl1/Cxcl2 (KC/MIP-2). There is nothing to compare to.",
+  "patient_finding": "Elevated in inflamed patient tissue/serum across many diseases (persists human in vitro \u2192 patient)."
+}

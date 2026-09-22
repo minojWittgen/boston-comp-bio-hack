@@ -1,0 +1,10 @@
+{
+  "dataset_id": "narrative",
+  "context": "literature",
+  "gene": "FOS",
+  "program": "FOS / JUN / JUNB / EGR1 immediate-early-gene program",
+  "axis": "in_vitro_vs_in_vivo",
+  "in_vitro_finding": "Strongly induced in cells profiled by scRNA-seq after enzymatic dissociation at 37 \u00b0C; appears as a discrete 'stressed' cell state / subpopulation.",
+  "in_vivo_finding": "Absent when the same tissue is profiled without warm dissociation (snapshot in situ, snRNA-seq, or cold-active protease); the 'state' is a procedural artifact.",
+  "patient_finding": "Same artifact in human tumour and tissue scRNA-seq when collagenase-dissociated; not a disease state."
+}

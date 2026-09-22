@@ -1,0 +1,10 @@
+{
+  "dataset_id": "narrative",
+  "context": "literature",
+  "gene": "MYH7",
+  "program": "MYH6 vs MYH7 myosin heavy-chain isoform ratio",
+  "axis": "in_vitro_vs_patient",
+  "in_vitro_finding": "hiPSC-derived cardiomyocytes express a fetal-like isoform profile with relatively high MYH6; MYH7 rises with extended culture / maturation protocols but rarely reaches adult ratio.",
+  "in_vivo_finding": "Adult human ventricle is MYH7-dominant (MYH6 low). (Mouse is the opposite \u2014 adult mouse ventricle is Myh6-dominant \u2014 so the mouse axis is a divergence, see verdict_note.)",
+  "patient_finding": "Adult patient ventricular tissue MYH7-dominant; MYH6:MYH7 shift is itself a heart-failure readout."
+}

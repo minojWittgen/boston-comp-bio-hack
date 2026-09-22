@@ -1,0 +1,15 @@
+{
+  "dataset_id": "invitro_rna",
+  "context": "in_vitro",
+  "modality": "rna",
+  "gene": "TYK2",
+  "model": "primary human keratinocytes",
+  "perturbation": "IL-23 24h",
+  "effect": {
+    "comparison": "treated_vs_control",
+    "log2fc": 1.4,
+    "padj": 2e-05,
+    "direction": "up",
+    "n_replicates": 3
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "build_evidence_package": {
+    "{\"disease\":\"\",\"mode\":\"eval\",\"symbol\":\"NOS2\"}": {
+      "sequence": [
+        "evidence_package.json"
+      ]
+    },
+    "default": {
+      "status": "error",
+      "error": "stub: unexpected arguments"
+    }
+  }
+}

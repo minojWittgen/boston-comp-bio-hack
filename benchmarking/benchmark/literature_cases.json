@@ -1,0 +1,405 @@
+{
+  "_purpose": "Layer 3 of the eval: genes/programs whose cross-context (in vitro / in vivo / patient / mouse-human) behaviour is ALREADY documented in the literature. Each row's documented_verdict is ground truth for the persists/diverges/not_comparable logic \u2014 not for whether the pipeline can find the gene. Distinct from the 3 blinded behaviour cases (cases/) and from the synthetic classifier unit tests.",
+  "_how_to_use": [
+    "Run each row's `human_symbol` through build_package in eval mode; hand the package + the row's context findings (as fixtures) to the agent; compare its verdict to documented_verdict.",
+    "Report agreement per bucket, not overall \u2014 a system that only ever says 'persists' scores 3/8 here and should look bad.",
+    "`pipeline_expectation` says what the deterministic package should contain for that gene; if it doesn't, that's a pipeline bug, not an agent failure \u2014 check it BEFORE grading the agent.",
+    "`confidence` is our confidence that the documented verdict is settled science. Rows marked `verify` need a teammate to read the cited paper's relevant figure before the row is used for grading."
+  ],
+  "verdict_vocabulary": {
+    "persists": "in-vitro finding is reproduced in vivo and in patients",
+    "partially_persists": "direction holds but magnitude/isoform/maturity differs in a documented way",
+    "diverges": "in-vitro finding is absent or reversed in vivo / patients, or the mouse and human patterns differ",
+    "not_comparable": "the comparison cannot be made (no ortholog, no matched tissue, no matched patients)"
+  },
+  "rows": [
+    {
+      "id": "lit-01",
+      "gene_or_program": "FOS / JUN / JUNB / EGR1 immediate-early-gene program",
+      "human_symbol": "FOS",
+      "bucket": "diverges",
+      "axis": "in_vitro_vs_in_vivo",
+      "in_vitro_finding": "Strongly induced in cells profiled by scRNA-seq after enzymatic dissociation at 37 \u00b0C; appears as a discrete 'stressed' cell state / subpopulation.",
+      "in_vivo_finding": "Absent when the same tissue is profiled without warm dissociation (snapshot in situ, snRNA-seq, or cold-active protease); the 'state' is a procedural artifact.",
+      "patient_finding": "Same artifact in human tumour and tissue scRNA-seq when collagenase-dissociated; not a disease state.",
+      "documented_verdict": "diverges",
+      "verdict_note": "Textbook artifact case. An agent that reports the IEG state as a biological finding that 'persists' fails.",
+      "sources": [
+        {
+          "citation": "van den Brink et al., Nat Methods 2017",
+          "url": "https://www.nature.com/articles/nmeth.4437"
+        },
+        {
+          "citation": "O'Flanagan et al., Genome Biology 2019 (cold-active protease minimizes collagenase-associated stress response)",
+          "url": "https://link.springer.com/article/10.1186/s13059-019-1830-0"
+        },
+        {
+          "citation": "Denisenko et al., Genome Biology 2020 (dissociation/storage biases, sc vs sn)",
+          "url": "https://genomebiology.biomedcentral.com/articles/10.1186/s13059-020-02048-6"
+        }
+      ],
+      "pipeline_expectation": "mygene ok; orthology mouse one2one ok (Fos); GTEx shows broad expression (FOS is expressed everywhere, so GTEx alone cannot arbitrate \u2014 the agent must weigh the in-vivo fixture, not GTEx).",
+      "confidence": "settled",
+      "pipeline_checks": {
+        "mouse_orthology": "ok",
+        "impc": "any",
+        "gtex_tissue_present": null
+      }
+    },
+    {
+      "id": "lit-02",
+      "gene_or_program": "HSPA1A / HSPA1B / DNAJB1 heat-shock program",
+      "human_symbol": "HSPA1A",
+      "bucket": "diverges",
+      "axis": "in_vitro_vs_in_vivo",
+      "in_vitro_finding": "Induced by warm enzymatic dissociation alongside the IEG program; co-marks the artifactual 'stressed' cluster.",
+      "in_vivo_finding": "Not induced in intact tissue or under cold dissociation / nuclear isolation.",
+      "patient_finding": "Artifact reproduced in patient tissue when protocol is warm-enzymatic.",
+      "documented_verdict": "diverges",
+      "verdict_note": "Second artifact row so the 'diverges' bucket has two independent examples.",
+      "sources": [
+        {
+          "citation": "van den Brink et al., Nat Methods 2017",
+          "url": "https://www.nature.com/articles/nmeth.4437"
+        },
+        {
+          "citation": "Denisenko et al., Genome Biology 2020",
+          "url": "https://genomebiology.biomedcentral.com/articles/10.1186/s13059-020-02048-6"
+        }
+      ],
+      "pipeline_expectation": "Note: HSPA1A/HSPA1B are near-identical paralogs; orthology to mouse Hspa1a/Hspa1b may come back one2many, so IMPC is `skipped` (no unique one2one). Good test that the agent treats `skipped` correctly.",
+      "confidence": "settled",
+      "pipeline_checks": {
+        "mouse_orthology": "one2many",
+        "impc": "skipped",
+        "gtex_tissue_present": null
+      }
+    },
+    {
+      "id": "lit-03",
+      "gene_or_program": "MYH6 vs MYH7 myosin heavy-chain isoform ratio",
+      "human_symbol": "MYH7",
+      "bucket": "partially_persists",
+      "axis": "in_vitro_vs_patient",
+      "in_vitro_finding": "hiPSC-derived cardiomyocytes express a fetal-like isoform profile with relatively high MYH6; MYH7 rises with extended culture / maturation protocols but rarely reaches adult ratio.",
+      "in_vivo_finding": "Adult human ventricle is MYH7-dominant (MYH6 low). (Mouse is the opposite \u2014 adult mouse ventricle is Myh6-dominant \u2014 so the mouse axis is a divergence, see verdict_note.)",
+      "patient_finding": "Adult patient ventricular tissue MYH7-dominant; MYH6:MYH7 shift is itself a heart-failure readout.",
+      "documented_verdict": "partially_persists",
+      "verdict_note": "Direction of maturation holds, adult ratio does not. On the mouse\u2194human axis specifically the answer is `diverges` (Myh6-dominant adult mouse vs MYH7-dominant adult human) \u2014 a two-axis row; grade the axis the case asks about.",
+      "sources": [
+        {
+          "citation": "Guo & Pu, Cardiomyocyte Maturation, Circ Res 2020",
+          "url": "https://www.ahajournals.org/doi/10.1161/CIRCRESAHA.119.315862"
+        },
+        {
+          "citation": "Review, Stem Cell Res Ther 2023 (hiPSC-CM maturation)",
+          "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC10469435/"
+        }
+      ],
+      "pipeline_expectation": "GTEx: MYH7 high in Heart \u2013 Left Ventricle, low elsewhere; MYH6 highest in Heart \u2013 Atrial Appendage. Orthology mouse one2one ok. IMPC likely phenotyped (cardiac phenotypes).",
+      "confidence": "settled",
+      "pipeline_checks": {
+        "mouse_orthology": "ok",
+        "impc": "any",
+        "gtex_top_tissue_contains": "Heart",
+        "gtex_tissues": [
+          {
+            "tissue": "Heart_Left_Ventricle",
+            "median_tpm": 2400.0
+          },
+          {
+            "tissue": "Heart_Atrial_Appendage",
+            "median_tpm": 310.0
+          },
+          {
+            "tissue": "Muscle_Skeletal",
+            "median_tpm": 120.0
+          },
+          {
+            "tissue": "Whole_Blood",
+            "median_tpm": 0.2
+          }
+        ]
+      }
+    },
+    {
+      "id": "lit-04",
+      "gene_or_program": "TNNI1 \u2192 TNNI3 troponin I isoform switch",
+      "human_symbol": "TNNI3",
+      "bucket": "partially_persists",
+      "axis": "in_vitro_vs_patient",
+      "in_vitro_finding": "hiPSC-CMs predominantly express the fetal/slow-skeletal isoform TNNI1; TNNI3 (adult cardiac) is low and increases only with prolonged culture or maturation cues.",
+      "in_vivo_finding": "Adult heart is TNNI3-dominant; the TNNI1\u2192TNNI3 switch is a standard maturation index.",
+      "patient_finding": "Adult patient myocardium TNNI3-dominant.",
+      "documented_verdict": "partially_persists",
+      "verdict_note": "Same pattern as lit-03 but a different gene pair, so the bucket isn't carried by a single example.",
+      "sources": [
+        {
+          "citation": "Guo & Pu, Circ Res 2020",
+          "url": "https://www.ahajournals.org/doi/10.1161/CIRCRESAHA.119.315862"
+        },
+        {
+          "citation": "Frontiers Bioeng Biotechnol 2026, transcriptome-based maturation assessment",
+          "url": "https://www.frontiersin.org/journals/bioengineering-and-biotechnology/articles/10.3389/fbioe.2026.1717996/full"
+        }
+      ],
+      "pipeline_expectation": "GTEx: TNNI3 heart-restricted. Orthology one2one ok. IMPC Tnni3 likely phenotyped.",
+      "confidence": "settled",
+      "pipeline_checks": {
+        "mouse_orthology": "ok",
+        "impc": "any",
+        "gtex_top_tissue_contains": "Heart",
+        "gtex_tissues": [
+          {
+            "tissue": "Heart_Left_Ventricle",
+            "median_tpm": 1900.0
+          },
+          {
+            "tissue": "Heart_Atrial_Appendage",
+            "median_tpm": 1500.0
+          },
+          {
+            "tissue": "Whole_Blood",
+            "median_tpm": 0.1
+          }
+        ]
+      }
+    },
+    {
+      "id": "lit-05",
+      "gene_or_program": "iPSC-derived cortical neuron identity \u2014 fetal rather than adult signature",
+      "human_symbol": "DCX",
+      "bucket": "partially_persists",
+      "axis": "in_vitro_vs_patient",
+      "in_vitro_finding": "iPSC-derived neurons express neuronal identity genes but their transcriptome (and 3D genome) most closely matches first/second-trimester fetal cortex; immature markers such as DCX remain high.",
+      "in_vivo_finding": "Adult cortex has low DCX and an adult (not fetal) layer/maturation signature.",
+      "patient_finding": "Adult patient post-mortem cortex: adult signature; iPSC models of adult-onset disease are therefore modelling a fetal-stage cell.",
+      "documented_verdict": "partially_persists",
+      "verdict_note": "Cell identity persists; maturation stage does not. A 'persists' verdict is wrong; 'diverges' is too strong.",
+      "sources": [
+        {
+          "citation": "Handel et al., Hum Mol Genet 2016 (similarity to primary tissue and cortical layer identity)",
+          "url": "https://academic.oup.com/hmg/article-pdf/25/5/989/18527403/ddv637.pdf"
+        },
+        {
+          "citation": "Fetal signatures in the 3D genome of iPSC-derived neurons, Genome Research 2026",
+          "url": "https://genome.cshlp.org/content/early/2026/09/15/gr281488125"
+        },
+        {
+          "citation": "Multi-site omics study of long-term iPSC-neuron differentiation, 2018",
+          "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6178242/"
+        }
+      ],
+      "pipeline_expectation": "GTEx (adult tissue): DCX low in adult cortex \u2014 this is the one row where GTEx directly supports the verdict. Orthology one2one ok.",
+      "confidence": "settled",
+      "pipeline_checks": {
+        "mouse_orthology": "ok",
+        "impc": "any",
+        "gtex_low_in": "Brain_Cortex",
+        "gtex_tissues": [
+          {
+            "tissue": "Testis",
+            "median_tpm": 6.0
+          },
+          {
+            "tissue": "Brain_Cortex",
+            "median_tpm": 0.4
+          },
+          {
+            "tissue": "Whole_Blood",
+            "median_tpm": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "id": "lit-06",
+      "gene_or_program": "PTPRC (CD45) \u2014 pan-leukocyte identity marker",
+      "human_symbol": "PTPRC",
+      "bucket": "persists",
+      "axis": "all",
+      "in_vitro_finding": "Expressed on all cultured/isolated haematopoietic cells; used as the gating marker.",
+      "in_vivo_finding": "Expressed on all nucleated haematopoietic cells in mouse (Ptprc) and human tissue atlases.",
+      "patient_finding": "Universal immune-compartment marker in patient tissue (Tabula Sapiens, HCA).",
+      "documented_verdict": "persists",
+      "verdict_note": "Positive control. Any configuration should get this.",
+      "sources": [
+        {
+          "citation": "The Tabula Sapiens Consortium, Science 2022",
+          "url": "https://www.science.org/doi/10.1126/science.abl4896"
+        },
+        {
+          "citation": "Shay et al., PNAS 2013 (conserved immune transcriptional programs mouse\u2194human)",
+          "url": "https://www.pnas.org/doi/10.1073/pnas.1222738110"
+        }
+      ],
+      "pipeline_expectation": "All sources ok; GTEx highest in Whole Blood / Spleen / EBV lymphocytes; IMPC Ptprc phenotyped.",
+      "confidence": "settled",
+      "pipeline_checks": {
+        "mouse_orthology": "ok",
+        "impc": "ok",
+        "gtex_top_tissue_contains": "Blood",
+        "gtex_tissues": [
+          {
+            "tissue": "Whole_Blood",
+            "median_tpm": 210.0
+          },
+          {
+            "tissue": "Spleen",
+            "median_tpm": 180.0
+          },
+          {
+            "tissue": "Lung",
+            "median_tpm": 60.0
+          },
+          {
+            "tissue": "Brain_Cortex",
+            "median_tpm": 2.0
+          }
+        ]
+      }
+    },
+    {
+      "id": "lit-07",
+      "gene_or_program": "EPCAM \u2014 epithelial identity marker",
+      "human_symbol": "EPCAM",
+      "bucket": "persists",
+      "axis": "all",
+      "in_vitro_finding": "Expressed in epithelial lines and organoids; standard sorting marker.",
+      "in_vivo_finding": "Epithelial-restricted in mouse and human atlases.",
+      "patient_finding": "Epithelial-restricted in patient tissue; also used clinically (CTC capture).",
+      "documented_verdict": "persists",
+      "verdict_note": "Second positive control, non-immune, so 'persists' isn't carried by one lineage.",
+      "sources": [
+        {
+          "citation": "The Tabula Sapiens Consortium, Science 2022",
+          "url": "https://www.science.org/doi/10.1126/science.abl4896"
+        }
+      ],
+      "pipeline_expectation": "GTEx high in colon/small intestine/kidney epithelium, ~0 in blood/brain; orthology one2one ok.",
+      "confidence": "settled",
+      "pipeline_checks": {
+        "mouse_orthology": "ok",
+        "impc": "any",
+        "gtex_top_tissue_contains": "Colon",
+        "gtex_tissues": [
+          {
+            "tissue": "Colon_Transverse",
+            "median_tpm": 400.0
+          },
+          {
+            "tissue": "Small_Intestine_Terminal_Ileum",
+            "median_tpm": 350.0
+          },
+          {
+            "tissue": "Kidney_Cortex",
+            "median_tpm": 90.0
+          },
+          {
+            "tissue": "Whole_Blood",
+            "median_tpm": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "id": "lit-08",
+      "gene_or_program": "CXCL8 (IL-8) \u2014 human chemokine with no mouse ortholog",
+      "human_symbol": "CXCL8",
+      "bucket": "not_comparable",
+      "axis": "mouse_vs_human",
+      "in_vitro_finding": "Strongly induced in human cells (epithelium, monocytes) by inflammatory stimuli.",
+      "in_vivo_finding": "Mouse has no CXCL8 gene; neutrophil chemotaxis is carried by Cxcl1/Cxcl2 (KC/MIP-2). There is nothing to compare to.",
+      "patient_finding": "Elevated in inflamed patient tissue/serum across many diseases (persists human in vitro \u2192 patient).",
+      "documented_verdict": "not_comparable",
+      "verdict_note": "Verdict is for the mouse\u2194human axis. This is the row that tests the pipeline's own status contract: orthology `not_found` is a database fact and must map to not_comparable, NOT to diverges and NOT to 'no evidence'. The human in-vitro\u2192patient axis is `persists`.",
+      "sources": [
+        {
+          "citation": "Mestas & Hughes, J Immunol 2004, 'Of mice and not men'",
+          "url": "https://academic.oup.com/jimmunol/article-abstract/172/5/2731/8060352"
+        }
+      ],
+      "pipeline_expectation": "ensembl_orthology.mus_musculus = `not_found`; rattus_norvegicus = `not_found`; macaca_mulatta = `ok`; IMPC = `skipped` (no unique one2one ortholog). This is exactly the package shape the agent must read correctly.",
+      "confidence": "settled",
+      "pipeline_checks": {
+        "mouse_orthology": "not_found",
+        "rat_orthology": "not_found",
+        "impc": "skipped",
+        "gtex_tissue_present": null,
+        "gtex_tissues": [
+          {
+            "tissue": "Whole_Blood",
+            "median_tpm": 3.0
+          },
+          {
+            "tissue": "Lung",
+            "median_tpm": 2.0
+          }
+        ]
+      }
+    },
+    {
+      "id": "lit-09",
+      "gene_or_program": "NOS2 (iNOS) induction in macrophages",
+      "human_symbol": "NOS2",
+      "bucket": "diverges",
+      "axis": "mouse_vs_human",
+      "in_vitro_finding": "Mouse macrophages robustly induce Nos2 / nitric oxide on LPS+IFN\u03b3; human monocyte-derived macrophages induce NOS2 weakly or inconsistently under the same in-vitro stimulation.",
+      "in_vivo_finding": "Orthologous gene, conserved sequence, but species-divergent regulation \u2014 the mouse in-vitro finding does not transfer to human cells.",
+      "patient_finding": "NOS2 protein detectable in some human inflammatory lesions but not the high-output NO response seen in mouse; a classic translational mismatch.",
+      "documented_verdict": "diverges",
+      "verdict_note": "Ortholog exists (unlike lit-08) but expression regulation differs \u2014 tests that the agent distinguishes 'comparable and different' from 'not comparable'.",
+      "sources": [
+        {
+          "citation": "Mestas & Hughes, J Immunol 2004",
+          "url": "https://academic.oup.com/jimmunol/article-abstract/172/5/2731/8060352"
+        },
+        {
+          "citation": "Reconciling mouse and human immunology, Annu Rev Immunol",
+          "url": "https://www.annualreviews.org/content/journals/10.1146/annurev-immunol-101721-065201"
+        }
+      ],
+      "pipeline_expectation": "Orthology mouse one2one ok (Nos2); IMPC Nos2 phenotyped with immune hits; GTEx: low baseline everywhere (inducible gene) \u2014 agent must not read low GTEx as 'diverges' by itself.",
+      "confidence": "verify \u2014 the human-weak-induction claim is well cited in reviews but the magnitude is protocol-dependent; have a teammate confirm the specific figure you cite.",
+      "pipeline_checks": {
+        "mouse_orthology": "ok",
+        "impc": "ok",
+        "gtex_low_everywhere": true,
+        "gtex_tissues": [
+          {
+            "tissue": "Colon_Transverse",
+            "median_tpm": 0.8
+          },
+          {
+            "tissue": "Lung",
+            "median_tpm": 0.3
+          },
+          {
+            "tissue": "Whole_Blood",
+            "median_tpm": 0.1
+          }
+        ]
+      }
+    }
+  ],
+  "bucket_coverage": {
+    "persists": [
+      "lit-06",
+      "lit-07"
+    ],
+    "partially_persists": [
+      "lit-03",
+      "lit-04",
+      "lit-05"
+    ],
+    "diverges": [
+      "lit-01",
+      "lit-02",
+      "lit-09"
+    ],
+    "not_comparable": [
+      "lit-08"
+    ]
+  },
+  "_pipeline_checks_doc": "Machine-readable form of pipeline_expectation, consumed by bench/pipeline_bench.py (live packages) and bench/gen_fixtures.py (stub packages). mouse_orthology: expected status of sources.ensembl_orthology.mus_musculus (one2many = ok but no unique one2one). impc: expected status or 'any'. gtex_*: sanity checks on sources.gtex.data.tissues. gtex_tissues: values used ONLY when stubbing."
+}

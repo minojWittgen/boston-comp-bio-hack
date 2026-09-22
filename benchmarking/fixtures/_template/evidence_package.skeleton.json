@@ -1,0 +1,59 @@
+{
+  "_note": "Matches package.build_package output (schema_version 0.1) exactly. Every source entry is a SourceResult: {source, status, query, data, error, source_version, retrieved_at, cache_hit}. Replace with a real frozen eval-mode package from `modal volume get xctx-cache runs/<run_id>`; hand-edit only where reference_answers.fixture_construction says so.",
+  "schema_version": "0.1",
+  "run": {
+    "run_id": "<<FILL>>",
+    "mode": "eval",
+    "disease_query": "<<FILL>>",
+    "enabled_sources": ["ensembl_orthology", "gtex", "impc"],
+    "built_at": "<<ISO>>"
+  },
+  "gene": {
+    "source": "mygene", "status": "ok", "query": { "symbol": "<<FILL>>" },
+    "data": { "symbol": "<<FILL>>", "name": "<<FILL>>", "entrez": 0, "ensembl_ids": ["ENSG<<FILL>>"], "ensembl_primary": "ENSG<<FILL>>", "ambiguous": false },
+    "error": null, "source_version": null, "retrieved_at": "<<ISO>>", "cache_hit": true
+  },
+  "sources": {
+    "ensembl_orthology": {
+      "mus_musculus": {
+        "source": "ensembl_orthology", "status": "ok", "query": { "sp": "mus_musculus" },
+        "data": { "orthologs": [ { "target_id": "ENSMUSG<<FILL>>", "species": "mus_musculus", "type": "ortholog_one2one", "perc_id_target": 0, "perc_id_source": 0, "target_symbol": "<<Mouse symbol>>" } ],
+                  "one2one":   [ { "target_id": "ENSMUSG<<FILL>>", "species": "mus_musculus", "type": "ortholog_one2one", "perc_id_target": 0, "perc_id_source": 0, "target_symbol": "<<Mouse symbol>>" } ] },
+        "error": null, "source_version": null, "retrieved_at": "<<ISO>>", "cache_hit": true
+      },
+      "rattus_norvegicus": {
+        "source": "ensembl_orthology", "status": "not_found", "query": { "sp": "rattus_norvegicus" },
+        "data": { "orthologs": [] }, "error": null, "source_version": null, "retrieved_at": "<<ISO>>", "cache_hit": true
+      },
+      "macaca_mulatta": {
+        "source": "ensembl_orthology", "status": "ok", "query": { "sp": "macaca_mulatta" },
+        "data": { "orthologs": [], "one2one": [] }, "error": null, "source_version": null, "retrieved_at": "<<ISO>>", "cache_hit": true
+      }
+    },
+    "impc": {
+      "source": "impc", "status": "ok", "query": { "mouse_symbol": "<<Mouse symbol>>" },
+      "data": { "phenotyped": true, "n_tests": 0, "hits": [ { "mp_term_id": "MP:<<FILL>>", "mp_term_name": "<<FILL>>", "top_level_mp_term_name": ["<<FILL>>"], "zygosity": "homozygote", "sex": "both", "p_value": 0.0, "allele_symbol": "<<FILL>>" } ] },
+      "error": null, "source_version": null, "retrieved_at": "<<ISO>>", "cache_hit": true
+    },
+    "gtex": {
+      "source": "gtex", "status": "ok", "query": { "ensg": "ENSG<<FILL>>" },
+      "data": { "gencodeId": "ENSG<<FILL>>.<<ver>>", "tissues": [ { "tissue": "<<GTEx tissueSiteDetailId, e.g. Skin_Sun_Exposed_Lower_leg>>", "median_tpm": 0.0 } ] },
+      "error": null, "source_version": "gtex_v8", "retrieved_at": "<<ISO>>", "cache_hit": true
+    },
+    "opentargets": { "source": "opentargets", "status": "skipped", "query": {}, "data": null, "error": "disabled in eval mode", "source_version": null, "retrieved_at": "<<ISO>>" },
+    "pubmed":      { "source": "pubmed",      "status": "skipped", "query": {}, "data": null, "error": "disabled in eval mode", "source_version": null, "retrieved_at": "<<ISO>>" }
+  },
+  "summary": {
+    "orthology": { "mus_musculus": { "status": "ok", "n_orthologs": 1, "n_one2one": 1 }, "rattus_norvegicus": { "status": "not_found", "n_orthologs": 0, "n_one2one": 0 }, "macaca_mulatta": { "status": "ok", "n_orthologs": 0, "n_one2one": 0 } },
+    "impc": { "status": "ok", "phenotyped": true, "n_phenotype_hits": 1 },
+    "gtex_top_tissues": [ { "tissue": "<<top 5 only — the claim's tissue may NOT be here; agent must read sources.gtex.data.tissues>>", "median_tpm": 0.0 } ],
+    "opentargets_top_diseases": [],
+    "pubmed_count": null
+  },
+  "missing": [
+    { "source": "ensembl_orthology", "sub": "rattus_norvegicus", "status": "not_found", "reason": null },
+    { "source": "opentargets", "sub": null, "status": "skipped", "reason": "disabled in eval mode" },
+    { "source": "pubmed",      "sub": null, "status": "skipped", "reason": "disabled in eval mode" }
+  ],
+  "_xctx_003_edit": "For case 3: set sources.gtex = {source:'gtex', status:'error', query:{ensg:...}, data:null, error:\"HTTPError('502 Server Error')\", source_version:'gtex_v8', retrieved_at:..., cache_hit:false}; set summary.gtex_top_tissues = []; add {source:'gtex', sub:null, status:'error', reason:\"HTTPError('502 Server Error')\"} to missing. Note `missing` ALWAYS contains the two eval-skipped sources — the agent must not read those as gaps."
+}

@@ -1,0 +1,257 @@
+{
+  "schema_version": "0.1",
+  "run": {
+    "run_id": "lit-05",
+    "mode": "eval",
+    "disease_query": "",
+    "enabled_sources": [
+      "ensembl_orthology",
+      "gtex",
+      "impc"
+    ],
+    "built_at": "2026-09-22T17:04:26.154917+00:00"
+  },
+  "gene": {
+    "source": "mygene",
+    "status": "ok",
+    "query": {
+      "symbol": "DCX"
+    },
+    "data": {
+      "symbol": "DCX",
+      "name": "DCX",
+      "entrez": 0,
+      "ensembl_ids": [
+        "ENSG_DCX"
+      ],
+      "ensembl_primary": "ENSG_DCX",
+      "ambiguous": false
+    },
+    "error": null,
+    "source_version": null,
+    "retrieved_at": "2026-09-22T17:04:24.511390+00:00",
+    "cache_hit": false
+  },
+  "sources": {
+    "ensembl_orthology": {
+      "mus_musculus": {
+        "source": "ensembl_orthology",
+        "status": "ok",
+        "query": {
+          "ensg": "ENSG_DCX",
+          "target_species": "mus_musculus"
+        },
+        "data": {
+          "orthologs": [
+            {
+              "target_id": "ENSMUSG0000000001",
+              "species": "mus_musculus",
+              "type": "ortholog_one2one",
+              "perc_id_target": 80.0,
+              "perc_id_source": 80.0,
+              "target_symbol": "Dcx"
+            }
+          ],
+          "one2one": [
+            {
+              "target_id": "ENSMUSG0000000001",
+              "species": "mus_musculus",
+              "type": "ortholog_one2one",
+              "perc_id_target": 80.0,
+              "perc_id_source": 80.0,
+              "target_symbol": "Dcx"
+            }
+          ]
+        },
+        "error": null,
+        "source_version": null,
+        "retrieved_at": "2026-09-22T17:04:24.511390+00:00",
+        "cache_hit": false
+      },
+      "rattus_norvegicus": {
+        "source": "ensembl_orthology",
+        "status": "not_found",
+        "query": {
+          "ensg": "ENSG_DCX",
+          "target_species": "rattus_norvegicus"
+        },
+        "data": {
+          "orthologs": []
+        },
+        "error": null,
+        "source_version": null,
+        "retrieved_at": "2026-09-22T17:04:24.511390+00:00",
+        "cache_hit": false
+      },
+      "macaca_mulatta": {
+        "source": "ensembl_orthology",
+        "status": "ok",
+        "query": {
+          "ensg": "ENSG_DCX",
+          "target_species": "macaca_mulatta"
+        },
+        "data": {
+          "orthologs": [
+            {
+              "target_id": "ENSMACG0000000001",
+              "species": "macaca_mulatta",
+              "type": "ortholog_one2one",
+              "perc_id_target": 80.0,
+              "perc_id_source": 80.0,
+              "target_symbol": "DCX"
+            }
+          ],
+          "one2one": [
+            {
+              "target_id": "ENSMACG0000000001",
+              "species": "macaca_mulatta",
+              "type": "ortholog_one2one",
+              "perc_id_target": 80.0,
+              "perc_id_source": 80.0,
+              "target_symbol": "DCX"
+            }
+          ]
+        },
+        "error": null,
+        "source_version": null,
+        "retrieved_at": "2026-09-22T17:04:24.511390+00:00",
+        "cache_hit": false
+      }
+    },
+    "impc": {
+      "source": "impc",
+      "status": "ok",
+      "query": {
+        "mouse_symbol": "Dcx"
+      },
+      "data": {
+        "phenotyped": true,
+        "n_tests": 412,
+        "hits": [
+          {
+            "mp_term_id": "MP:0002169",
+            "mp_term_name": "no abnormal phenotype detected",
+            "top_level_mp_term_name": [
+              "immune system phenotype"
+            ],
+            "zygosity": "homozygote",
+            "sex": "both",
+            "p_value": 1e-06,
+            "allele_symbol": "Tyk2<tm1a(EUCOMM)Wtsi>"
+          }
+        ]
+      },
+      "error": null,
+      "source_version": null,
+      "retrieved_at": "2026-09-22T17:04:24.511390+00:00",
+      "cache_hit": false
+    },
+    "gtex": {
+      "source": "gtex",
+      "status": "ok",
+      "query": {
+        "ensg": "ENSG_DCX",
+        "dataset": "gtex_v8"
+      },
+      "data": {
+        "gencodeId": "ENSG_DCX.12",
+        "tissues": [
+          {
+            "tissue": "Testis",
+            "median_tpm": 6.0
+          },
+          {
+            "tissue": "Brain_Cortex",
+            "median_tpm": 0.4
+          },
+          {
+            "tissue": "Whole_Blood",
+            "median_tpm": 0.0
+          }
+        ]
+      },
+      "error": null,
+      "source_version": "gtex_v8",
+      "retrieved_at": "2026-09-22T17:04:24.511390+00:00",
+      "cache_hit": false
+    },
+    "opentargets": {
+      "source": "opentargets",
+      "status": "skipped",
+      "query": {},
+      "data": null,
+      "error": "disabled in eval mode",
+      "source_version": null,
+      "retrieved_at": "2026-09-22T17:04:26.154891+00:00"
+    },
+    "pubmed": {
+      "source": "pubmed",
+      "status": "skipped",
+      "query": {},
+      "data": null,
+      "error": "disabled in eval mode",
+      "source_version": null,
+      "retrieved_at": "2026-09-22T17:04:26.154912+00:00"
+    }
+  },
+  "summary": {
+    "orthology": {
+      "mus_musculus": {
+        "status": "ok",
+        "n_orthologs": 1,
+        "n_one2one": 1
+      },
+      "rattus_norvegicus": {
+        "status": "not_found",
+        "n_orthologs": 0,
+        "n_one2one": 0
+      },
+      "macaca_mulatta": {
+        "status": "ok",
+        "n_orthologs": 1,
+        "n_one2one": 1
+      }
+    },
+    "impc": {
+      "status": "ok",
+      "phenotyped": true,
+      "n_phenotype_hits": 1
+    },
+    "gtex_top_tissues": [
+      {
+        "tissue": "Testis",
+        "median_tpm": 6.0
+      },
+      {
+        "tissue": "Brain_Cortex",
+        "median_tpm": 0.4
+      },
+      {
+        "tissue": "Whole_Blood",
+        "median_tpm": 0.0
+      }
+    ],
+    "opentargets_top_diseases": [],
+    "pubmed_count": null
+  },
+  "missing": [
+    {
+      "source": "ensembl_orthology",
+      "sub": "rattus_norvegicus",
+      "status": "not_found",
+      "reason": null
+    },
+    {
+      "source": "opentargets",
+      "sub": null,
+      "status": "skipped",
+      "reason": "disabled in eval mode"
+    },
+    {
+      "source": "pubmed",
+      "sub": null,
+      "status": "skipped",
+      "reason": "disabled in eval mode"
+    }
+  ]
+}

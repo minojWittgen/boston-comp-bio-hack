@@ -1,0 +1,46 @@
+{
+  "case_id": "lit-04",
+  "schema_version": "1.0",
+  "mode": "eval",
+  "task": {
+    "claim": "The in-vitro finding for TNNI1 \u2192 TNNI3 troponin I isoform switch (TNNI3) persists across the in vitro vs patient axis.",
+    "instruction": "Using only the evidence package and context datasets provided (and the listed tools if you judge more evidence is needed), decide whether the in-vitro finding described in the claim is corroborated across the in-vivo and patient contexts. Return one verdict from allowed_verdicts with cited evidence, caveats, and every action you took, in the shape given by output_schema.",
+    "allowed_verdicts": [
+      "persists",
+      "partially_persists",
+      "diverges",
+      "not_comparable"
+    ],
+    "output_schema": "../schema/agent_output.schema.json"
+  },
+  "gene": {
+    "symbol": "TNNI3",
+    "disease": ""
+  },
+  "evidence_package": {
+    "path": "../../fixtures/lit-04/evidence_package.json",
+    "run_id": "lit-04",
+    "produced_by": "xctx-evidence.build_package"
+  },
+  "context_datasets": [
+    {
+      "id": "narrative",
+      "context": "in_vitro",
+      "modality": "narrative",
+      "path": "../../fixtures/lit-04/narrative.json",
+      "description": "Reported findings for this gene/program in each context, as text."
+    }
+  ],
+  "tools": {
+    "available": [
+      "read_file",
+      "build_evidence_package"
+    ],
+    "stub_responses": "../../fixtures/lit-04/tool_stub.json"
+  },
+  "limits": {
+    "max_tool_calls": 12,
+    "max_output_tokens": 4000,
+    "wall_clock_seconds": 600
+  }
+}

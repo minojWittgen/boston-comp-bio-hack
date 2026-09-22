@@ -1,0 +1,234 @@
+{
+  "schema_version": "0.1",
+  "run": {
+    "run_id": "gen-xctx-003",
+    "mode": "eval",
+    "disease_query": "psoriasis",
+    "enabled_sources": [
+      "ensembl_orthology",
+      "gtex",
+      "impc"
+    ],
+    "built_at": "2026-09-22T17:04:24.786165+00:00"
+  },
+  "gene": {
+    "source": "mygene",
+    "status": "ok",
+    "query": {
+      "symbol": "TYK2"
+    },
+    "data": {
+      "symbol": "TYK2",
+      "name": "TYK2",
+      "entrez": 0,
+      "ensembl_ids": [
+        "ENSG00000105397"
+      ],
+      "ensembl_primary": "ENSG00000105397",
+      "ambiguous": false
+    },
+    "error": null,
+    "source_version": null,
+    "retrieved_at": "2026-09-22T17:04:24.511390+00:00",
+    "cache_hit": false
+  },
+  "sources": {
+    "ensembl_orthology": {
+      "mus_musculus": {
+        "source": "ensembl_orthology",
+        "status": "ok",
+        "query": {
+          "ensg": "ENSG00000105397",
+          "target_species": "mus_musculus"
+        },
+        "data": {
+          "orthologs": [
+            {
+              "target_id": "ENSMUSG0000000001",
+              "species": "mus_musculus",
+              "type": "ortholog_one2one",
+              "perc_id_target": 80.0,
+              "perc_id_source": 80.0,
+              "target_symbol": "Tyk2"
+            }
+          ],
+          "one2one": [
+            {
+              "target_id": "ENSMUSG0000000001",
+              "species": "mus_musculus",
+              "type": "ortholog_one2one",
+              "perc_id_target": 80.0,
+              "perc_id_source": 80.0,
+              "target_symbol": "Tyk2"
+            }
+          ]
+        },
+        "error": null,
+        "source_version": null,
+        "retrieved_at": "2026-09-22T17:04:24.511390+00:00",
+        "cache_hit": false
+      },
+      "rattus_norvegicus": {
+        "source": "ensembl_orthology",
+        "status": "not_found",
+        "query": {
+          "ensg": "ENSG00000105397",
+          "target_species": "rattus_norvegicus"
+        },
+        "data": {
+          "orthologs": []
+        },
+        "error": null,
+        "source_version": null,
+        "retrieved_at": "2026-09-22T17:04:24.511390+00:00",
+        "cache_hit": false
+      },
+      "macaca_mulatta": {
+        "source": "ensembl_orthology",
+        "status": "ok",
+        "query": {
+          "ensg": "ENSG00000105397",
+          "target_species": "macaca_mulatta"
+        },
+        "data": {
+          "orthologs": [
+            {
+              "target_id": "ENSMACG0000000001",
+              "species": "macaca_mulatta",
+              "type": "ortholog_one2one",
+              "perc_id_target": 80.0,
+              "perc_id_source": 80.0,
+              "target_symbol": "TYK2"
+            }
+          ],
+          "one2one": [
+            {
+              "target_id": "ENSMACG0000000001",
+              "species": "macaca_mulatta",
+              "type": "ortholog_one2one",
+              "perc_id_target": 80.0,
+              "perc_id_source": 80.0,
+              "target_symbol": "TYK2"
+            }
+          ]
+        },
+        "error": null,
+        "source_version": null,
+        "retrieved_at": "2026-09-22T17:04:24.511390+00:00",
+        "cache_hit": false
+      }
+    },
+    "impc": {
+      "source": "impc",
+      "status": "ok",
+      "query": {
+        "mouse_symbol": "Tyk2"
+      },
+      "data": {
+        "phenotyped": true,
+        "n_tests": 412,
+        "hits": [
+          {
+            "mp_term_id": "MP:0002169",
+            "mp_term_name": "no abnormal phenotype detected",
+            "top_level_mp_term_name": [
+              "immune system phenotype"
+            ],
+            "zygosity": "homozygote",
+            "sex": "both",
+            "p_value": 1e-06,
+            "allele_symbol": "Tyk2<tm1a(EUCOMM)Wtsi>"
+          }
+        ]
+      },
+      "error": null,
+      "source_version": null,
+      "retrieved_at": "2026-09-22T17:04:24.511390+00:00",
+      "cache_hit": false
+    },
+    "gtex": {
+      "source": "gtex",
+      "status": "error",
+      "query": {
+        "ensg": "ENSG00000105397",
+        "dataset": "gtex_v8"
+      },
+      "data": null,
+      "error": "HTTPError('502 Server Error: Bad Gateway for url: https://gtexportal.org/api/v2/...')",
+      "source_version": "gtex_v8",
+      "retrieved_at": "2026-09-22T17:04:24.511390+00:00",
+      "cache_hit": false
+    },
+    "opentargets": {
+      "source": "opentargets",
+      "status": "skipped",
+      "query": {},
+      "data": null,
+      "error": "disabled in eval mode",
+      "source_version": null,
+      "retrieved_at": "2026-09-22T17:04:24.786136+00:00"
+    },
+    "pubmed": {
+      "source": "pubmed",
+      "status": "skipped",
+      "query": {},
+      "data": null,
+      "error": "disabled in eval mode",
+      "source_version": null,
+      "retrieved_at": "2026-09-22T17:04:24.786160+00:00"
+    }
+  },
+  "summary": {
+    "orthology": {
+      "mus_musculus": {
+        "status": "ok",
+        "n_orthologs": 1,
+        "n_one2one": 1
+      },
+      "rattus_norvegicus": {
+        "status": "not_found",
+        "n_orthologs": 0,
+        "n_one2one": 0
+      },
+      "macaca_mulatta": {
+        "status": "ok",
+        "n_orthologs": 1,
+        "n_one2one": 1
+      }
+    },
+    "impc": {
+      "status": "ok",
+      "phenotyped": true,
+      "n_phenotype_hits": 1
+    },
+    "gtex_top_tissues": [],
+    "opentargets_top_diseases": [],
+    "pubmed_count": null
+  },
+  "missing": [
+    {
+      "source": "ensembl_orthology",
+      "sub": "rattus_norvegicus",
+      "status": "not_found",
+      "reason": null
+    },
+    {
+      "source": "opentargets",
+      "sub": null,
+      "status": "skipped",
+      "reason": "disabled in eval mode"
+    },
+    {
+      "source": "pubmed",
+      "sub": null,
+      "status": "skipped",
+      "reason": "disabled in eval mode"
+    },
+    {
+      "source": "gtex",
+      "sub": null,
+      "status": "error",
+      "reason": "HTTPError('502 Server Error: Bad Gateway for url: https://gtexportal.org/api/v2/...')"
+    }
+  ]
+}

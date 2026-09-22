@@ -1,0 +1,263 @@
+{
+  "schema_version": "0.1",
+  "run": {
+    "run_id": "lit-02",
+    "mode": "eval",
+    "disease_query": "",
+    "enabled_sources": [
+      "ensembl_orthology",
+      "gtex",
+      "impc"
+    ],
+    "built_at": "2026-09-22T17:04:25.670217+00:00"
+  },
+  "gene": {
+    "source": "mygene",
+    "status": "ok",
+    "query": {
+      "symbol": "HSPA1A"
+    },
+    "data": {
+      "symbol": "HSPA1A",
+      "name": "HSPA1A",
+      "entrez": 0,
+      "ensembl_ids": [
+        "ENSG_HSPA1A"
+      ],
+      "ensembl_primary": "ENSG_HSPA1A",
+      "ambiguous": false
+    },
+    "error": null,
+    "source_version": null,
+    "retrieved_at": "2026-09-22T17:04:24.511390+00:00",
+    "cache_hit": false
+  },
+  "sources": {
+    "ensembl_orthology": {
+      "mus_musculus": {
+        "source": "ensembl_orthology",
+        "status": "ok",
+        "query": {
+          "ensg": "ENSG_HSPA1A",
+          "target_species": "mus_musculus"
+        },
+        "data": {
+          "orthologs": [
+            {
+              "target_id": "ENSMUSG0000000001",
+              "species": "mus_musculus",
+              "type": "ortholog_one2many",
+              "perc_id_target": 80.0,
+              "perc_id_source": 80.0,
+              "target_symbol": "Hspa1a"
+            },
+            {
+              "target_id": "ENSMUSG0000000002",
+              "species": "mus_musculus",
+              "type": "ortholog_one2many",
+              "perc_id_target": 80.0,
+              "perc_id_source": 80.0,
+              "target_symbol": "Hspa1a"
+            }
+          ],
+          "one2one": []
+        },
+        "error": null,
+        "source_version": null,
+        "retrieved_at": "2026-09-22T17:04:24.511390+00:00",
+        "cache_hit": false
+      },
+      "rattus_norvegicus": {
+        "source": "ensembl_orthology",
+        "status": "not_found",
+        "query": {
+          "ensg": "ENSG_HSPA1A",
+          "target_species": "rattus_norvegicus"
+        },
+        "data": {
+          "orthologs": []
+        },
+        "error": null,
+        "source_version": null,
+        "retrieved_at": "2026-09-22T17:04:24.511390+00:00",
+        "cache_hit": false
+      },
+      "macaca_mulatta": {
+        "source": "ensembl_orthology",
+        "status": "ok",
+        "query": {
+          "ensg": "ENSG_HSPA1A",
+          "target_species": "macaca_mulatta"
+        },
+        "data": {
+          "orthologs": [
+            {
+              "target_id": "ENSMACG0000000001",
+              "species": "macaca_mulatta",
+              "type": "ortholog_one2one",
+              "perc_id_target": 80.0,
+              "perc_id_source": 80.0,
+              "target_symbol": "HSPA1A"
+            }
+          ],
+          "one2one": [
+            {
+              "target_id": "ENSMACG0000000001",
+              "species": "macaca_mulatta",
+              "type": "ortholog_one2one",
+              "perc_id_target": 80.0,
+              "perc_id_source": 80.0,
+              "target_symbol": "HSPA1A"
+            }
+          ]
+        },
+        "error": null,
+        "source_version": null,
+        "retrieved_at": "2026-09-22T17:04:24.511390+00:00",
+        "cache_hit": false
+      }
+    },
+    "impc": {
+      "source": "impc",
+      "status": "skipped",
+      "query": {},
+      "data": null,
+      "error": "no unique one2one mouse ortholog (mouse orthology ok)",
+      "source_version": null,
+      "retrieved_at": "2026-09-22T17:04:25.669653+00:00"
+    },
+    "gtex": {
+      "source": "gtex",
+      "status": "ok",
+      "query": {
+        "ensg": "ENSG_HSPA1A",
+        "dataset": "gtex_v8"
+      },
+      "data": {
+        "gencodeId": "ENSG_HSPA1A.12",
+        "tissues": [
+          {
+            "tissue": "Skin_Sun_Exposed_Lower_leg",
+            "median_tpm": 14.2
+          },
+          {
+            "tissue": "Skin_Not_Sun_Exposed_Suprapubic",
+            "median_tpm": 12.9
+          },
+          {
+            "tissue": "Whole_Blood",
+            "median_tpm": 9.7
+          },
+          {
+            "tissue": "Spleen",
+            "median_tpm": 8.1
+          },
+          {
+            "tissue": "Lung",
+            "median_tpm": 6.4
+          },
+          {
+            "tissue": "Brain_Cortex",
+            "median_tpm": 0.9
+          }
+        ]
+      },
+      "error": null,
+      "source_version": "gtex_v8",
+      "retrieved_at": "2026-09-22T17:04:24.511390+00:00",
+      "cache_hit": false
+    },
+    "opentargets": {
+      "source": "opentargets",
+      "status": "skipped",
+      "query": {},
+      "data": null,
+      "error": "disabled in eval mode",
+      "source_version": null,
+      "retrieved_at": "2026-09-22T17:04:25.670205+00:00"
+    },
+    "pubmed": {
+      "source": "pubmed",
+      "status": "skipped",
+      "query": {},
+      "data": null,
+      "error": "disabled in eval mode",
+      "source_version": null,
+      "retrieved_at": "2026-09-22T17:04:25.670213+00:00"
+    }
+  },
+  "summary": {
+    "orthology": {
+      "mus_musculus": {
+        "status": "ok",
+        "n_orthologs": 2,
+        "n_one2one": 0
+      },
+      "rattus_norvegicus": {
+        "status": "not_found",
+        "n_orthologs": 0,
+        "n_one2one": 0
+      },
+      "macaca_mulatta": {
+        "status": "ok",
+        "n_orthologs": 1,
+        "n_one2one": 1
+      }
+    },
+    "impc": {
+      "status": "skipped",
+      "phenotyped": null,
+      "n_phenotype_hits": 0
+    },
+    "gtex_top_tissues": [
+      {
+        "tissue": "Skin_Sun_Exposed_Lower_leg",
+        "median_tpm": 14.2
+      },
+      {
+        "tissue": "Skin_Not_Sun_Exposed_Suprapubic",
+        "median_tpm": 12.9
+      },
+      {
+        "tissue": "Whole_Blood",
+        "median_tpm": 9.7
+      },
+      {
+        "tissue": "Spleen",
+        "median_tpm": 8.1
+      },
+      {
+        "tissue": "Lung",
+        "median_tpm": 6.4
+      }
+    ],
+    "opentargets_top_diseases": [],
+    "pubmed_count": null
+  },
+  "missing": [
+    {
+      "source": "ensembl_orthology",
+      "sub": "rattus_norvegicus",
+      "status": "not_found",
+      "reason": null
+    },
+    {
+      "source": "impc",
+      "sub": null,
+      "status": "skipped",
+      "reason": "no unique one2one mouse ortholog (mouse orthology ok)"
+    },
+    {
+      "source": "opentargets",
+      "sub": null,
+      "status": "skipped",
+      "reason": "disabled in eval mode"
+    },
+    {
+      "source": "pubmed",
+      "sub": null,
+      "status": "skipped",
+      "reason": "disabled in eval mode"
+    }
+  ]
+}

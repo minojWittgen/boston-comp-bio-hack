@@ -12,6 +12,14 @@ git switch -c your-name/short-task
 
 The project idea and application stack are still to be decided. Setup and run instructions will go here once the team selects them.
 
+## Repository layout
+
+| Path | What it holds |
+|---|---|
+| [`cross-context-biology-agent.md`](cross-context-biology-agent.md) | The design document — architecture, evidence dimensions, and the criteria the agent is judged against. |
+| [`data_pipeline/`](data_pipeline/README.md) | Retrieval layer. Turns a gene or pathway into a deterministic, context-tagged evidence package. Makes no judgments and computes no scores. |
+| [`benchmarking/`](benchmarking/README.md) | Evaluation layer. Blinded A/B case suite that measures whether the agent reasons correctly over those packages. |
+
 ## Work together
 
 - Use GitHub Issues to record tasks, owners, and the next concrete step.

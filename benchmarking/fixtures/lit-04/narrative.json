@@ -1,0 +1,10 @@
+{
+  "dataset_id": "narrative",
+  "context": "literature",
+  "gene": "TNNI3",
+  "program": "TNNI1 \u2192 TNNI3 troponin I isoform switch",
+  "axis": "in_vitro_vs_patient",
+  "in_vitro_finding": "hiPSC-CMs predominantly express the fetal/slow-skeletal isoform TNNI1; TNNI3 (adult cardiac) is low and increases only with prolonged culture or maturation cues.",
+  "in_vivo_finding": "Adult heart is TNNI3-dominant; the TNNI1\u2192TNNI3 switch is a standard maturation index.",
+  "patient_finding": "Adult patient myocardium TNNI3-dominant."
+}

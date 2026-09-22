@@ -1,0 +1,223 @@
+{
+  "schema_version": "0.1",
+  "run": {
+    "run_id": "lit-08",
+    "mode": "eval",
+    "disease_query": "",
+    "enabled_sources": [
+      "ensembl_orthology",
+      "gtex",
+      "impc"
+    ],
+    "built_at": "2026-09-22T17:04:26.626152+00:00"
+  },
+  "gene": {
+    "source": "mygene",
+    "status": "ok",
+    "query": {
+      "symbol": "CXCL8"
+    },
+    "data": {
+      "symbol": "CXCL8",
+      "name": "CXCL8",
+      "entrez": 0,
+      "ensembl_ids": [
+        "ENSG_CXCL8"
+      ],
+      "ensembl_primary": "ENSG_CXCL8",
+      "ambiguous": false
+    },
+    "error": null,
+    "source_version": null,
+    "retrieved_at": "2026-09-22T17:04:24.511390+00:00",
+    "cache_hit": false
+  },
+  "sources": {
+    "ensembl_orthology": {
+      "mus_musculus": {
+        "source": "ensembl_orthology",
+        "status": "not_found",
+        "query": {
+          "ensg": "ENSG_CXCL8",
+          "target_species": "mus_musculus"
+        },
+        "data": {
+          "orthologs": []
+        },
+        "error": null,
+        "source_version": null,
+        "retrieved_at": "2026-09-22T17:04:24.511390+00:00",
+        "cache_hit": false
+      },
+      "rattus_norvegicus": {
+        "source": "ensembl_orthology",
+        "status": "not_found",
+        "query": {
+          "ensg": "ENSG_CXCL8",
+          "target_species": "rattus_norvegicus"
+        },
+        "data": {
+          "orthologs": []
+        },
+        "error": null,
+        "source_version": null,
+        "retrieved_at": "2026-09-22T17:04:24.511390+00:00",
+        "cache_hit": false
+      },
+      "macaca_mulatta": {
+        "source": "ensembl_orthology",
+        "status": "ok",
+        "query": {
+          "ensg": "ENSG_CXCL8",
+          "target_species": "macaca_mulatta"
+        },
+        "data": {
+          "orthologs": [
+            {
+              "target_id": "ENSMACG0000000001",
+              "species": "macaca_mulatta",
+              "type": "ortholog_one2one",
+              "perc_id_target": 80.0,
+              "perc_id_source": 80.0,
+              "target_symbol": "CXCL8"
+            }
+          ],
+          "one2one": [
+            {
+              "target_id": "ENSMACG0000000001",
+              "species": "macaca_mulatta",
+              "type": "ortholog_one2one",
+              "perc_id_target": 80.0,
+              "perc_id_source": 80.0,
+              "target_symbol": "CXCL8"
+            }
+          ]
+        },
+        "error": null,
+        "source_version": null,
+        "retrieved_at": "2026-09-22T17:04:24.511390+00:00",
+        "cache_hit": false
+      }
+    },
+    "impc": {
+      "source": "impc",
+      "status": "skipped",
+      "query": {},
+      "data": null,
+      "error": "no unique one2one mouse ortholog (mouse orthology not_found)",
+      "source_version": null,
+      "retrieved_at": "2026-09-22T17:04:26.625926+00:00"
+    },
+    "gtex": {
+      "source": "gtex",
+      "status": "ok",
+      "query": {
+        "ensg": "ENSG_CXCL8",
+        "dataset": "gtex_v8"
+      },
+      "data": {
+        "gencodeId": "ENSG_CXCL8.12",
+        "tissues": [
+          {
+            "tissue": "Whole_Blood",
+            "median_tpm": 3.0
+          },
+          {
+            "tissue": "Lung",
+            "median_tpm": 2.0
+          }
+        ]
+      },
+      "error": null,
+      "source_version": "gtex_v8",
+      "retrieved_at": "2026-09-22T17:04:24.511390+00:00",
+      "cache_hit": false
+    },
+    "opentargets": {
+      "source": "opentargets",
+      "status": "skipped",
+      "query": {},
+      "data": null,
+      "error": "disabled in eval mode",
+      "source_version": null,
+      "retrieved_at": "2026-09-22T17:04:26.626141+00:00"
+    },
+    "pubmed": {
+      "source": "pubmed",
+      "status": "skipped",
+      "query": {},
+      "data": null,
+      "error": "disabled in eval mode",
+      "source_version": null,
+      "retrieved_at": "2026-09-22T17:04:26.626149+00:00"
+    }
+  },
+  "summary": {
+    "orthology": {
+      "mus_musculus": {
+        "status": "not_found",
+        "n_orthologs": 0,
+        "n_one2one": 0
+      },
+      "rattus_norvegicus": {
+        "status": "not_found",
+        "n_orthologs": 0,
+        "n_one2one": 0
+      },
+      "macaca_mulatta": {
+        "status": "ok",
+        "n_orthologs": 1,
+        "n_one2one": 1
+      }
+    },
+    "impc": {
+      "status": "skipped",
+      "phenotyped": null,
+      "n_phenotype_hits": 0
+    },
+    "gtex_top_tissues": [
+      {
+        "tissue": "Whole_Blood",
+        "median_tpm": 3.0
+      },
+      {
+        "tissue": "Lung",
+        "median_tpm": 2.0
+      }
+    ],
+    "opentargets_top_diseases": [],
+    "pubmed_count": null
+  },
+  "missing": [
+    {
+      "source": "ensembl_orthology",
+      "sub": "mus_musculus",
+      "status": "not_found",
+      "reason": null
+    },
+    {
+      "source": "ensembl_orthology",
+      "sub": "rattus_norvegicus",
+      "status": "not_found",
+      "reason": null
+    },
+    {
+      "source": "impc",
+      "sub": null,
+      "status": "skipped",
+      "reason": "no unique one2one mouse ortholog (mouse orthology not_found)"
+    },
+    {
+      "source": "opentargets",
+      "sub": null,
+      "status": "skipped",
+      "reason": "disabled in eval mode"
+    },
+    {
+      "source": "pubmed",
+      "sub": null,
+      "status": "skipped",
+      "reason": "disabled in eval mode"
+    }
+  ]
+}

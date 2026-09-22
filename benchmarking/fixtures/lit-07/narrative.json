@@ -1,0 +1,10 @@
+{
+  "dataset_id": "narrative",
+  "context": "literature",
+  "gene": "EPCAM",
+  "program": "EPCAM \u2014 epithelial identity marker",
+  "axis": "all",
+  "in_vitro_finding": "Expressed in epithelial lines and organoids; standard sorting marker.",
+  "in_vivo_finding": "Epithelial-restricted in mouse and human atlases.",
+  "patient_finding": "Epithelial-restricted in patient tissue; also used clinically (CTC capture)."
+}

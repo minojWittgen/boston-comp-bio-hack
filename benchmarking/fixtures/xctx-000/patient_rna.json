@@ -1,0 +1,143 @@
+{
+  "dataset_id": "patient_rna",
+  "context": "patient",
+  "modality": "rna",
+  "gene": "TYK2",
+  "disease": "psoriasis",
+  "tissue": "Skin_Sun_Exposed_Lower_leg",
+  "cohort_summary": {
+    "n_patients": 12,
+    "age_mean": 44.1,
+    "sex_ratio_f": 0.5,
+    "site": "Site A",
+    "platform": "10x 3' v3 pseudobulk"
+  },
+  "effect": {
+    "comparison": "lesional_vs_nonlesional",
+    "log2fc": 1.1,
+    "padj": 0.0001,
+    "direction": "up"
+  },
+  "samples": [
+    {
+      "patient_id": "P01",
+      "condition": "nonlesional",
+      "value": 5.902
+    },
+    {
+      "patient_id": "P01",
+      "condition": "lesional",
+      "value": 6.987
+    },
+    {
+      "patient_id": "P02",
+      "condition": "nonlesional",
+      "value": 5.542
+    },
+    {
+      "patient_id": "P02",
+      "condition": "lesional",
+      "value": 6.623
+    },
+    {
+      "patient_id": "P03",
+      "condition": "nonlesional",
+      "value": 5.167
+    },
+    {
+      "patient_id": "P03",
+      "condition": "lesional",
+      "value": 6.639
+    },
+    {
+      "patient_id": "P04",
+      "condition": "nonlesional",
+      "value": 5.678
+    },
+    {
+      "patient_id": "P04",
+      "condition": "lesional",
+      "value": 6.992
+    },
+    {
+      "patient_id": "P05",
+      "condition": "nonlesional",
+      "value": 4.273
+    },
+    {
+      "patient_id": "P05",
+      "condition": "lesional",
+      "value": 5.27
+    },
+    {
+      "patient_id": "P06",
+      "condition": "nonlesional",
+      "value": 5.757
+    },
+    {
+      "patient_id": "P06",
+      "condition": "lesional",
+      "value": 6.705
+    },
+    {
+      "patient_id": "P07",
+      "condition": "nonlesional",
+      "value": 4.33
+    },
+    {
+      "patient_id": "P07",
+      "condition": "lesional",
+      "value": 5.375
+    },
+    {
+      "patient_id": "P08",
+      "condition": "nonlesional",
+      "value": 5.804
+    },
+    {
+      "patient_id": "P08",
+      "condition": "lesional",
+      "value": 7.299
+    },
+    {
+      "patient_id": "P09",
+      "condition": "nonlesional",
+      "value": 4.337
+    },
+    {
+      "patient_id": "P09",
+      "condition": "lesional",
+      "value": 5.372
+    },
+    {
+      "patient_id": "P10",
+      "condition": "nonlesional",
+      "value": 5.751
+    },
+    {
+      "patient_id": "P10",
+      "condition": "lesional",
+      "value": 6.935
+    },
+    {
+      "patient_id": "P11",
+      "condition": "nonlesional",
+      "value": 5.421
+    },
+    {
+      "patient_id": "P11",
+      "condition": "lesional",
+      "value": 6.423
+    },
+    {
+      "patient_id": "P12",
+      "condition": "nonlesional",
+      "value": 5.275
+    },
+    {
+      "patient_id": "P12",
+      "condition": "lesional",
+      "value": 6.134
+    }
+  ]
+}

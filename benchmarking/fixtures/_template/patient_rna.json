@@ -1,0 +1,28 @@
+{
+  "dataset_id": "patient_rna",
+  "context": "patient",
+  "modality": "rna",
+  "gene": "<<FILL>>",
+  "disease": "<<FILL>>",
+  "tissue": "<<FILL: must match the GTEx tissue used in decision rules>>",
+  "cohort_summary": {
+    "n_patients": 12,
+    "age_mean": 44.1,
+    "sex_ratio_f": 0.5,
+    "site": "<<FILL>>",
+    "platform": "<<FILL>>"
+  },
+  "effect": {
+    "comparison": "lesional_vs_nonlesional",
+    "log2fc": 0.0,
+    "padj": 1.0,
+    "direction": "up | down | none"
+  },
+  "samples": [
+    { "patient_id": "P01", "condition": "lesional",    "value": 0.0 },
+    { "patient_id": "P01", "condition": "nonlesional", "value": 0.0 },
+    { "patient_id": "P02", "condition": "lesional",    "value": 0.0 },
+    { "patient_id": "P02", "condition": "nonlesional", "value": 0.0 }
+  ],
+  "_construction_note": "patient_prot.json has the same shape. For xctx-002 ONLY, patient_prot uses ids Q01..Q12 with a byte-identical cohort_summary. Delete this key before shipping."
+}

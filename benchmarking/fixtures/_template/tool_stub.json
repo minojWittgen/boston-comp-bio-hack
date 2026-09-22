@@ -1,0 +1,16 @@
+{
+  "_note": "Canned responses for build_evidence_package so both configurations see identical tool behaviour. Key = JSON of {symbol, disease, mode}. `default` is returned for any other args. `sequence` returns responses in call order and repeats the last one.",
+  "build_evidence_package": {
+    "{\"symbol\":\"<<FILL>>\",\"disease\":\"<<FILL>>\",\"mode\":\"eval\"}": {
+      "sequence": [
+        "evidence_package.json"
+      ]
+    },
+    "default": {
+      "status": "error",
+      "error": "stub: unexpected arguments",
+      "gene": null, "sources": {}, "summary": {}, "missing": []
+    }
+  },
+  "_xctx_003_variant": "For xctx-003, `sequence` should be [\"evidence_package.recovered.json\"] where the recovered file has gtex `ok` with contradicting tissue expression; the manifest's evidence_package.path points at the broken one."
+}

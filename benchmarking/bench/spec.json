@@ -1,0 +1,32 @@
+{
+  "_note": "Step-1 decisions in one place. gen_fixtures.py reads this and writes every manifest + fixture. The defaults use TYK2/psoriasis because that is the gene the pipeline was verified on; replace with the team's chosen claim — nothing else needs editing.",
+  "gene": "TYK2",
+  "disease": "psoriasis",
+  "tissue_gtex": "Skin_Sun_Exposed_Lower_leg",
+  "mouse_symbol": "Tyk2",
+  "ensg": "ENSG00000105397",
+  "claim": "TYK2 upregulation in IL-23-stimulated primary human keratinocytes reflects a JAK/STAT-driven state that is present in lesional skin of psoriasis patients.",
+  "invitro": { "model": "primary human keratinocytes", "perturbation": "IL-23 24h", "log2fc": 1.4, "padj": 2e-5, "n_replicates": 3, "direction": "up" },
+  "patient_effect": { "log2fc": 1.1, "padj": 1e-4, "direction": "up" },
+  "protein_effect": { "log2fc": 0.8, "padj": 3e-3, "direction": "up" },
+  "cohort": { "n_patients": 12, "age_mean": 44.1, "sex_ratio_f": 0.5, "site": "Site A", "platform_rna": "10x 3' v3 pseudobulk", "platform_prot": "Olink Explore" },
+  "gtex_ok": { "tissues": [
+    { "tissue": "Skin_Sun_Exposed_Lower_leg", "median_tpm": 14.2 },
+    { "tissue": "Skin_Not_Sun_Exposed_Suprapubic", "median_tpm": 12.9 },
+    { "tissue": "Whole_Blood", "median_tpm": 9.7 },
+    { "tissue": "Spleen", "median_tpm": 8.1 },
+    { "tissue": "Lung", "median_tpm": 6.4 },
+    { "tissue": "Brain_Cortex", "median_tpm": 0.9 }
+  ] },
+  "gtex_contradicting": { "tissues": [
+    { "tissue": "Testis", "median_tpm": 21.0 },
+    { "tissue": "Brain_Cortex", "median_tpm": 3.2 },
+    { "tissue": "Whole_Blood", "median_tpm": 0.6 },
+    { "tissue": "Skin_Sun_Exposed_Lower_leg", "median_tpm": 0.1 },
+    { "tissue": "Skin_Not_Sun_Exposed_Suprapubic", "median_tpm": 0.1 }
+  ] },
+  "impc_hits": [
+    { "mp_term_id": "MP:0002169", "mp_term_name": "no abnormal phenotype detected", "top_level_mp_term_name": ["immune system phenotype"], "zygosity": "homozygote", "sex": "both", "p_value": 1e-6, "allele_symbol": "Tyk2<tm1a(EUCOMM)Wtsi>" }
+  ],
+  "limits_dev": { "max_tool_calls": 12, "max_output_tokens": 4000, "wall_clock_seconds": 600 }
+}
