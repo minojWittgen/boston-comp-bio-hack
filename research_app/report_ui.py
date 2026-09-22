@@ -1,0 +1,155 @@
+"""Research report rendering, separate from chat and provider credentials."""
+import streamlit as st
+
+from research_app.presentation import (CONCLUSIONS, assistant_summary, collection_notes,
+    comparison_views, context_coverage, is_synthetic, requirement_rows, search_status)
+from research_app.sources import source_view
+
+
+def markdown_report(state):
+    """A readable export; the canonical audit and every original payload stay in JSON."""
+    def escape(value):
+        text = str(value)
+        for char in ("\\", "[", "]", "*", "_", "<", ">", "`", "|"):
+            text = text.replace(char, "\\" + char)
+        return text.replace("\n", " ")
+    lines = ["# Cross-context research report", "", escape(state.request.question), "", assistant_summary(state), "", "## Comparisons", ""]
+    for view in comparison_views(state):
+        lines.extend([f"### {escape(view['title'])}", "", f"**{view['conclusion']}**", "", escape(view['detail']), ""])
+    lines.extend(["## Evidence needed", "", "These measurements come from the research plan; they are not claims about what a source measured.", ""])
+    for row in requirement_rows(state):
+        lines.extend([f"### {escape(row['Question to answer'])}", ""])
+        lines.extend(f"- **{key}:** {escape(value)}" for key, value in row.items() if key != "Question to answer")
+        lines.append("")
+    lines.extend(["## Sources", "", "Database links are built from returned identifiers or queries. Article search hits have not been screened as study evidence.", ""])
+    for record in (state.evidence.records if state.evidence else []):
+        view = source_view(record)
+        lines.extend([f"### {escape(view.title)}", "", escape(view.summary), "", escape(view.limitation), ""])
+        lines.extend(f"- [{escape(label)}]({url.replace('(', '%28').replace(')', '%29')})" for label, url, _ in view.links)
+        lines.extend(f"- **{key}:** {escape(value)}" for key, value in {**view.facts, **view.identities}.items())
+        if view.table:
+            lines.extend(["", f"Source data preview: {min(25, len(view.table))} of {len(view.table)} returned rows. Full data are in the JSON download.", ""])
+            columns = list(view.table[0])
+            lines.extend(["| " + " | ".join(columns) + " |", "| " + " | ".join("---" for _ in columns) + " |"])
+            lines.extend("| " + " | ".join(escape(row.get(col)) if row.get(col) is not None else "Not supplied" for col in columns) + " |" for row in view.table[:25])
+        lines.append("")
+    lines.extend(["## Search limitations", ""] + [f"- {escape(note)}" for note in collection_notes(state)])
+    lines.extend(["", "Comparisons check supplied measurements and metadata; source accuracy, cohort independence and scientific comparability require researcher review.", ""])
+    return "\n".join(lines)
+
+
+def render_source(record):
+    view = source_view(record)
+    with st.container(border=True):
+        st.markdown(f"**{view.title}**")
+        st.write(view.summary)
+        primary = [link for link in view.links if not link[0].startswith("PubMed article")]
+        for label, url, _ in primary[:3]:
+            st.link_button(label, url)
+        with st.expander("Source details, measurements and identifiers"):
+            st.caption(view.limitation)
+            st.markdown("**Study and sample traceability**")
+            for label, value in view.identities.items():
+                st.text(f"{label}: {value}")
+            for label, value in view.facts.items():
+                st.text(f"{label}: {value}")
+            extra_links = [link for link in view.links if link not in primary[:3]]
+            if extra_links:
+                columns = st.columns(2)
+                for i, (label, url, _) in enumerate(extra_links):
+                    with columns[i % 2]:
+                        st.link_button(label, url)
+            if view.table:
+                st.dataframe(view.table, hide_index=True, width="stretch")
+            if not view.links:
+                st.caption("No usable source URL was supplied. No paper or database link has been invented.")
+            elif any(kind != "supplied" for _, _, kind in view.links):
+                st.caption("Database and article links are built from identifiers or queries in the retrieved result. A link is a way to inspect the source, not proof that it supports this comparison.")
+            st.caption(f"Retrieved: {record.retrieved_at or 'Not supplied'} · Source release: {record.source_version or 'Not supplied'}")
+
+
+def show_report(state):
+    if is_synthetic(state):
+        st.warning("Synthetic teaching example · all observations are fabricated, not biological findings.")
+    a, b = st.columns([1, 2])
+    a.metric("Source search", search_status(state))
+    b.metric("Answer to your question", CONCLUSIONS[state.assessment.conclusion] if state.assessment else "Not assessed yet")
+    records = state.evidence.records if state.evidence else []
+    observations = [r for r in records if r.level == "observation"]
+    references = [r for r in records if r.level == "background"]
+    if references and not observations:
+        st.info("We found database summaries and reference material, but no study observations with the measurements and source information needed for this comparison. Read Sources for what was retrieved and Comparisons for what is still needed.")
+    for col, row in zip(st.columns(3), context_coverage(state)):
+        with col.container(border=True):
+            st.markdown(f"**{row['label']}**")
+            st.write(row["detail"])
+    findings, sources, question = st.tabs(["Comparisons", "Sources", "What we need to answer"])
+    with findings:
+        st.subheader("What can we conclude?")
+        views = comparison_views(state)
+        if not views:
+            st.write("No comparison has been assessed yet.")
+        for view in views:
+            with st.container(border=True):
+                st.markdown(f"**{view['title']}**")
+                st.write(view["conclusion"])
+                st.write(view["detail"])
+                if view["records"]:
+                    with st.expander("Measurements used in this comparison"):
+                        st.dataframe([{"Gene": r.entity, "Study ID": r.study_id or "Not supplied", "Measured outcome": r.endpoint,
+                                       "Direction": r.direction, "Participant / subject ID": r.subject_id or "Not supplied",
+                                       "Sample / specimen ID": r.specimen_id or "Not supplied"} for r in view["records"]], hide_index=True, width="stretch")
+        notes = collection_notes(state)
+        if notes:
+            st.markdown("**Search limitations**")
+            for note in notes:
+                st.write(note)
+        st.caption("These comparisons check supplied measurements and metadata. Source accuracy, independent study populations and scientific comparability still require researcher review.")
+    with sources:
+        st.subheader("Where the information comes from")
+        st.write("Open a source to see its measurements, article links and available study or sample identifiers. “Not supplied” means the retrieved result does not include that information.")
+        if not records:
+            st.info("No source results have been returned.")
+        if observations:
+            st.markdown("**Study observations**")
+            for record in observations:
+                render_source(record)
+        if references:
+            st.markdown("**Database summaries and article searches**")
+            st.caption("These can guide further research. They are not counted as study observations for the comparisons above.")
+            for record in references:
+                render_source(record)
+    with question:
+        st.subheader("Your research question")
+        st.write(state.request.question)
+        st.markdown("**Measurements needed to answer it**")
+        if state.plan:
+            origin = "These criteria were supplied with the request." if state.request.requirements else "The model proposed these criteria from your question. Review them before interpreting the results."
+            st.write(origin + " A measurement listed here is a research requirement, not a result retrieved from a source.")
+            for row in requirement_rows(state):
+                with st.expander(f"{row['Question to answer']} · {row['Evidence available']}"):
+                    for label, value in row.items():
+                        if label != "Question to answer":
+                            st.text(f"{label}: {value}")
+            st.caption("Distinct study identifiers are counted once; different identifiers alone do not prove independent study populations.")
+            if state.plan.assumptions:
+                with st.expander("Proposed assumptions to review"):
+                    for assumption in state.plan.assumptions:
+                        st.write(assumption)
+            if state.plan.pathway:
+                st.write(f"Pathway: {state.plan.pathway.id} · {state.plan.pathway.source} · {state.plan.pathway.version}")
+                st.caption("Pathway membership defines scope; it does not measure activity.")
+            st.caption("Clarify your question in chat to start a new search with revised criteria.")
+        else:
+            st.write("The research question is still being prepared.")
+    if state.error:
+        st.error(state.error)
+    if state.status in {"complete", "partial", "failed"}:
+        st.download_button("Download readable report", markdown_report(state), file_name=f"research-report-{state.run_id}.md", mime="text/markdown")
+    with st.expander("Technical details and original data"):
+        st.caption("For reproducibility and debugging. Internal record IDs identify stored results, not publications, participants or samples.")
+        st.json({"investigation_id": state.run_id, "status": state.status, "events": state.events,
+                 "assessment": state.assessment.model_dump() if state.assessment else None,
+                 "collection_limits": [g.model_dump() for g in state.evidence.gaps] if state.evidence else [],
+                 "plan_sha256": state.plan_sha256}, expanded=False)
+        st.download_button("Download all original data (JSON)", state.model_dump_json(indent=2), file_name=f"investigation-{state.run_id}.json", mime="application/json")

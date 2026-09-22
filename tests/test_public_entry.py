@@ -101,11 +101,11 @@ def test_tutorial_and_mcp_are_accessible_without_backend_or_credentials(monkeypa
         assert not app.exception
         assert app.radio(key='experience').value == 'Try the tutorial'
         assert not app.text_input and not app.chat_input
-        assert [metric.value for metric in app.metric] == ['Complete', 'Conflicting']
+        assert [metric.value for metric in app.metric] == ['Finished', 'Measurements disagree']
         assert len(app.get('download_button')) == 2
         next(r for r in app.radio if r.label == 'Tutorial case').set_value('Missing patient evidence').run()
         assert not app.exception
-        assert [metric.value for metric in app.metric] == ['Partial', 'Not Assessable']
+        assert [metric.value for metric in app.metric] == ['Finished', 'Not enough comparable evidence']
         app.radio(key='experience').set_value('Connect through MCP').run()
         assert not app.exception and not app.text_input
         assert any('claude mcp add --transport http' in code.value for code in app.code)
