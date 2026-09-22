@@ -44,18 +44,6 @@ SOURCES: dict[str, dict] = {
         "context": "pathway_definition", "modality": "pathway_membership",
         "source_dependencies": ["Reactome"], "leaks_answers": False,
     },
-    "reactome_gene_pathways": {
-        "purpose": "Which human Reactome pathways a gene is in, and what each does.",
-        "eligible_inputs": "human gene symbol",
-        "output_meaning": "pathways (stId + name + description) the gene participates in",
-        "limitations": "membership + description only; not a pathway-level evidence rollup",
-        "failure_behavior": "not_found if the gene maps to no human pathway; error on failure",
-        "version": "Reactome ContentService (graph DB version recorded per call)",
-        "evidence_role": "background", "result_origin": "published_retrieved",
-        "measured_vs_inferred": "n/a", "species": "human",
-        "context": "pathway_definition", "modality": "pathway_membership",
-        "source_dependencies": ["Reactome"], "leaks_answers": False,
-    },
     "reactome_orthology": {
         "purpose": "Reactome's computationally inferred mouse pathway for a human pathway.",
         "eligible_inputs": "human Reactome stable id (R-HSA-...)",
@@ -185,6 +173,47 @@ def evidence_dimensions(source: str) -> dict:
 def annotate(source: str, result: dict) -> dict:
     """Attach §6 evidence-record fields to a SourceResult (non-mutating copy)."""
     return {**result, "evidence": evidence_dimensions(source)}
+
+
+# Package source keys don't always equal registry keys (opentargets→association;
+# hpa_cell_lines carries both rna+protein). Map them so every result is self-describing.
+_PACKAGE_SOURCE = {
+    "mygene": "mygene",
+    "ensembl_orthology": "ensembl_orthology",
+    "impc": "impc",
+    "gtex": "gtex",
+    "opentargets": "opentargets_association",
+    "pubmed": "pubmed",
+    "opentargets_depmap": "opentargets_depmap",
+}
+
+
+def dims_for_package_source(key: str) -> dict:
+    """§6 dimensions for a source as it appears in a package (handles key differences)."""
+    if key == "hpa_cell_lines":  # one result, two modalities
+        d = dict(evidence_dimensions("hpa_rna"))
+        d["modality"] = ["rna", "protein"]
+        return d
+    return evidence_dimensions(_PACKAGE_SOURCE.get(key, key))
+
+
+def annotate_package(pkg: dict) -> dict:
+    """Attach §6 evidence dimensions to every source result in a gene package in place.
+
+    Makes species / context / modality explicit on every record — including HPA and
+    DepMap — so a consumer never has to infer them from the source name.
+    """
+    gene = pkg.get("gene")
+    if isinstance(gene, dict):
+        gene["evidence"] = dims_for_package_source("mygene")
+    for name, r in (pkg.get("sources") or {}).items():
+        if name == "ensembl_orthology" and isinstance(r, dict):
+            for sp, rr in r.items():
+                if isinstance(rr, dict):
+                    rr["evidence"] = dims_for_package_source("ensembl_orthology")
+        elif isinstance(r, dict):
+            r["evidence"] = dims_for_package_source(name)
+    return pkg
 
 
 # ------------------------------------------------------------------ independence (§1/§3)

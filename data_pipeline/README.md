@@ -9,12 +9,11 @@ Two inputs:
 
 | Input | Command | Output |
 |-------|---------|--------|
-| **Gene** | `modal run app.py::main --genes MLH1,MSH2 --disease "colorectal cancer"` | per-gene package **+ `reactome_pathways`: which pathways the gene is in and what each does** |
+| **Gene** | `modal run app.py::main --genes MLH1,MSH2 --disease "colorectal cancer"` | per-gene evidence package |
 | **Pathway** | `modal run app.py::pathway --reactome-id R-HSA-5358508` | pathway-level rollup over all participant genes |
 
-Natural flow: run a **gene** → read its `reactome_pathways` (pathway membership +
-descriptions) → pick a pathway of interest → run that **pathway** id for the full rollup
-(v3 §1/§8.2: "fix the pathway/program definition, then assess").
+Pathway is the top-level unit (v3 §1/§8.2: "fix the pathway/program definition, then
+assess").
 
 ## The three contexts (v3 §1/§2)
 
@@ -41,7 +40,7 @@ with the unmet requirement and candidate sources.
 Same computation, two entry points:
 
 ### MCP tools (`mcp_server.py`, stdio)
-- `build_evidence_package(symbol, disease, mode)` — one gene (includes `reactome_pathways`)
+- `build_evidence_package(symbol, disease, mode)` — one gene
 - `read_evidence_package(path)` — read a gene package using a receipt path issued in the same MCP session
 - `build_pathway_evidence(reactome_id, disease, mode)` — one pathway
 
@@ -51,7 +50,6 @@ Same computation, two entry points:
 
 ```python
 import modal
-# one gene (package carries its pathway membership under sources.reactome_pathways)
 modal.Function.from_name("xctx-evidence", "build_one").remote(
     "MLH1", "colorectal cancer", "explore", "run1")
 ```
@@ -113,11 +111,11 @@ pytest tests/ -v                  # 23 tests, no network
 ```
 
 ## Verified (2026-09-22)
-Live on Modal. **Gene input** (`MLH1`): package carries `reactome_pathways` (7 pathways
-with descriptions) plus in-vitro/in-vivo/human-reference evidence. **Pathway input**
-(`R-HSA-5358508`): 15 participants built in one pass; in-vitro (HPA + DepMap, 7 essential),
-in-vivo (14 mouse one2one, IMPC 5/5 phenotyped, mouse inference labeled), human-reference
-(GTEx), patients marked as gap; 9 shared / 6 exclusive participants. `pytest`: 23 passed.
+Live on Modal. **Gene input** (`MLH1`): in-vitro/in-vivo/human-reference evidence built.
+**Pathway input** (`R-HSA-5358508`): 15 participants built in one pass; in-vitro (HPA +
+DepMap, 7 essential), in-vivo (14 mouse one2one, IMPC 5/5 phenotyped, mouse inference
+labeled), human-reference (GTEx), patients marked as gap; 9 shared / 6 exclusive
+participants. `pytest`: 20 passed.
 
 ## Coordinator integration
 
@@ -126,5 +124,4 @@ receipt (both unchanged), so it stays a drop-in for the coordinator's `ModalEvid
 provider. The team coordinator currently validates the receipt and reads the committed
 package from `xctx-cache`. The gene package read tool only accepts paths issued by its
 own session; it does not read pathway receipts. All retrieved records remain background
-evidence in the coordinator until an empirical observation adapter is provided; the new
-`reactome_pathways` source rides along inside the package as more background.
+evidence in the coordinator until an empirical observation adapter is provided.

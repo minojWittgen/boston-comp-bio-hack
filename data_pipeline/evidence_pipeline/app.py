@@ -27,7 +27,7 @@ secrets = [modal.Secret.from_name("ncbi-api-key")] if os.environ.get("USE_NCBI_S
               max_containers=8,  # stays under Ensembl/NCBI rate limits
               timeout=900)
 def build_one(symbol: str, disease: str, mode: str, run_id: str) -> dict:
-    import pathway as PW
+    import registry as R
     from cache import JsonCache
     from invitro import enrich_invitro
     from package import build_package
@@ -36,13 +36,7 @@ def build_one(symbol: str, disease: str, mode: str, run_id: str) -> dict:
     cache = JsonCache(ROOT)
     pkg = build_package(symbol, disease, mode, run_id, cache)
     enrich_invitro(pkg, mode, cache)  # add in-vitro context (HPA, DepMap)
-    # pathway membership: which Reactome pathways this gene is in + what each does
-    r = cache.fetch("reactome_gene_pathways", {"symbol": symbol},
-                    lambda: PW.pathways_for_gene(symbol))
-    pkg["sources"]["reactome_pathways"] = r
-    if r["status"] != "ok":
-        pkg["missing"].append({"source": "reactome_pathways", "sub": None,
-                               "status": r["status"], "reason": r.get("error")})
+    R.annotate_package(pkg)  # make species/context/modality explicit on every source
     out = Path(ROOT) / "runs" / run_id / f"{symbol}.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(pkg, indent=2))

@@ -111,51 +111,6 @@ def resolve_pathway(reactome_id: str, shared_ref_id: str | None = SHARED_REF_DEF
         return S.result("reactome_pathway", "error", q, error=repr(e), version=version)
 
 
-# ---------------------------------------------------------------- gene → its pathways (+ what each does)
-def _pathway_descriptions(ids: list[str]) -> dict[str, str | None]:
-    """Batch-fetch 'what each pathway does' (Reactome summation) in one POST."""
-    if not ids:
-        return {}
-    try:
-        resp = requests.post(f"{REACTOME}/data/query/ids", data=",".join(ids),
-                             headers={"Content-Type": "text/plain",
-                                      "Accept": "application/json"}, timeout=S.TIMEOUT)
-        resp.raise_for_status()
-        out: dict[str, str | None] = {}
-        for e in resp.json():
-            summ = e.get("summation") or []
-            out[e.get("stId")] = (summ[0].get("text") if summ else None)
-        return out
-    except Exception:  # noqa: BLE001  descriptions are best-effort
-        return {}
-
-
-def pathways_for_gene(symbol: str) -> dict:
-    """Which human Reactome pathways a gene is in, and what each pathway does.
-
-    Attached to a gene's evidence so a reader can see the gene's pathway membership
-    and a short description of each pathway (Reactome summation), fetched in one batch.
-    """
-    q = {"symbol": symbol}
-    version = reactome_version()
-    try:
-        d = S.http("GET", f"{REACTOME}/data/mapping/UniProt/{symbol}/pathways",
-                   params={"species": "9606"})
-        pathways = [{"stId": p.get("stId"), "name": p.get("displayName")}
-                    for p in (d or []) if p.get("stId")]
-        if not pathways:
-            return S.result("reactome_gene_pathways", "not_found", q, version=version)
-        descs = _pathway_descriptions([p["stId"] for p in pathways])
-        for p in pathways:
-            p["description"] = descs.get(p["stId"])
-        return S.result("reactome_gene_pathways", "ok", q, version=version,
-                        data={"symbol": symbol, "n": len(pathways), "pathways": pathways})
-    except Exception as e:  # noqa: BLE001
-        if _status_404(e):
-            return S.result("reactome_gene_pathways", "not_found", q, version=version)
-        return S.result("reactome_gene_pathways", "error", q, error=repr(e), version=version)
-
-
 # ---------------------------------------------------------------- mouse inference (labeled)
 def infer_mouse_pathway(reactome_id: str) -> dict:
     """Reactome's computationally inferred mouse pathway for a human pathway.

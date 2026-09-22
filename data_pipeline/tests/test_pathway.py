@@ -47,23 +47,6 @@ def test_resolve_pathway_empty_is_not_found(monkeypatch):
     assert r["status"] == "not_found"
 
 
-def test_pathways_for_gene_lists_candidates(monkeypatch):
-    monkeypatch.setattr(PW, "reactome_version", lambda: "97")
-    monkeypatch.setattr(S, "http", lambda m, u, **k: [
-        {"stId": "R-HSA-5358565", "displayName": "MutSalpha"},
-        {"stId": "R-HSA-5358606", "displayName": "MutSbeta"},
-        {"stId": None, "displayName": "dropped"}])
-    r = PW.pathways_for_gene("MLH1")
-    assert r["status"] == "ok" and r["data"]["n"] == 2
-    assert r["data"]["pathways"][0]["stId"] == "R-HSA-5358565"
-
-
-def test_pathways_for_gene_empty_is_not_found(monkeypatch):
-    monkeypatch.setattr(PW, "reactome_version", lambda: "97")
-    monkeypatch.setattr(S, "http", lambda m, u, **k: [])
-    assert PW.pathways_for_gene("NOPE")["status"] == "not_found"
-
-
 def test_infer_mouse_pathway_labels_inferred(monkeypatch):
     monkeypatch.setattr(PW, "reactome_version", lambda: "97")
     monkeypatch.setattr(S, "http", lambda m, u, **k: {
@@ -138,6 +121,27 @@ def test_independent_sources_dedupes_shared_providers():
     assert out["providers"]["GTEx"] == ["opentargets_association", "gtex"]
 
 
+def test_annotate_package_makes_dimensions_explicit():
+    """Every source result carries §6 dims — including HPA/DepMap context=in_vitro."""
+    pkg = {
+        "gene": {"status": "ok", "data": {"symbol": "MLH1"}},
+        "sources": {
+            "ensembl_orthology": {"mus_musculus": {"status": "ok"}},
+            "opentargets": {"status": "ok"},
+            "hpa_cell_lines": {"status": "ok"},
+            "opentargets_depmap": {"status": "ok"}}}
+    R.annotate_package(pkg)
+    assert pkg["gene"]["evidence"]["species"] == "human"
+    assert pkg["sources"]["ensembl_orthology"]["mus_musculus"]["evidence"]["context"] == "orthology"
+    # package key 'opentargets' maps to the association registry entry
+    assert pkg["sources"]["opentargets"]["evidence"]["context"] == "target_disease_association"
+    # the two in-vitro sources are no longer unset
+    assert pkg["sources"]["hpa_cell_lines"]["evidence"]["context"] == "in_vitro"
+    assert pkg["sources"]["hpa_cell_lines"]["evidence"]["modality"] == ["rna", "protein"]
+    assert pkg["sources"]["opentargets_depmap"]["evidence"]["context"] == "in_vitro"
+    assert pkg["sources"]["opentargets_depmap"]["evidence"]["modality"] == "crispr_fitness"
+
+
 def test_eval_policy_association_leaks_baseline_allowed():
     assert R.eval_allows("opentargets_association") is False  # disease link leaks
     assert R.eval_allows("gtex") is True                      # baseline expression ok
@@ -192,17 +196,3 @@ def test_aggregate_in_vitro_counts():
     assert iv["hpa"]["n_genes"] == 2
     assert iv["depmap"]["n_genes_with_data"] == 2 and iv["depmap"]["n_essential"] == 1
     assert iv["depmap"]["essential_genes"] == ["MLH1"]
-
-
-def test_pathways_for_gene_attaches_descriptions(monkeypatch):
-    """Gene → its pathways, each with a 'what it does' description (batched)."""
-    monkeypatch.setattr(PW, "reactome_version", lambda: "97")
-    monkeypatch.setattr(S, "http", lambda m, u, **k: [
-        {"stId": "R-HSA-5358565", "displayName": "MutSalpha"}])
-    monkeypatch.setattr(PW, "_pathway_descriptions",
-                        lambda ids: {"R-HSA-5358565": "MSH2:MSH6 binds mismatches."})
-    r = PW.pathways_for_gene("MLH1")
-    assert r["status"] == "ok"
-    p = r["data"]["pathways"][0]
-    assert p["name"] == "MutSalpha"
-    assert p["description"] == "MSH2:MSH6 binds mismatches."

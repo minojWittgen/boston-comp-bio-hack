@@ -26,18 +26,6 @@ Auto-generated from `registry.py` (v3 §4.5). One row per evidence source: its c
 - **Source dependencies**: Reactome
 - **Eval**: allowed
 
-## reactome_gene_pathways
-
-- **Purpose**: Which human Reactome pathways a gene is in, and what each does.
-- **Eligible inputs**: human gene symbol
-- **Output meaning**: pathways (stId + name + description) the gene participates in
-- **Limitations**: membership + description only; not a pathway-level evidence rollup
-- **Failure behavior**: not_found if the gene maps to no human pathway; error on failure
-- **Version**: Reactome ContentService (graph DB version recorded per call)
-- **Evidence** — role: background; origin: published_retrieved; measured/inferred: n/a; species: human; context: pathway_definition; modality: pathway_membership
-- **Source dependencies**: Reactome
-- **Eval**: allowed
-
 ## reactome_orthology
 
 - **Purpose**: Reactome's computationally inferred mouse pathway for a human pathway.

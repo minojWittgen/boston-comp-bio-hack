@@ -8,11 +8,8 @@ judgments and no scores** (v3 §9): every field is a retrieved fact or an explic
 
 | Input | Command | Output |
 |-------|---------|--------|
-| **Gene** | `modal run app.py::main --genes MLH1,MSH2 --disease "colorectal cancer"` | per-gene package **+ which Reactome pathways the gene is in and what each does** |
+| **Gene** | `modal run app.py::main --genes MLH1,MSH2 --disease "colorectal cancer"` | per-gene evidence package |
 | **Pathway** | `modal run app.py::pathway --reactome-id R-HSA-5358508` | pathway-level rollup over all participant genes |
-
-Natural flow: run a **gene** → read its `reactome_pathways` (membership + descriptions) →
-pick one you care about → run that **pathway** id for the full rollup.
 
 ## Flow
 
@@ -25,7 +22,6 @@ flowchart TD
     subgraph FAN ["per gene: build_one"]
         ONE["build_package<br/>background: orthology · IMPC · GTEx · Open Targets · PubMed"]
         ONE --> IV["enrich_invitro<br/>+ HPA cell lines + DepMap"]
-        IV --> MEM["+ reactome_pathways<br/>which pathways this gene is in + what each does"]
     end
 
     RES -->|fan out over participants| FAN
@@ -84,9 +80,6 @@ Baseline expression, HPA, and DepMap fitness are **not** association → kept in
 - **No scores** (v3 §9): pathway rollup is counts only — per-species ortholog coverage,
   IMPC phenotyped ratio, DepMap essential count, and **shared vs exclusive participants**
   (PCNA/RPA/POLD also in DNA replication → `shared_participant`; MLH1/MSH2 exclusive).
-- **Gene → pathways**: each gene package carries `reactome_pathways` (the pathways the
-  gene is in, each with a Reactome description), so a reader can jump from a gene to a
-  pathway of interest.
 
 ## Source contracts
 
@@ -96,8 +89,8 @@ its §6 evidence dimensions (role, origin, measured/inferred, species, context, 
 dependencies).
 
 ## Verified (2026-09-22)
-Live on Modal — **gene input** (`MLH1`): package carries `reactome_pathways` (7 pathways
-with descriptions) alongside in-vitro/in-vivo/human-reference evidence. **Pathway input**
-(`R-HSA-5358508`): 15 participants built in one pass; in-vitro (HPA + DepMap, 7 essential),
-in-vivo (14 mouse one2one, IMPC 5/5 phenotyped, mouse inference labeled), human reference
-(GTEx), patients = explicit gap; 9 shared / 6 exclusive. `pytest`: 23 passed.
+Live on Modal — **gene input** (`MLH1`): in-vitro/in-vivo/human-reference evidence built.
+**Pathway input** (`R-HSA-5358508`): 15 participants built in one pass; in-vitro (HPA +
+DepMap, 7 essential), in-vivo (14 mouse one2one, IMPC 5/5 phenotyped, mouse inference
+labeled), human reference (GTEx), patients = explicit gap; 9 shared / 6 exclusive.
+`pytest`: 20 passed.
